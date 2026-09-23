@@ -36,6 +36,13 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def dataset_manifest_identity(dataset_root: Path) -> str:
+    manifest = dataset_root / "manifest.json"
+    if not manifest.is_file():
+        raise FileNotFoundError(f"MISSING_DATASET_MANIFEST:{manifest}")
+    return sha256_file(manifest)
+
+
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -160,7 +167,9 @@ def train(
     seed: int = 20260923,
     device: str = "cpu",
     max_batches: int | None = None,
+    resume_from: Path | None = None,
 ) -> dict:
+    dataset_id = dataset_manifest_identity(dataset_root)
     seed_everything(seed)
     dev = torch.device(device)
     model = BiddingMLP(config).to(dev)
@@ -170,8 +179,45 @@ def train(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     steps = 0
+    start_epoch = 0
     epoch_metrics = []
-    for epoch in range(epochs):
+
+    expected_hparams = {
+        "batch_size": batch_size,
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "max_batches": max_batches,
+    }
+
+    if resume_from is not None:
+        checkpoint = torch.load(resume_from, map_location=dev)
+        if checkpoint.get("training_schema") != TRAINING_SCHEMA:
+            raise ValueError("RESUME_TRAINING_SCHEMA_MISMATCH")
+        if checkpoint.get("feature_schema") != FEATURE_SCHEMA:
+            raise ValueError("RESUME_FEATURE_SCHEMA_MISMATCH")
+        if checkpoint.get("dataset_manifest_sha256") != dataset_id:
+            raise ValueError("RESUME_DATASET_IDENTITY_MISMATCH")
+        if checkpoint.get("model") != model.artifact_config():
+            raise ValueError("RESUME_MODEL_CONFIG_MISMATCH")
+        if checkpoint.get("seed") != seed:
+            raise ValueError("RESUME_SEED_MISMATCH")
+        if checkpoint.get("hyperparameters") != expected_hparams:
+            raise ValueError("RESUME_HYPERPARAMETER_MISMATCH")
+
+        model.load_state_dict(checkpoint["state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        start_epoch = int(checkpoint["epoch"])
+        steps = int(checkpoint["steps"])
+        epoch_metrics = list(checkpoint.get("epoch_metrics", []))
+
+        torch.set_rng_state(checkpoint["torch_rng_state"])
+        np.random.set_state(checkpoint["numpy_random_state"])
+        random.setstate(checkpoint["python_random_state"])
+
+        if start_epoch >= epochs:
+            raise ValueError(f"RESUME_ALREADY_AT_OR_BEYOND_TARGET:{start_epoch}>={epochs}")
+
+    for epoch in range(start_epoch, epochs):
         model.train()
         rows = 0
         loss_sum = 0.0
@@ -209,11 +255,9 @@ def train(
             "epoch": epoch + 1,
             "steps": steps,
             "seed": seed,
-            "hyperparameters": {
-                "batch_size": batch_size,
-                "learning_rate": learning_rate,
-                "weight_decay": weight_decay,
-            },
+            "dataset_manifest_sha256": dataset_id,
+            "hyperparameters": expected_hparams,
+            "epoch_metrics": list(epoch_metrics),
             "torch_rng_state": torch.get_rng_state(),
             "numpy_random_state": np.random.get_state(),
             "python_random_state": random.getstate(),
@@ -228,6 +272,7 @@ def train(
             "model": model.artifact_config(),
             "state_dict": model.state_dict(),
             "seed": seed,
+            "dataset_manifest_sha256": dataset_id,
         },
         final_path,
     )
@@ -235,10 +280,12 @@ def train(
     result = {
         "training_schema": TRAINING_SCHEMA,
         "dataset_root": str(dataset_root),
+        "dataset_manifest_sha256": dataset_id,
         "model": model.artifact_config(),
         "epochs": epochs,
         "seed": seed,
         "steps": steps,
+        "resumed_from": str(resume_from) if resume_from is not None else None,
         "epoch_metrics": epoch_metrics,
         "model_sha256": sha256_file(final_path),
     }
@@ -262,6 +309,7 @@ def main() -> None:
     p.add_argument("--depth", type=int, default=3)
     p.add_argument("--dropout", type=float, default=0.05)
     p.add_argument("--max-batches", type=int)
+    p.add_argument("--resume-from", type=Path)
     args = p.parse_args()
     config = BiddingModelConfig(
         hidden_dim=args.hidden_dim, depth=args.depth, dropout=args.dropout
@@ -277,6 +325,7 @@ def main() -> None:
         seed=args.seed,
         device=args.device,
         max_batches=args.max_batches,
+        resume_from=args.resume_from,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
