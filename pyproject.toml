@@ -10,6 +10,7 @@ dependencies = []
 
 [project.optional-dependencies]
 data = ["pyarrow==18.1.0"]
+training = ["numpy==1.26.4", "torch==2.1.2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
