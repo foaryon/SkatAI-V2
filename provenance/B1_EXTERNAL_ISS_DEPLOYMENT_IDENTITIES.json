@@ -1,0 +1,66 @@
+{
+  "identities": {
+    "B0": {
+      "arm": "B0",
+      "body": {
+        "arm": "B0",
+        "baseline_id": "V2-B0",
+        "bidding": {
+          "accuracy": 231,
+          "bid_threshold": -5.0,
+          "implementation": "frozen upstream api.py BID"
+        },
+        "downstream": "frozen SkatZero declaration/discard/cardplay",
+        "inference_api_sha256": "466833534eb0bfd699318596115237b82f2d34bbc4123cc32345d691c780508d",
+        "pretrained_models": {
+          "D_0.pth": "11e09514a370933baa4dfc6a0334f2c45d0e2b6c1292d1c3c6f0991660a8452f",
+          "D_1.pth": "3a7489e2250324408800a7a0ca41489c9fd2328e2fb471353cac402c8e0fc65d",
+          "D_2.pth": "2b618269cc42bb199e6f0b07fed97c0256d69cec461accaf0330ebe3ba557c1b",
+          "G_0.pth": "9131b75aff1c20d436bdc4262ef614b16e438ec20b2d94beb2b8a6dd2a1876d4",
+          "G_1.pth": "9c2732c936ac15530efdcb114e188e2243772412f2d7a60ed600a9ba0a15e2a8",
+          "G_2.pth": "2973542e4922638b61b4a538e9b3d9113b6ad69927c35f193596cb81ae37def2",
+          "N_0.pth": "625f32c9594318da5f27ebd86cc8b1a6f9eb82d6a7d72586c615796e1f0791c6",
+          "N_1.pth": "fdf0e0377cc4fc090f54e84f1c369999d44a3ea5b724ef1f73578824bd03785a",
+          "N_2.pth": "c75585fb9a4c9fa9e784c3d47d39f11b4ef919bec17ae3b8810b35b343a9d3fc"
+        },
+        "schema": "skatai.v2.iss-deployment-identity.v1",
+        "upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
+      },
+      "deployment_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+      "release_id": "ISS-GATE-B0-7dd67922902692fd"
+    },
+    "B1": {
+      "arm": "B1",
+      "body": {
+        "arm": "B1",
+        "bidding_model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+        "bidding_threshold": 0.5,
+        "candidate_id": "V2-B1-bidding-linearish-full-v1",
+        "frozen_downstream_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+        "parent_baseline": "V2-B0",
+        "pretrained_models": {
+          "D_0.pth": "11e09514a370933baa4dfc6a0334f2c45d0e2b6c1292d1c3c6f0991660a8452f",
+          "D_1.pth": "3a7489e2250324408800a7a0ca41489c9fd2328e2fb471353cac402c8e0fc65d",
+          "D_2.pth": "2b618269cc42bb199e6f0b07fed97c0256d69cec461accaf0330ebe3ba557c1b",
+          "G_0.pth": "9131b75aff1c20d436bdc4262ef614b16e438ec20b2d94beb2b8a6dd2a1876d4",
+          "G_1.pth": "9c2732c936ac15530efdcb114e188e2243772412f2d7a60ed600a9ba0a15e2a8",
+          "G_2.pth": "2973542e4922638b61b4a538e9b3d9113b6ad69927c35f193596cb81ae37def2",
+          "N_0.pth": "625f32c9594318da5f27ebd86cc8b1a6f9eb82d6a7d72586c615796e1f0791c6",
+          "N_1.pth": "fdf0e0377cc4fc090f54e84f1c369999d44a3ea5b724ef1f73578824bd03785a",
+          "N_2.pth": "c75585fb9a4c9fa9e784c3d47d39f11b4ef919bec17ae3b8810b35b343a9d3fc"
+        },
+        "schema": "skatai.v2.iss-deployment-identity.v1",
+        "treatment": "replace bidding only; keep SkatZero declaration/discard/cardplay frozen",
+        "upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
+      },
+      "deployment_identity_sha256": "120239116da78bb2e82b632d3470d0c7cf5d62261889e96f1442abeb3514a103",
+      "release_id": "ISS-GATE-B1-120239116da78bb2"
+    }
+  },
+  "ledger_field_binding": {
+    "model_sha256": "deployment_identity_sha256",
+    "reason": "External result identity must bind the complete deployed policy stack, not only one neural checkpoint."
+  },
+  "schema": "skatai.v2.iss-deployment-identities.v1",
+  "status": "FROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME"
+}
