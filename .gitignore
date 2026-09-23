@@ -4,9 +4,9 @@ __pycache__/
 *.pyc
 .cache/
 scratch/
-data/
+/data/
 checkpoints/
-models/
+/models/
 artifacts-local/
 .env
 *.secret
