@@ -1,0 +1,20 @@
+{
+  "baseline_id": "V2-B0",
+  "runtime": {
+    "python": "3.11.13",
+    "torch": "2.1.2+cpu",
+    "numpy": "1.26.4",
+    "cuda_available": false
+  },
+  "checks": {
+    "pretrained_agents_loaded": 9,
+    "agent_class": "DMCAgent",
+    "original_api_cardplay_smoke": {
+      "gametype": "D",
+      "selected_card": "D8",
+      "selected_value": 81.29,
+      "status": "PASS"
+    }
+  },
+  "status": "B0_RUNTIME_REPRODUCED"
+}
