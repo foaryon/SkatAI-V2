@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import heapq
 import json
+import os
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -26,6 +27,7 @@ from skatai.gameplay.bidding import (
 from skatai.gameplay.skatzero_bidding import max_accepted_bids_by_seat
 
 SCHEMA = "skatai.v2.b0-vs-b1-local-paired-gameplay.v1"
+CHECKPOINT_SCHEMA = "skatai.v2.b0-vs-b1-local-paired-checkpoint.v1"
 
 
 @dataclass(frozen=True)
@@ -482,6 +484,77 @@ def paired_delta_stats(deltas: Sequence[float]) -> dict[str, float | int | None]
         "ci95_high": mean + 1.96 * se,
     }
 
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb", buffering=8 * 1024 * 1024) as f:
+        while chunk := f.read(8 * 1024 * 1024):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        f.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
+def _checkpoint_configuration(
+    *,
+    canonical_path: Path,
+    skatzero_root: Path,
+    model_root: Path,
+    b1_model: Path,
+    deal_count: int,
+    selection_seed: int,
+    master_seed: int,
+    threshold: float,
+    accuracy: int,
+    bid_threshold: float,
+) -> dict[str, Any]:
+    return {
+        "canonical_path": str(canonical_path.resolve()),
+        "skatzero_root": str(skatzero_root.resolve()),
+        "model_root": str(model_root.resolve()),
+        "b1_model": str(b1_model.resolve()),
+        "b1_model_sha256": _sha256_file(b1_model),
+        "deal_count": deal_count,
+        "selection_seed": selection_seed,
+        "master_seed": master_seed,
+        "b1_threshold": threshold,
+        "b0_accuracy": accuracy,
+        "b0_bid_threshold": bid_threshold,
+    }
+
+
+def _load_checkpoint(
+    path: Path,
+    *,
+    configuration: Mapping[str, Any],
+    selected_deal_identities: Sequence[str],
+) -> tuple[dict[str, dict[str, Any]], float]:
+    if not path.exists():
+        return {}, 0.0
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema") != CHECKPOINT_SCHEMA:
+        raise ValueError("CHECKPOINT_SCHEMA_MISMATCH")
+    if payload.get("configuration") != dict(configuration):
+        raise ValueError("CHECKPOINT_CONFIGURATION_MISMATCH")
+    if payload.get("selected_deal_identities") != list(selected_deal_identities):
+        raise ValueError("CHECKPOINT_DEAL_SET_MISMATCH")
+    records = payload.get("records") or []
+    by_id = {str(r["deal_identity"]): r for r in records}
+    if len(by_id) != len(records):
+        raise ValueError("CHECKPOINT_DUPLICATE_DEAL")
+    if not set(by_id).issubset(set(selected_deal_identities)):
+        raise ValueError("CHECKPOINT_UNKNOWN_DEAL")
+    return by_id, float(payload.get("elapsed_s") or 0.0)
+
+
 def run_gate(
     canonical_path: Path,
     skatzero_root: Path,
@@ -494,25 +567,81 @@ def run_gate(
     threshold: float,
     accuracy: int,
     bid_threshold: float,
+    checkpoint_path: Path | None = None,
 ) -> dict[str, Any]:
     deals = select_deals(canonical_path, count=deal_count, seed=selection_seed)
     b1 = NeuralBiddingPolicy.load(b1_model, device="cpu")
-    records = []
+    configuration = _checkpoint_configuration(
+        canonical_path=canonical_path,
+        skatzero_root=skatzero_root,
+        model_root=model_root,
+        b1_model=b1_model,
+        deal_count=deal_count,
+        selection_seed=selection_seed,
+        master_seed=master_seed,
+        threshold=threshold,
+        accuracy=accuracy,
+        bid_threshold=bid_threshold,
+    )
+    selected_ids = [deal.game_identity for deal in deals]
+    records_by_id: dict[str, dict[str, Any]] = {}
+    prior_elapsed = 0.0
+    if checkpoint_path is not None:
+        records_by_id, prior_elapsed = _load_checkpoint(
+            checkpoint_path,
+            configuration=configuration,
+            selected_deal_identities=selected_ids,
+        )
+
     start = time.perf_counter()
     for deal in deals:
-        records.append(
-            evaluate_deal(
-                skatzero_root,
-                model_root,
-                b1,
-                deal,
-                threshold=threshold,
-                accuracy=accuracy,
-                bid_threshold=bid_threshold,
-                master_seed=master_seed,
-            )
+        if deal.game_identity in records_by_id:
+            continue
+        record = evaluate_deal(
+            skatzero_root,
+            model_root,
+            b1,
+            deal,
+            threshold=threshold,
+            accuracy=accuracy,
+            bid_threshold=bid_threshold,
+            master_seed=master_seed,
         )
-    elapsed = time.perf_counter() - start
+        records_by_id[deal.game_identity] = record
+        if checkpoint_path is not None:
+            elapsed_now = prior_elapsed + (time.perf_counter() - start)
+            _atomic_write_json(
+                checkpoint_path,
+                {
+                    "schema": CHECKPOINT_SCHEMA,
+                    "complete": False,
+                    "configuration": configuration,
+                    "selected_deal_identities": selected_ids,
+                    "completed_deals": len(records_by_id),
+                    "elapsed_s": elapsed_now,
+                    "records": [
+                        records_by_id[x]
+                        for x in selected_ids
+                        if x in records_by_id
+                    ],
+                },
+            )
+    elapsed = prior_elapsed + (time.perf_counter() - start)
+    records = [records_by_id[x] for x in selected_ids]
+
+    if checkpoint_path is not None:
+        _atomic_write_json(
+            checkpoint_path,
+            {
+                "schema": CHECKPOINT_SCHEMA,
+                "complete": True,
+                "configuration": configuration,
+                "selected_deal_identities": selected_ids,
+                "completed_deals": len(records),
+                "elapsed_s": elapsed,
+                "records": records,
+            },
+        )
 
     deltas = [
         float(pair["delta"])
@@ -578,6 +707,7 @@ def main() -> None:
     p.add_argument("--b1-threshold", type=float, default=0.5)
     p.add_argument("--b0-accuracy", type=int, default=231)
     p.add_argument("--b0-bid-threshold", type=float, default=-5.0)
+    p.add_argument("--checkpoint", type=Path)
     args = p.parse_args()
 
     result = run_gate(
@@ -591,9 +721,9 @@ def main() -> None:
         threshold=args.b1_threshold,
         accuracy=args.b0_accuracy,
         bid_threshold=args.b0_bid_threshold,
+        checkpoint_path=args.checkpoint,
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    _atomic_write_json(args.output, result)
     print(json.dumps(result["summary"], indent=2, sort_keys=True))
 
 

@@ -1,3 +1,5 @@
+import pytest
+
 from skatai.evaluation.bidding_gameplay_gate import (
     Deal,
     _downstream_identity,
@@ -69,3 +71,60 @@ def test_auction_action_identity_ignores_probabilities():
     a = simulate_auction(HANDS, p1)
     b = simulate_auction(HANDS, p2)
     assert _auction_action_identity(a) == _auction_action_identity(b)
+
+
+def test_checkpoint_roundtrip_and_atomic_write(tmp_path):
+    from skatai.evaluation.bidding_gameplay_gate import (
+        CHECKPOINT_SCHEMA,
+        _atomic_write_json,
+        _load_checkpoint,
+    )
+
+    path = tmp_path / "gate.checkpoint.json"
+    config = {"deal_count": 2, "b1_model_sha256": "a" * 64}
+    payload = {
+        "schema": CHECKPOINT_SCHEMA,
+        "complete": False,
+        "configuration": config,
+        "selected_deal_identities": ["d1", "d2"],
+        "completed_deals": 1,
+        "elapsed_s": 12.5,
+        "records": [{"deal_identity": "d1", "paired": []}],
+    }
+    _atomic_write_json(path, payload)
+    assert path.exists()
+    assert not path.with_name(path.name + ".tmp").exists()
+
+    records, elapsed = _load_checkpoint(
+        path,
+        configuration=config,
+        selected_deal_identities=["d1", "d2"],
+    )
+    assert list(records) == ["d1"]
+    assert elapsed == 12.5
+
+
+def test_checkpoint_rejects_configuration_mismatch(tmp_path):
+    from skatai.evaluation.bidding_gameplay_gate import (
+        CHECKPOINT_SCHEMA,
+        _atomic_write_json,
+        _load_checkpoint,
+    )
+
+    path = tmp_path / "gate.checkpoint.json"
+    _atomic_write_json(
+        path,
+        {
+            "schema": CHECKPOINT_SCHEMA,
+            "configuration": {"deal_count": 1},
+            "selected_deal_identities": ["d1"],
+            "records": [],
+            "elapsed_s": 0.0,
+        },
+    )
+    with pytest.raises(ValueError, match="CHECKPOINT_CONFIGURATION_MISMATCH"):
+        _load_checkpoint(
+            path,
+            configuration={"deal_count": 2},
+            selected_deal_identities=["d1"],
+        )
