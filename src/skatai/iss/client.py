@@ -111,6 +111,13 @@ class ISSClientCore:
         if self.journal is not None:
             self.journal.write("out", line)
 
+    def send_service_command(self, line: str) -> None:
+        """Send one non-authentication ISS service command through the journal."""
+        value = str(line)
+        if not value or "\n" in value or "\r" in value:
+            raise ValueError("BAD_SERVICE_COMMAND")
+        self._send(value)
+
     def _maybe_send_move(self, table) -> None:
         if self.move_provider is None or not table.is_player or not table.in_progress:
             return
@@ -233,6 +240,8 @@ def client_from_environment(
     *,
     journal_path: Path | None = None,
     policy: ISSClientPolicy = ISSClientPolicy(),
+    move_provider: TableMoveProvider | TableDecisionProvider | None = None,
+    effect_guard: ISSAuthorityGuard | None = None,
 ) -> tuple[ISSClientCore, str]:
     """Build a client from environment without retaining the password.
 
@@ -277,5 +286,7 @@ def client_from_environment(
         transport,
         policy=policy,
         journal=None if journal_path is None else ISSJournal(journal_path),
+        move_provider=move_provider,
+        effect_guard=effect_guard,
     )
     return client, password

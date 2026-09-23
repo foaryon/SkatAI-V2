@@ -223,3 +223,19 @@ def test_service_journal_redacts_ephemeral_table_passwords(tmp_path):
     assert rows[1]["line"] == "join T7 <redacted-table-password>"
     assert rows[2]["line"] == "create / 3 AIG12345 <redacted-table-password>"
     assert rows[3]["line"] == "table T7 SkatAI ready"
+
+
+def test_public_service_command_is_journaled_and_validated(tmp_path):
+    import json
+    import pytest
+    from skatai.iss.client import ISSClientCore, ISSJournal
+
+    tr = FakeTransport()
+    c = ISSClientCore(tr, journal=ISSJournal(tmp_path / "j.jsonl"))
+    c.send_service_command("create / 3")
+    assert tr.sent[-1] == "create / 3"
+    row = json.loads((tmp_path / "j.jsonl").read_text().splitlines()[-1])
+    assert row["direction"] == "out"
+    assert row["line"] == "create / 3"
+    with pytest.raises(ValueError, match="BAD_SERVICE_COMMAND"):
+        c.send_service_command("time" + chr(10) + "error")
