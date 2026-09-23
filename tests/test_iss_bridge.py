@@ -101,3 +101,28 @@ def test_client_dispatches_one_idempotent_bidding_action_for_same_state():
     c.handle_line("table T SkatAIV2 go")
     plays = [x for x in tr.sent if x == "table T SkatAIV2 play 20"]
     assert len(plays) == 1
+
+
+def test_decision_provider_emits_stable_request_result_and_wire_action():
+    from skatai.iss.bridge import ISSBiddingDecisionProvider
+    from test_product_interface import _ai
+
+    t = _table()
+    for line in [
+        f"table T SkatAIV2 play w {DEAL_SEAT2}",
+        "table T SkatAIV2 play 1 18",
+        "table T SkatAIV2 play 0 y",
+        "table T SkatAIV2 play 1 p",
+    ]:
+        t.apply(parse_service_line(line))
+
+    p = ISSBiddingDecisionProvider(_ai(), release_id="R-B1")
+    d1 = p.next_decision(t)
+    d2 = p.next_decision(t)
+    assert d1 is not None and d2 is not None
+    assert d1.request.request_id == d2.request.request_id
+    assert d1.result.decision_id == d2.result.decision_id
+    assert d1.result.action == "CONTINUE"
+    assert d1.wire_action == "20"
+    assert d1.request.source == "ISS"
+    assert d1.request.source_context["table_id"] == "T"

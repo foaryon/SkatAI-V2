@@ -509,3 +509,77 @@ class ISSSkatAIMoveProvider:
 
     def next_action(self, table: TableSession) -> str | None:
         return next_skat_action(table, self.engine)
+
+
+from dataclasses import dataclass
+
+from skatai.runtime.decision import (
+    DecisionRequest,
+    DecisionResult,
+    DecisionType,
+    decide as decide_request,
+)
+from skatai.runtime.interface import SkatAI
+
+
+@dataclass(frozen=True)
+class ISSDecision:
+    request: DecisionRequest
+    result: DecisionResult
+    wire_action: str
+
+
+class ISSBiddingDecisionProvider:
+    """Decision-aware ISS bidding adapter around the stable SkatAI product API."""
+
+    def __init__(self, ai: SkatAI, *, release_id: str) -> None:
+        if not release_id:
+            raise ISSBridgeError("EMPTY_RELEASE_ID")
+        self.ai = ai
+        self.release_id = str(release_id)
+
+    def next_decision(self, table: TableSession) -> ISSDecision | None:
+        deal = _initial_deal(table.moves)
+        if deal is None:
+            return None
+        seat, hand = player_view_from_deal(deal)
+        state = _replay_public_auction(table.moves)
+        if state.finished or state.expected_actor != seat:
+            return None
+
+        obs = BiddingObservation.create(
+            hand,
+            actor=seat,
+            bidder=state.bidder,
+            answerer=state.answerer,
+            bid_index=state.bid_index,
+            decision_role=state.decision_role,
+        )
+        request = DecisionRequest.create(
+            game_id=f"iss:{table.table_id}:{table.game_sequence}",
+            sequence_no=len(table.moves),
+            decision_type=DecisionType.BID,
+            observation=obs,
+            source="ISS",
+            source_context={
+                "table_id": table.table_id,
+                "game_sequence": table.game_sequence,
+                "move_count": len(table.moves),
+            },
+        )
+        result = decide_request(
+            self.ai,
+            request,
+            release_id=self.release_id,
+            metadata={"adapter_schema": BRIDGE_SCHEMA},
+        )
+        if result.action == "PASS":
+            wire_action = "p"
+        elif result.action == "CONTINUE":
+            legal = state.legal_native_actions()
+            if not legal:
+                raise ISSBridgeError("CONTINUE_WITHOUT_NATIVE_ACTION")
+            wire_action = legal[0]
+        else:
+            raise ISSBridgeError(f"UNKNOWN_BIDDING_DECISION:{result.action}")
+        return ISSDecision(request=request, result=result, wire_action=wire_action)

@@ -15,12 +15,17 @@ from skatai.iss.service import (
 )
 from skatai.iss.session import ISSSessionState
 from skatai.iss.transport import ISSConnectionConfig, ISSLineTransport
+from skatai.iss.effects import ISSAuthorityGuard, table_state_hash
 
 CLIENT_RUNTIME_SCHEMA = "skatai.v2.iss-client-runtime.v1"
 
 
 class TableMoveProvider(Protocol):
     def next_action(self, table) -> str | None: ...
+
+
+class TableDecisionProvider(Protocol):
+    def next_decision(self, table): ...
 
 
 class LineTransport(Protocol):
@@ -74,12 +79,14 @@ class ISSClientCore:
         *,
         policy: ISSClientPolicy = ISSClientPolicy(),
         journal: ISSJournal | None = None,
-        move_provider: TableMoveProvider | None = None,
+        move_provider: TableMoveProvider | TableDecisionProvider | None = None,
+        effect_guard: ISSAuthorityGuard | None = None,
     ) -> None:
         self.transport = transport
         self.policy = policy
         self.journal = journal
         self.move_provider = move_provider
+        self.effect_guard = effect_guard
         self.state = ISSSessionState()
         self._sent_decision_keys: set[tuple[str, int, int, str]] = set()
 
@@ -91,13 +98,61 @@ class ISSClientCore:
     def _maybe_send_move(self, table) -> None:
         if self.move_provider is None or not table.is_player or not table.in_progress:
             return
+
+        from skatai.iss.service import command_play
+
+        decision_method = getattr(self.move_provider, "next_decision", None)
+        if callable(decision_method):
+            decision = decision_method(table)
+            if decision is None:
+                return
+            outbound = command_play(
+                table.table_id,
+                table.viewer_name,
+                str(decision.wire_action),
+            )
+            if self.effect_guard is not None:
+                state_hash = table_state_hash(table)
+                effect, created = self.effect_guard.prepare(
+                    decision.request,
+                    decision.result,
+                    current_external_state_hash=state_hash,
+                    table_id=table.table_id,
+                    game_sequence=table.game_sequence,
+                    protocol_sequence=len(table.moves),
+                    wire_action=str(decision.wire_action),
+                    outbound_line=outbound,
+                )
+                if not created:
+                    # An unresolved durable intent from this exact position exists.
+                    # Never replay it merely because process/session code ran again.
+                    return
+                self.effect_guard.send(
+                    effect,
+                    created_now=True,
+                    send_line=self._send,
+                    outbound_line=outbound,
+                )
+                return
+
+            key = (
+                table.table_id,
+                table.game_sequence,
+                len(table.moves),
+                str(decision.wire_action),
+            )
+            if key in self._sent_decision_keys:
+                return
+            self._send(outbound)
+            self._sent_decision_keys.add(key)
+            return
+
         action = self.move_provider.next_action(table)
         if action is None:
             return
         key = (table.table_id, table.game_sequence, len(table.moves), str(action))
         if key in self._sent_decision_keys:
             return
-        from skatai.iss.service import command_play
         self._send(command_play(table.table_id, table.viewer_name, str(action)))
         self._sent_decision_keys.add(key)
 
@@ -112,6 +167,17 @@ class ISSClientCore:
             self.journal.write("in", line)
         event = parse_service_line(line)
         table = self.state.apply(event)
+
+        if (
+            self.effect_guard is not None
+            and event.kind == "table_play"
+            and table is not None
+        ):
+            self.effect_guard.journal.confirm_observed_action(
+                table_id=table.table_id,
+                game_sequence=table.game_sequence,
+                wire_action=str(event.fields["move"]),
+            )
 
         if event.kind == "invite" and self.policy.accept_invitations:
             self._send(

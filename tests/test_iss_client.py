@@ -123,3 +123,79 @@ def test_client_from_environment_rejects_open_password_file(monkeypatch, tmp_pat
         assert str(exc) == "ISS_PASSWORD_FILE_PERMISSIONS_TOO_OPEN"
     else:
         raise AssertionError("open password file must be rejected")
+
+
+def test_decision_aware_client_persists_intent_before_send_and_confirms_on_echo(tmp_path):
+    from skatai.iss.bridge import ISSBiddingDecisionProvider
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from test_product_interface import _ai
+
+    deal = (
+        "??.??.??.??.??.??.??.??.??.??|"
+        "??.??.??.??.??.??.??.??.??.??|"
+        "HJ.C9.SK.S8.S7.HT.DA.DK.D9.D7|??.??"
+    )
+    tr = FakeTransport()
+    ej = ISSEffectJournal(tmp_path / "effects.jsonl")
+    client = ISSClientCore(
+        tr,
+        move_provider=ISSBiddingDecisionProvider(_ai(), release_id="R-B1"),
+        effect_guard=ISSAuthorityGuard(ej),
+    )
+    client.state.set_connected("SkatAIV2")
+    client.handle_line("create T SkatAIV2 3")
+    client.handle_line("table T SkatAIV2 start x")
+    client.handle_line(f"table T SkatAIV2 play w {deal}")
+    client.handle_line("table T SkatAIV2 play 1 18")
+    client.handle_line("table T SkatAIV2 play 0 y")
+    client.handle_line("table T SkatAIV2 play 1 p")
+
+    plays = [x for x in tr.sent if x == "table T SkatAIV2 play 20"]
+    assert len(plays) == 1
+    pending = ej.pending()
+    assert len(pending) == 1
+    assert pending[0].status == "SEND_RETURNED"
+
+    # Re-entering the same decision surface cannot blindly replay an unresolved effect.
+    client.handle_line("table T SkatAIV2 go")
+    plays = [x for x in tr.sent if x == "table T SkatAIV2 play 20"]
+    assert len(plays) == 1
+
+    # Server echo commits the material effect.
+    client.handle_line("table T SkatAIV2 play 2 20")
+    assert ej.pending() == []
+
+
+def test_decision_aware_restart_does_not_replay_unresolved_effect(tmp_path):
+    from skatai.iss.bridge import ISSBiddingDecisionProvider
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from test_product_interface import _ai
+
+    deal = (
+        "??.??.??.??.??.??.??.??.??.??|"
+        "??.??.??.??.??.??.??.??.??.??|"
+        "HJ.C9.SK.S8.S7.HT.DA.DK.D9.D7|??.??"
+    )
+    path = tmp_path / "effects.jsonl"
+
+    def build():
+        tr = FakeTransport()
+        client = ISSClientCore(
+            tr,
+            move_provider=ISSBiddingDecisionProvider(_ai(), release_id="R-B1"),
+            effect_guard=ISSAuthorityGuard(ISSEffectJournal(path)),
+        )
+        client.state.set_connected("SkatAIV2")
+        client.handle_line("create T SkatAIV2 3")
+        client.handle_line("table T SkatAIV2 start x")
+        client.handle_line(f"table T SkatAIV2 play w {deal}")
+        client.handle_line("table T SkatAIV2 play 1 18")
+        client.handle_line("table T SkatAIV2 play 0 y")
+        client.handle_line("table T SkatAIV2 play 1 p")
+        return client, tr
+
+    _, tr1 = build()
+    assert tr1.sent.count("table T SkatAIV2 play 20") == 1
+
+    _, tr2 = build()
+    assert tr2.sent.count("table T SkatAIV2 play 20") == 0
