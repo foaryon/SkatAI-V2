@@ -161,15 +161,27 @@ def client_from_environment(
     Required:
       ISS_HOST
       ISS_CLIENT_ID
-      ISS_PASSWORD
+      one of ISS_PASSWORD or ISS_PASSWORD_FILE
     Optional:
-      ISS_PORT (default 80)
+      ISS_PORT (default 7000)
+
+    ISS_PASSWORD_FILE is intended for mounted/RunPod secrets and must not be
+    group- or world-readable.
     """
     host = os.environ.get("ISS_HOST", "")
     client_id = os.environ.get("ISS_CLIENT_ID", "")
     password = os.environ.get("ISS_PASSWORD", "")
+    password_file = os.environ.get("ISS_PASSWORD_FILE", "")
+    if not password and password_file:
+        secret_path = Path(password_file)
+        st = secret_path.stat()
+        if st.st_mode & 0o077:
+            raise ValueError("ISS_PASSWORD_FILE_PERMISSIONS_TOO_OPEN")
+        if st.st_size > 4096:
+            raise ValueError("ISS_PASSWORD_FILE_TOO_LARGE")
+        password = secret_path.read_text(encoding="utf-8").rstrip("\r\n")
     try:
-        port = int(os.environ.get("ISS_PORT", "80"))
+        port = int(os.environ.get("ISS_PORT", "7000"))
     except ValueError as exc:
         raise ValueError("BAD_ISS_PORT_ENV") from exc
 

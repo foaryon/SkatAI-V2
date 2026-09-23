@@ -1,0 +1,21 @@
+{
+  "schema": "skatai.v2.iss-connection-reference.v1",
+  "status": "VERIFIED_EXTERNAL_REFERENCE",
+  "source": "official ISS client archive already frozen as iss-official-clients-2019",
+  "host": "skatgame.net",
+  "ports": {
+    "preferred": 7000,
+    "fallbacks": [8000, 80]
+  },
+  "evidence": [
+    "Official GUI source lists hosts including skatgame.net and ports 7000, 8000, 80.",
+    "Official GUI localized help states port 7000 is default; use 8000 or 80 if 7000 does not work.",
+    "RunPod TCP probe on 2026-09-23 reached skatgame.net on ports 7000 and 80; port 8000 timed out."
+  ],
+  "credential_policy": {
+    "password_in_git": false,
+    "password_in_provenance": false,
+    "supported_runtime_inputs": ["ISS_PASSWORD", "ISS_PASSWORD_FILE"],
+    "recommended": "ISS_PASSWORD_FILE from a private mounted/RunPod secret, mode 0600"
+  }
+}

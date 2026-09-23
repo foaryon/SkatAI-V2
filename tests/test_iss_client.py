@@ -85,3 +85,41 @@ def test_table_play_updates_state_without_guessing_a_move():
     client.handle_line("table T3 SkatAIV2 play 1 18")
     assert client.state.tables["T3"].last_move.action == "18"
     assert transport.sent == sent_before
+
+
+def test_client_from_environment_supports_private_password_file(monkeypatch, tmp_path):
+    from skatai.iss.client import client_from_environment
+
+    secret = tmp_path / "iss-password"
+    secret.write_text("secret-value\n")
+    secret.chmod(0o600)
+    monkeypatch.setenv("ISS_HOST", "skatgame.net")
+    monkeypatch.setenv("ISS_CLIENT_ID", "SkatAI")
+    monkeypatch.delenv("ISS_PASSWORD", raising=False)
+    monkeypatch.setenv("ISS_PASSWORD_FILE", str(secret))
+    monkeypatch.delenv("ISS_PORT", raising=False)
+
+    client, password = client_from_environment()
+    assert password == "secret-value"
+    assert client.transport.config.host == "skatgame.net"
+    assert client.transport.config.port == 7000
+    assert client.transport.config.client_id == "SkatAI"
+
+
+def test_client_from_environment_rejects_open_password_file(monkeypatch, tmp_path):
+    from skatai.iss.client import client_from_environment
+
+    secret = tmp_path / "iss-password"
+    secret.write_text("secret-value\n")
+    secret.chmod(0o644)
+    monkeypatch.setenv("ISS_HOST", "skatgame.net")
+    monkeypatch.setenv("ISS_CLIENT_ID", "SkatAI")
+    monkeypatch.delenv("ISS_PASSWORD", raising=False)
+    monkeypatch.setenv("ISS_PASSWORD_FILE", str(secret))
+
+    try:
+        client_from_environment()
+    except ValueError as exc:
+        assert str(exc) == "ISS_PASSWORD_FILE_PERMISSIONS_TOO_OPEN"
+    else:
+        raise AssertionError("open password file must be rejected")
