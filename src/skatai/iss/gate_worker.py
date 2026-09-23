@@ -9,6 +9,7 @@ from pathlib import Path
 import secrets
 import statistics
 import subprocess
+import threading
 import time
 from typing import Any, Iterable, Mapping
 
@@ -32,6 +33,7 @@ from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
 from skatai.iss.service import (
     command_create_table,
     command_invite,
+    command_keepalive,
     command_leave,
     command_ready,
     parse_service_line,
@@ -537,6 +539,7 @@ class ExternalGateWorker:
             self.client.send_service_command(
                 command_invite(self.table_id, viewer, opponent)
             )
+        self.client.send_service_command(command_ready(self.table_id, viewer))
 
     def _on_start_preapply(self, line: str) -> None:
         event = parse_service_line(line)
@@ -626,12 +629,35 @@ class ExternalGateWorker:
         )
         self.client = client
         self.password = password
+        keepalive_stop = threading.Event()
+        keepalive_error: list[BaseException] = []
+
+        def keepalive_loop() -> None:
+            while not keepalive_stop.wait(20.0):
+                try:
+                    client.send_service_command(command_keepalive())
+                except BaseException as exc:
+                    keepalive_error.append(exc)
+                    keepalive_stop.set()
+                    return
+
+        keepalive_thread = None
         try:
             client.connect_and_login(password)
             self.password = None
             password = ""
+            keepalive_thread = threading.Thread(
+                target=keepalive_loop,
+                name="iss-keepalive",
+                daemon=True,
+            )
+            keepalive_thread.start()
             self._create_next_table()
             while True:
+                if keepalive_error:
+                    raise ISSGateWorkerError(
+                        f"KEEPALIVE_FAILED:{type(keepalive_error[0]).__name__}"
+                    ) from keepalive_error[0]
                 line = client.transport.read_line()
                 self._on_start_preapply(line)
                 event = client.handle_line(line)
@@ -648,6 +674,9 @@ class ExternalGateWorker:
                     if self.desired_stack is None:
                         self._create_next_table()
         finally:
+            keepalive_stop.set()
+            if keepalive_thread is not None:
+                keepalive_thread.join(timeout=2.0)
             self.password = None
             password = ""
             client.close()

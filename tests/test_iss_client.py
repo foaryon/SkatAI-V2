@@ -239,3 +239,13 @@ def test_public_service_command_is_journaled_and_validated(tmp_path):
     assert row["line"] == "create / 3"
     with pytest.raises(ValueError, match="BAD_SERVICE_COMMAND"):
         c.send_service_command("time" + chr(10) + "error")
+
+
+def test_service_send_lock_serializes_public_command_path(tmp_path):
+    from skatai.iss.client import ISSClientCore, ISSJournal
+
+    tr = FakeTransport()
+    c = ISSClientCore(tr, journal=ISSJournal(tmp_path / "j.jsonl"))
+    assert hasattr(c, "_send_lock")
+    c.send_service_command("time")
+    assert tr.sent[-1] == "time"

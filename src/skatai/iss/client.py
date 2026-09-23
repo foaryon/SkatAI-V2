@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import time
+import threading
 from typing import Protocol
 
 from skatai.iss.service import (
@@ -105,11 +106,13 @@ class ISSClientCore:
         self.effect_guard = effect_guard
         self.state = ISSSessionState()
         self._sent_decision_keys: set[tuple[str, int, int, str]] = set()
+        self._send_lock = threading.Lock()
 
     def _send(self, line: str) -> None:
-        self.transport.send_line(line)
-        if self.journal is not None:
-            self.journal.write("out", line)
+        with self._send_lock:
+            self.transport.send_line(line)
+            if self.journal is not None:
+                self.journal.write("out", line)
 
     def send_service_command(self, line: str) -> None:
         """Send one non-authentication ISS service command through the journal."""
