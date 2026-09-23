@@ -150,3 +150,24 @@ def test_cardplay_legal_cards_must_be_owned():
             played_cards=(),
             legal_cards=("D7",),
         )
+
+
+def test_open_hand_cards_may_shrink_during_cardplay():
+    from skatai.runtime.interface import CardplayObservation
+
+    obs = CardplayObservation.create(
+        ["C7"],
+        seat=1,
+        declarer=0,
+        contract="NHO",
+        winning_bid=23,
+        current_trick=(),
+        played_cards=((0, "CA"),),
+        legal_cards=["C7"],
+        points_self=11,
+        points_other=0,
+        max_accepted_bids_by_seat=[23,18,0],
+        blind_hand=True,
+        open_hand_cards=["C8","C9","CT","CJ","CQ","CK","S7","S8","S9"],
+    )
+    assert len(obs.open_hand_cards) == 9

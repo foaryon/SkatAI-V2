@@ -68,8 +68,9 @@ def test_discard_and_declaration_form():
 
 
 def test_world_only_actions_are_enforced():
-    with pytest.raises(ISSProtocolError):
-        parse_move_line("0 H9.H8")
+    # Two-card player moves are legal discard half-moves. Single-card play
+    # and bidding remain player-only, never world-originated.
+    assert parse_move_line("0 H9.H8").kind == "discard_only"
     with pytest.raises(ISSProtocolError):
         parse_move_line("w S9")
     with pytest.raises(ISSProtocolError):
@@ -213,3 +214,15 @@ def test_official_world_terminal_moves_are_parsed():
     assert le.kind == ActionKind.LEAVE
     assert ti.seat is None
     assert le.seat is None
+
+
+def test_player_two_card_half_move_is_discard_not_world_skat():
+    m = parse_move_line("2 C7.D8")
+    assert m.kind == "discard_only"
+    assert m.payload == ("C7", "D8")
+
+
+def test_hidden_half_move_defender_view_does_not_expose_discard():
+    m = parse_move_line("2 C7.??.??")
+    assert m.kind == "discard_only"
+    assert m.payload == ("??", "??")

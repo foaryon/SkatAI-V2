@@ -193,6 +193,8 @@ class CardplayObservation:
         trick = history(current_trick)
         if len(trick) > 2:
             raise SkatAIInterfaceError("CURRENT_TRICK_TOO_LONG")
+        if len(open_hand_cards) > 10:
+            raise SkatAIInterfaceError("OPEN_HAND_TOO_LONG")
 
         return cls(
             hand=h,
@@ -209,7 +211,7 @@ class CardplayObservation:
             max_accepted_bids_by_seat=_bids(max_accepted_bids_by_seat),
             skat_cards=_optional_exact_cards(skat_cards, 2),
             blind_hand=bool(blind_hand),
-            open_hand_cards=_optional_exact_cards(open_hand_cards, 10),
+            open_hand_cards=_cards(open_hand_cards) if open_hand_cards else (),
         )
 
 

@@ -43,6 +43,7 @@ class ActionKind(str, Enum):
     PICKUP_SKAT = "PICKUP_SKAT"
     WORLD_SKAT = "WORLD_SKAT"
     DECLARATION = "DECLARATION"
+    DISCARD_ONLY = "DISCARD_ONLY"
     CARDPLAY = "CARDPLAY"
     RESIGN = "RESIGN"
     SHOW_CARDS = "SHOW_CARDS"
@@ -199,9 +200,20 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
 
     parts = action.split(".")
     if len(parts) == 2 and all(is_card(x, allow_unknown=True) for x in parts):
-        if actor != WORLD_ACTOR:
-            raise ISSProtocolError("SKAT_DELIVERY_MUST_BE_WORLD")
-        return "skat_delivery", tuple(parts)
+        if actor == WORLD_ACTOR:
+            return "skat_delivery", tuple(parts)
+        return "discard_only", tuple(parts)
+
+    # Official half-move defender views in the 2019 client may encode the
+    # hidden discard as "<card>.??.??". Treat it as hidden discard evidence,
+    # never as player-visible private information.
+    if (
+        actor != WORLD_ACTOR
+        and len(parts) == 3
+        and is_card(parts[0])
+        and parts[1:] == ["??", "??"]
+    ):
+        return "discard_only", ("??", "??")
 
     if GAME_TYPE_RE.fullmatch(parts[0]):
         if actor == WORLD_ACTOR:
@@ -241,6 +253,7 @@ _KIND_MAP = {
     "skat_request": ActionKind.PICKUP_SKAT,
     "skat_delivery": ActionKind.WORLD_SKAT,
     "declaration": ActionKind.DECLARATION,
+    "discard_only": ActionKind.DISCARD_ONLY,
     "cardplay": ActionKind.CARDPLAY,
     "resign": ActionKind.RESIGN,
     "show_cards": ActionKind.SHOW_CARDS,
