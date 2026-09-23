@@ -85,3 +85,126 @@ def next_bidding_action(
 
     legal = state.legal_native_actions()
     return legal[0]
+
+
+class FullSkatDecisionEngine(BiddingDecisionEngine, Protocol):
+    def choose_contract(self, observation): ...
+    def choose_discard(self, observation): ...
+    def play_card(self, observation): ...
+
+
+def _hand_actions(winning_bid: int) -> tuple[str, ...]:
+    out = ["PICKUP", "CH", "SH", "HH", "DH", "GH"]
+    if winning_bid <= 35:
+        out.append("NH")
+    if winning_bid <= 59:
+        out.append("NHO")
+    return tuple(out)
+
+
+def _pickup_contracts(winning_bid: int) -> tuple[str, ...]:
+    out = ["C", "S", "H", "D", "G"]
+    if winning_bid <= 23:
+        out.append("N")
+    if winning_bid <= 46:
+        out.append("NO")
+    return tuple(out)
+
+
+def next_action(
+    table: TableSession,
+    engine: FullSkatDecisionEngine,
+) -> str | None:
+    """Return one ISS move string for the current player view, or None.
+
+    Bidding reuses the already-verified bidding bridge. Later phases are
+    reconstructed from the official ISS move stream into the stable V2
+    product observations.
+    """
+    from skatai.iss.gameview import ISSPhase, replay_player_view
+    from skatai.runtime.interface import (
+        CardplayObservation,
+        DeclarationObservation,
+        DiscardObservation,
+    )
+
+    state = replay_player_view(table.moves)
+    if state.to_move != state.viewer_seat:
+        return None
+
+    if state.phase in {ISSPhase.BID, ISSPhase.ANSWER}:
+        return next_bidding_action(table, engine)
+
+    if state.declarer is None or state.winning_bid is None:
+        return None
+
+    if state.phase == ISSPhase.SKAT_OR_HAND_DECL:
+        if state.viewer_seat != state.declarer:
+            return None
+        obs = DeclarationObservation.create(
+            state.hand,
+            seat=state.viewer_seat,
+            winning_bid=state.winning_bid,
+            picked_up_skat=False,
+            legal_contracts=_hand_actions(state.winning_bid),
+            max_accepted_bids_by_seat=state.max_accepted_bids_by_seat,
+        )
+        action = engine.choose_contract(obs)
+        if action == "PICKUP":
+            return "s"
+        if "O" in action:
+            return action + "." + ".".join(state.hand)
+        return action
+
+    if state.phase == ISSPhase.DISCARD_AND_DECL:
+        if state.viewer_seat != state.declarer or len(state.hand) != 12:
+            return None
+        decl = DeclarationObservation.create(
+            state.hand,
+            seat=state.viewer_seat,
+            winning_bid=state.winning_bid,
+            picked_up_skat=True,
+            legal_contracts=_pickup_contracts(state.winning_bid),
+            max_accepted_bids_by_seat=state.max_accepted_bids_by_seat,
+        )
+        contract = engine.choose_contract(decl)
+        discard = DiscardObservation.create(
+            state.hand,
+            seat=state.viewer_seat,
+            winning_bid=state.winning_bid,
+            max_accepted_bids_by_seat=state.max_accepted_bids_by_seat,
+        )
+        d1, d2 = engine.choose_discard(discard)
+        remaining = tuple(c for c in state.hand if c not in {d1, d2})
+        action = f"{contract}.{d1}.{d2}"
+        if "O" in contract:
+            action += "." + ".".join(remaining)
+        return action
+
+    if state.phase == ISSPhase.CARDPLAY:
+        if not state.legal_cards:
+            return None
+        skat_cards = (
+            state.discarded_cards
+            if state.viewer_seat == state.declarer
+            else ()
+        )
+        obs = CardplayObservation.create(
+            state.hand,
+            seat=state.viewer_seat,
+            declarer=state.declarer,
+            contract=state.contract or "",
+            winning_bid=state.winning_bid,
+            current_trick=state.current_trick,
+            played_cards=state.played_cards,
+            legal_cards=state.legal_cards,
+            points_self=state.declarer_visible_points,
+            points_other=state.defender_points,
+            max_accepted_bids_by_seat=state.max_accepted_bids_by_seat,
+            skat_cards=skat_cards,
+            blind_hand=not state.picked_up_skat,
+            open_hand_cards=state.open_hand_cards,
+        )
+        return engine.play_card(obs)
+
+    return None

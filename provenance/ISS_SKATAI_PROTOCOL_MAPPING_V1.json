@@ -1,0 +1,43 @@
+{
+  "schema": "skatai.v2.iss-skatai-protocol-mapping.v1",
+  "status": "IMPLEMENTED_AND_UNIT_VERIFIED",
+  "official_reference": "provenance/ISS_OFFICIAL_CLIENT_REFERENCE.json",
+  "official_package_sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656",
+  "implementation": {
+    "wire_parser": "src/skatai/iss/protocol.py",
+    "service_parser": "src/skatai/iss/service.py",
+    "table_session": "src/skatai/iss/session.py",
+    "normalized_player_view": "src/skatai/iss/gameview.py",
+    "product_bridge": "src/skatai/iss/bridge.py",
+    "stable_ai_interface": "src/skatai/runtime/interface.py"
+  },
+  "phase_mapping": {
+    "BID": "SkatAI.decide_bid -> numeric bid or p",
+    "ANSWER": "SkatAI.decide_bid -> y or p",
+    "SKAT_OR_HAND_DECL": "SkatAI.choose_contract -> s or hand declaration",
+    "GET_SKAT": "world move; no AI action",
+    "DISCARD_AND_DECL": "SkatAI.choose_contract + choose_discard -> combined ISS move",
+    "CARDPLAY": "SkatAI.play_card -> legal card token",
+    "FINISHED": "no AI action"
+  },
+  "view_and_legality": {
+    "hidden_initial_cards_supported": true,
+    "hidden_skat_supported": true,
+    "hidden_defender_discards_supported": true,
+    "ouvert_reveal_supported": true,
+    "discard_half_moves_supported": true,
+    "resign_show_timeout_leave_supported": true,
+    "hard_legal_card_filter": true,
+    "duplicate_send_guard": "ISSClientCore decision key"
+  },
+  "scientific_boundary": {
+    "iss_is_external_evaluation_stream": true,
+    "gate_games_not_training_before_decision": true,
+    "raw_protocol_journal_supported": true,
+    "live_credentials_required_before_scored_external_gate": true
+  },
+  "test_status": {
+    "suite_passed": 191,
+    "live_iss_session_tested": false
+  }
+}
