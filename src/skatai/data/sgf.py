@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from skatai.game.bidding import replay
+from skatai.game.bidding import native_pairs, replay
 
 SGF_SCHEMA = "skatai.v2.sgf-parse.v1"
 SUITS = "CSHD"
@@ -86,27 +86,27 @@ def _int_field(fields: dict[str, str], name: str) -> int | None:
         return None
 
 
-def _semantic_identity(obj: dict[str, Any]) -> str:
+def semantic_identity(obj: dict[str, Any]) -> str:
     """Source-agnostic game identity.
 
     Provenance fields (source, source record id, ratings) and derived scoring
     fields are deliberately excluded. The identity binds the observable game
     transcript itself so mirrored archive records deduplicate cleanly.
     """
+    bidding_actions = [[actor, action] for actor, action in native_pairs(obj["bidding_history"])]
     if obj.get("all_pass"):
-        keys = (
-            "players",
-            "initial_hands",
-            "skat_initial",
-            "bidding_history",
-            "all_pass",
-        )
+        core = {
+            "players": obj["players"],
+            "initial_hands": obj["initial_hands"],
+            "skat_initial": obj["skat_initial"],
+            "bidding_actions": bidding_actions,
+            "all_pass": True,
+        }
     else:
         keys = (
             "players",
             "initial_hands",
             "skat_initial",
-            "bidding_history",
             "declarer",
             "bid_level",
             "announcement",
@@ -116,7 +116,8 @@ def _semantic_identity(obj: dict[str, Any]) -> str:
             "discards",
             "plays",
         )
-    core = {k: obj[k] for k in keys}
+        core = {k: obj[k] for k in keys}
+        core["bidding_actions"] = bidding_actions
     encoded = json.dumps(core, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -291,7 +292,7 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
                 "bidding_history": bidding_prefix,
                 "all_pass": True,
             }
-            out["semantic_sha256"] = _semantic_identity(out)
+            out["semantic_sha256"] = semantic_identity(out)
             return out
 
         common.update(
@@ -391,5 +392,5 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         "card_points": _int_field(rf, "p"),
         "matadors": _int_field(rf, "m"),
     }
-    out["semantic_sha256"] = _semantic_identity(out)
+    out["semantic_sha256"] = semantic_identity(out)
     return out

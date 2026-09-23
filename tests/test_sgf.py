@@ -70,3 +70,14 @@ def test_parser_preserves_full_source_timestamp():
     g = parse_sgf_line("iss", PLAYED)
     assert g["date"] == "2007-10-29"
     assert g["timestamp_utc"] == "2007-10-29/04:58:00/UTC"
+
+
+def test_semantic_identity_ignores_pickup_marker_representation():
+    from skatai.data.sgf import semantic_identity
+
+    g = parse_sgf_line("iss", PLAYED)
+    # Hand game representation has no pickup marker, so construct a normalized
+    # equivalent by appending non-action marker tokens that native_pairs ignores.
+    equivalent = dict(g)
+    equivalent["bidding_history"] = list(g["bidding_history"]) + ["2", "s", "w", "SJ.D8"]
+    assert semantic_identity(g) == semantic_identity(equivalent)
