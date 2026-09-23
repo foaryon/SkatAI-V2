@@ -588,3 +588,287 @@ class ISSBiddingDecisionProvider:
 def next_action(table: TableSession, engine: SkatAIDecisionEngine) -> str | None:
     """Stable generic alias for the complete ISS-to-SkatAI move bridge."""
     return next_skat_action(table, engine)
+
+
+def _cardplay_observation_from_context(
+    *,
+    seat: int,
+    initial_hand: Sequence[str],
+    auction: AuctionContext,
+    post: PostAuctionContext,
+    contract: str,
+) -> CardplayObservation | None:
+    if auction.state.winner is None:
+        return None
+    declarer = int(auction.state.winner)
+    winning_bid = int(auction.state.winning_bid or 0)
+    game_type = game_type_from_contract(contract)
+    trick_state = replay_tricks(
+        post.cardplays,
+        game_type=game_type,
+        declarer=declarer,
+    )
+    if int(trick_state["expected_actor"]) != seat:
+        return None
+
+    hand = _current_player_hand(
+        initial_hand,
+        player_seat=seat,
+        declarer=declarer,
+        post=post,
+    )
+    legal = legal_cards(hand, trick_state["current_trick"], game_type)
+    if not legal:
+        return None
+
+    declarer_points = int(trick_state["declarer_trick_points"])
+    defender_points = int(trick_state["defender_trick_points"])
+    discards = _pickup_discards(post)
+    visible_skat: tuple[str, ...] = ()
+    if seat == declarer and post.picked_up_skat:
+        if discards is None or not _is_known_cards(discards):
+            raise ISSBridgeError("DECLARER_DISCARDS_NOT_VISIBLE_AT_CARDPLAY")
+        visible_skat = tuple(discards)
+        declarer_points += sum(card_points(c) for c in discards)
+
+    open_original = _open_hand_from_wire(post)
+    if "O" in contract:
+        if seat == declarer and not open_original:
+            current = list(hand)
+            own_played = [c for a, c in post.cardplays if a == declarer]
+            open_original = tuple(current + own_played)
+        if not open_original:
+            raise ISSBridgeError("OUVERT_HAND_NOT_VISIBLE")
+        open_remaining = _remaining_open_hand(
+            open_original,
+            declarer=declarer,
+            cardplays=post.cardplays,
+        )
+    else:
+        open_remaining = ()
+
+    return CardplayObservation.create(
+        hand,
+        seat=seat,
+        declarer=declarer,
+        contract=contract,
+        winning_bid=winning_bid,
+        current_trick=trick_state["current_trick"],
+        played_cards=post.cardplays,
+        legal_cards=legal,
+        points_self=declarer_points,
+        points_other=defender_points,
+        max_accepted_bids_by_seat=auction.max_accepted_bids_by_seat,
+        skat_cards=visible_skat,
+        blind_hand=not post.picked_up_skat,
+        open_hand_cards=open_remaining,
+    )
+
+
+class ISSSkatAIDecisionProvider:
+    """All-phase decision/effect adapter for live ISS operation.
+
+    Pickup declaration and discard are intentionally emitted as two official
+    ISS half-moves so every network effect binds to exactly one DecisionResult.
+    """
+
+    def __init__(self, ai: SkatAI, *, release_id: str) -> None:
+        if not release_id:
+            raise ISSBridgeError("EMPTY_RELEASE_ID")
+        self.ai = ai
+        self.release_id = str(release_id)
+
+    def _decide(
+        self,
+        table: TableSession,
+        *,
+        decision_type: DecisionType,
+        observation,
+        wire_from_result,
+        phase: str,
+    ) -> ISSDecision:
+        request = DecisionRequest.create(
+            game_id=f"iss:{table.table_id}:{table.game_sequence}",
+            sequence_no=len(table.moves),
+            decision_type=decision_type,
+            observation=observation,
+            source="ISS",
+            source_context={
+                "table_id": table.table_id,
+                "game_sequence": table.game_sequence,
+                "move_count": len(table.moves),
+                "phase": phase,
+            },
+        )
+        result = decide_request(
+            self.ai,
+            request,
+            release_id=self.release_id,
+            metadata={"adapter_schema": BRIDGE_SCHEMA, "phase": phase},
+        )
+        wire_action = str(wire_from_result(result))
+        if not wire_action:
+            raise ISSBridgeError("EMPTY_WIRE_ACTION")
+        return ISSDecision(request=request, result=result, wire_action=wire_action)
+
+    def next_decision(self, table: TableSession) -> ISSDecision | None:
+        if not table.in_progress or table.stopped:
+            return None
+        deal = _initial_deal(table.moves)
+        if deal is None:
+            return None
+        seat, initial_hand = player_view_from_deal(deal)
+        auction = _auction_context(table.moves)
+
+        if not auction.state.finished:
+            state = auction.state
+            if state.expected_actor != seat:
+                return None
+            obs = BiddingObservation.create(
+                initial_hand,
+                actor=seat,
+                bidder=state.bidder,
+                answerer=state.answerer,
+                bid_index=state.bid_index,
+                decision_role=state.decision_role,
+            )
+
+            def bid_wire(result: DecisionResult) -> str:
+                if result.action == "PASS":
+                    return "p"
+                if result.action != "CONTINUE":
+                    raise ISSBridgeError(
+                        f"UNKNOWN_BIDDING_DECISION:{result.action}"
+                    )
+                return state.legal_native_actions()[0]
+
+            return self._decide(
+                table,
+                decision_type=DecisionType.BID,
+                observation=obs,
+                wire_from_result=bid_wire,
+                phase=state.decision_role,
+            )
+
+        if auction.state.winner is None:
+            return None
+        declarer = int(auction.state.winner)
+        winning_bid = int(auction.state.winning_bid or 0)
+        post = _post_auction_context(table.moves)
+        if post.terminal:
+            return None
+        contract, _ = _declaration_payload(post.declaration)
+
+        if seat == declarer and not post.picked_up_skat and post.declaration is None:
+            obs = DeclarationObservation.create(
+                initial_hand,
+                seat=seat,
+                winning_bid=winning_bid,
+                picked_up_skat=False,
+                legal_contracts=("PICKUP",) + _legal_hand_contracts(winning_bid),
+                max_accepted_bids_by_seat=auction.max_accepted_bids_by_seat,
+            )
+
+            def hand_wire(result: DecisionResult) -> str:
+                if result.action == "PICKUP":
+                    return "s"
+                return _format_hand_declaration(result.action, initial_hand)
+
+            return self._decide(
+                table,
+                decision_type=DecisionType.DECLARATION,
+                observation=obs,
+                wire_from_result=hand_wire,
+                phase="SKAT_OR_HAND_DECL",
+            )
+
+        if post.picked_up_skat and post.skat_delivery is None:
+            return None
+
+        # First half-move after pickup: contract only.
+        if seat == declarer and post.picked_up_skat and post.declaration is None:
+            hand12 = _current_player_hand(
+                initial_hand,
+                player_seat=seat,
+                declarer=declarer,
+                post=post,
+            )
+            obs = DeclarationObservation.create(
+                hand12,
+                seat=seat,
+                winning_bid=winning_bid,
+                picked_up_skat=True,
+                legal_contracts=_legal_pickup_contracts(winning_bid),
+                max_accepted_bids_by_seat=auction.max_accepted_bids_by_seat,
+            )
+            return self._decide(
+                table,
+                decision_type=DecisionType.DECLARATION,
+                observation=obs,
+                wire_from_result=lambda result: result.action,
+                phase="DISCARD_AND_DECL_CONTRACT",
+            )
+
+        # Second half-move after the contract echo: exactly the discard.
+        if (
+            seat == declarer
+            and post.picked_up_skat
+            and post.declaration is not None
+            and not _declaration_complete(post)
+        ):
+            if contract is None:
+                raise ISSBridgeError("DISCARD_WITHOUT_CONTRACT")
+            hand12 = _current_player_hand(
+                initial_hand,
+                player_seat=seat,
+                declarer=declarer,
+                post=post,
+            )
+            obs = DiscardObservation.create(
+                hand12,
+                seat=seat,
+                winning_bid=winning_bid,
+                max_accepted_bids_by_seat=auction.max_accepted_bids_by_seat,
+            )
+
+            def discard_wire(result: DecisionResult) -> str:
+                parts = tuple(result.action.split("."))
+                if len(parts) != 2:
+                    raise ISSBridgeError("BAD_DISCARD_DECISION_ACTION")
+                remaining = list(hand12)
+                for card in parts:
+                    _remove_owned(
+                        remaining, card, error="AI_DISCARD_NOT_OWNED"
+                    )
+                action = result.action
+                if "O" in contract:
+                    action += "." + ".".join(remaining)
+                return action
+
+            return self._decide(
+                table,
+                decision_type=DecisionType.DISCARD,
+                observation=obs,
+                wire_from_result=discard_wire,
+                phase="DISCARD_AND_DECL_DISCARD",
+            )
+
+        if not _declaration_complete(post) or contract is None:
+            return None
+
+        obs = _cardplay_observation_from_context(
+            seat=seat,
+            initial_hand=initial_hand,
+            auction=auction,
+            post=post,
+            contract=contract,
+        )
+        if obs is None:
+            return None
+        return self._decide(
+            table,
+            decision_type=DecisionType.PLAY_CARD,
+            observation=obs,
+            wire_from_result=lambda result: result.action,
+            phase="CARDPLAY",
+        )
