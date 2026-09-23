@@ -1,0 +1,55 @@
+{
+  "schema": "skatai.v2.local-bidding-pregate-protocol.v1",
+  "status": "FROZEN_BEFORE_SMOKE_RESULT",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "causal_treatment": "learned B1 bidding on evaluated seat only",
+  "fixed_components": [
+    "two opponent seats use frozen B0 bidding",
+    "all seats use frozen B0 declaration",
+    "all seats use frozen B0 discard",
+    "all seats use frozen B0 cardplay models"
+  ],
+  "design": {
+    "common_deals": true,
+    "candidate_seats_per_deal": [0, 1, 2],
+    "selection_split": "2024 non-benchmark-bot test",
+    "selection_seed": 20260923,
+    "master_seed": 20260923,
+    "b1_threshold": 0.5,
+    "b0_api_accuracy": 231,
+    "b0_bid_threshold": -5.0,
+    "primary_local_metric": "paired candidate-seat SkatZero evaluation reward delta",
+    "confidence_interval": "mean +/- 1.96 * paired standard error"
+  },
+  "stages": [
+    {
+      "name": "SMOKE",
+      "deals": 1,
+      "paired_observations": 3,
+      "purpose": "pipeline correctness only",
+      "strength_decision_allowed": false
+    },
+    {
+      "name": "SCREEN",
+      "deals_total": 30,
+      "paired_observations_total": 90,
+      "rule": "if ci95_high < 0, stop for clear local regression; otherwise continue"
+    },
+    {
+      "name": "LOCAL_CONFIRMATION",
+      "deals_total": 100,
+      "paired_observations_total": 300,
+      "rule": "if ci95_high < 0, reject for local regression; otherwise external/deployment-valid evaluation remains mandatory"
+    }
+  ],
+  "promotion_policy": {
+    "local_accept_allowed": false,
+    "external_deployment_valid_gameplay_required_for_accept": true,
+    "outcomes_for_final_strength_gate": ["ACCEPT", "REJECT", "INCONCLUSIVE"]
+  },
+  "limitations": [
+    "SkatZero internal evaluation rewards are not by themselves deployment-valid ISS evidence.",
+    "The local pre-gate is designed to catch gross regressions and verify causal integration before spending external evaluation budget."
+  ]
+}

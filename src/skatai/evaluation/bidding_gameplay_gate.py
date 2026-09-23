@@ -437,6 +437,40 @@ def evaluate_deal(
     }
 
 
+
+def paired_delta_stats(deltas: Sequence[float]) -> dict[str, float | int | None]:
+    n = len(deltas)
+    if n == 0:
+        return {
+            "n": 0,
+            "mean": None,
+            "sample_std": None,
+            "standard_error": None,
+            "ci95_low": None,
+            "ci95_high": None,
+        }
+    mean = sum(float(x) for x in deltas) / n
+    if n < 2:
+        return {
+            "n": n,
+            "mean": mean,
+            "sample_std": None,
+            "standard_error": None,
+            "ci95_low": None,
+            "ci95_high": None,
+        }
+    variance = sum((float(x) - mean) ** 2 for x in deltas) / (n - 1)
+    sample_std = variance ** 0.5
+    se = sample_std / (n ** 0.5)
+    return {
+        "n": n,
+        "mean": mean,
+        "sample_std": sample_std,
+        "standard_error": se,
+        "ci95_low": mean - 1.96 * se,
+        "ci95_high": mean + 1.96 * se,
+    }
+
 def run_gate(
     canonical_path: Path,
     skatzero_root: Path,
@@ -498,7 +532,7 @@ def run_gate(
             "b0_bid_threshold": bid_threshold,
         },
         "summary": {
-            "mean_candidate_reward_delta": sum(deltas) / max(len(deltas), 1),
+            "paired_delta_stats": paired_delta_stats(deltas),
             "changed_auction_pairs": int(changed_auctions),
             "elapsed_s": elapsed,
         },

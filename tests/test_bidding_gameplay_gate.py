@@ -45,3 +45,12 @@ def test_downstream_identity_depends_on_observed_bid_state():
 def test_deal_shape():
     d = Deal("1" * 64, HANDS, ("DK", "DA"))
     assert len(d.hands) == 3
+
+
+def test_paired_delta_stats():
+    from skatai.evaluation.bidding_gameplay_gate import paired_delta_stats
+
+    s = paired_delta_stats([1.0, 2.0, 3.0])
+    assert s["n"] == 3
+    assert s["mean"] == 2.0
+    assert s["ci95_low"] < 2.0 < s["ci95_high"]
