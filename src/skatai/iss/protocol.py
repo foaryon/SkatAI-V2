@@ -204,16 +204,26 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
             return "skat_delivery", tuple(parts)
         return "discard_only", tuple(parts)
 
-    # Official half-move defender views in the 2019 client may encode the
-    # hidden discard as "<card>.??.??". Treat it as hidden discard evidence,
-    # never as player-visible private information.
+    # Split declaration/discard mode can append the 10-card ouvert hand.
     if (
         actor != WORLD_ACTOR
-        and len(parts) == 3
-        and is_card(parts[0])
-        and parts[1:] == ["??", "??"]
+        and len(parts) == 12
+        and all(is_card(x, allow_unknown=True) for x in parts[:2])
+        and all(is_card(x) for x in parts[2:])
     ):
-        return "discard_only", ("??", "??")
+        return "discard_only", tuple(parts)
+
+    # Official 2019 defender-view code can render a split hidden discard as
+    # "<card>.??.??" and append ten ouvert cards. Normalize away the leaked
+    # first token: V2 must not treat it as legitimate private information.
+    if (
+        actor != WORLD_ACTOR
+        and len(parts) in (3, 13)
+        and is_card(parts[0])
+        and parts[1:3] == ["??", "??"]
+        and all(is_card(x) for x in parts[3:])
+    ):
+        return "discard_only", ("??", "??", *parts[3:])
 
     if GAME_TYPE_RE.fullmatch(parts[0]):
         if actor == WORLD_ACTOR:

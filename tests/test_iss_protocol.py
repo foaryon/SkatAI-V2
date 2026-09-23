@@ -226,3 +226,19 @@ def test_hidden_half_move_defender_view_does_not_expose_discard():
     m = parse_move_line("2 C7.??.??")
     assert m.kind == "discard_only"
     assert m.payload == ("??", "??")
+
+
+def test_split_ouvert_discard_keeps_open_hand_cards():
+    hand = ["C7","C8","C9","CT","CJ","CQ","CK","CA","S7","S8"]
+    m = parse_move_line("2 H7.D8." + ".".join(hand))
+    assert m.kind == "discard_only"
+    assert m.payload[:2] == ("H7", "D8")
+    assert m.payload[2:] == tuple(hand)
+
+
+def test_weird_official_hidden_split_discard_is_normalized_private():
+    hand = ["C7","C8","C9","CT","CJ","CQ","CK","CA","S7","S8"]
+    m = parse_move_line("2 H7.??.??." + ".".join(hand))
+    assert m.kind == "discard_only"
+    assert m.payload[:2] == ("??", "??")
+    assert m.payload[2:] == tuple(hand)
