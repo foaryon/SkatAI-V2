@@ -1,0 +1,39 @@
+{
+  "schema": "skatai.v2.sentinelx-control-plane.v1",
+  "status": "ACTIVE_VERIFIED",
+  "host_id": "host_c8c6a6b0a7123805",
+  "agent": {
+    "version": "0.20.0",
+    "source_commit": "ab48abc0a90fbbe5ced0d49958078344df3e30be",
+    "path": "/workspace/sentinelx-host/agent-v020"
+  },
+  "supervisor": {
+    "path": "/workspace/sentinelx-host/supervisor.sh",
+    "legacy_v1_supervisor_active": false,
+    "neutral_restart_test": "PASS",
+    "runpod_s3_env_rehydration": "PASS"
+  },
+  "policy": {
+    "active_config": "/etc/sentinelx/config.yaml",
+    "persistent_config": "/workspace/sentinelx-host/persist/config.yaml",
+    "exec_timeout_default_s": 600,
+    "exec_timeout_max_s": 86400,
+    "upload_base": "/workspace/sentinelx-host/uploads",
+    "root_equivalent_nopasswd_sudo": true,
+    "v1_playbook_dependency": false
+  },
+  "long_jobs": {
+    "launcher": "/workspace/sentinelx-host/run-long.sh",
+    "state_root": "/workspace/sentinelx-host/longjobs",
+    "detached_probe": "PASS"
+  },
+  "storage_access": {
+    "aws_environment_inherited_without_printing_values": true,
+    "hetzner_s3_read_probe": "PASS",
+    "sentinelx_integration_SkatAI_V2": "Hetzner Cloud compute lifecycle; not S3 object API"
+  },
+  "rollback": {
+    "path": "/workspace/sentinelx-host/backups/pre-v020",
+    "present": true
+  }
+}

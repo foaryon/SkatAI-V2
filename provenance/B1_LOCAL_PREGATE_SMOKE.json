@@ -1,0 +1,40 @@
+{
+  "schema": "skatai.v2.local-bidding-pregate-evidence.v1",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "stage": "SMOKE",
+  "status": "PIPELINE_SMOKE_PASS",
+  "strength_claim_authorized": false,
+  "promotion_evidence": false,
+  "protocol": {
+    "manifest": "provenance/B1_LOCAL_PREGATE_PROTOCOL.json",
+    "frozen_before_result": true,
+    "protocol_commit": "ae7f703a31414886a85ff400ba6783ad70bdbfb7"
+  },
+  "gate_code_commit": "06d740424c899e8135ee9da9f426cf90107f8145",
+  "configuration": {
+    "deal_count": 1,
+    "paired_seat_observations": 3,
+    "selection_seed": 20260923,
+    "master_seed": 20260923,
+    "b1_threshold": 0.5,
+    "b0_accuracy": 231,
+    "b0_bid_threshold": -5.0
+  },
+  "result": {
+    "changed_auction_pairs": 3,
+    "paired_deltas": [0.0, 100.0, 0.0],
+    "mean_candidate_reward_delta": 33.333333333333336,
+    "elapsed_s": 392.88376961811446,
+    "raw_sha256": "c6b09c39077b2bfe21f386d180d074393d5630807cc86e5ad08910460454b633",
+    "raw_object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/smoke-v1.json",
+    "remote_sha256_verified": true
+  },
+  "interpretation": [
+    "The end-to-end causal integration path executed successfully on one common deal.",
+    "All three candidate-seat treatments changed the auction relative to B0.",
+    "Three paired observations are insufficient for any strength conclusion.",
+    "The positive mean is not an ACCEPT result and must not be promoted."
+  ],
+  "next_stage": "SCREEN_30_DEALS_90_PAIRED_OBSERVATIONS"
+}
