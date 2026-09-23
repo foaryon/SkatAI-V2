@@ -14,8 +14,8 @@
       "asset_id": "public-iss-skatgame-2024-07",
       "kind": "raw_external_source",
       "manifest": "provenance/PUBLIC_CORPUS_2024_07.json",
-      "note": "Final semantic refresh/dedup classification still pending completion.",
-      "status": "STAGED_AND_PARTIALLY_QUALIFIED",
+      "note": "Raw archives staged; final clean-V2 semantic refresh registered separately.",
+      "status": "STAGED_AND_SEMANTICALLY_CLASSIFIED",
       "trust": "D1_AUTHENTIC_RAW"
     },
     {
@@ -27,6 +27,16 @@
       "object_prefix": "s3://skatai-v2/datasets/bidding/historical-v1/",
       "status": "D3_SEMANTICALLY_VALID",
       "trust": "D3"
+    },
+    {
+      "active_training_use": false,
+      "asset_id": "public-refresh-2024-07-final-v1",
+      "d4_proven_use": false,
+      "kind": "qualified_external_additions",
+      "manifest": "provenance/PUBLIC_CORPUS_REFRESH_FINAL_V1.json",
+      "object_prefix": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/",
+      "status": "QUALIFIED_WITH_QUARANTINE",
+      "trust": "D3_SEMANTICALLY_CLASSIFIED"
     }
   ],
   "schema": "skatai.v2.data-registry.v1"

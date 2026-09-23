@@ -1,0 +1,45 @@
+{
+  "schema": "skatai.v2.public-refresh-provenance.v1",
+  "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE",
+  "source_archives_manifest": "provenance/PUBLIC_CORPUS_2024_07.json",
+  "legacy_corpus_sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+  "parser_lineage_note": "Final audit reflects clean V2 parser corrections for explicit all-pass auctions, source-agnostic semantic identity, normalized bidding transcript, cardplay legality/trick continuity, and full ISS declaration modifier vocabulary.",
+  "counts": {
+    "raw_public_lines": 11332396,
+    "raw_known_historical": 10845022,
+    "raw_extra": 487374,
+    "accepted_extras": 405946,
+    "verified_all_pass": 405910,
+    "parsed_played_game": 36,
+    "quarantined_no_contract": 81427,
+    "parse_error": 1
+  },
+  "accepted_extras": {
+    "object": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/accepted-extras.jsonl",
+    "records": 405946,
+    "bytes": 268081684,
+    "sha256": "e725c2d0aecbfef6e181eba597d9954240ab6c9d9a9f28568b835b67d79091cf",
+    "semantic_duplicates_of_historical": 0,
+    "semantic_duplicates_among_new": 0
+  },
+  "quarantine_samples": {
+    "object": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/quarantine-samples.jsonl",
+    "sha256": "dbbe673da7597725f83100fd94de49ff78b5f910bbf30eb618b3b8ad33b3aee4"
+  },
+  "parse_error_samples": {
+    "object": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/parse-error-samples.jsonl",
+    "sha256": "92e519177da768f1d0ebf15b1cb551ffdd67629c9e4e101b90af197a5b71039c"
+  },
+  "audit": {
+    "object": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/audit.json",
+    "sha256": "d45e476de15a8635e787cec8056cbbd6c63e30f1b1879ee37c9cf787e2dbc20b",
+    "remote_integrity_verified": true
+  },
+  "training_policy": {
+    "accepted_extras_are_not_automatically_added_to_existing_bidding_historical_v1": true,
+    "verified_all_pass_records_are_candidate_bidding_evidence": true,
+    "parsed_played_records_are_candidate_canonical_additions": true,
+    "quarantined_records_are_forbidden_from_active_training": true,
+    "d4_usefulness_established": false
+  }
+}
