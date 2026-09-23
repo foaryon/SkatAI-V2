@@ -54,3 +54,18 @@ def test_paired_delta_stats():
     assert s["n"] == 3
     assert s["mean"] == 2.0
     assert s["ci95_low"] < 2.0 < s["ci95_high"]
+
+
+def test_auction_action_identity_ignores_probabilities():
+    from skatai.evaluation.bidding_gameplay_gate import _auction_action_identity
+    from skatai.gameplay.bidding import simulate_auction
+
+    def p1(hand, actor, bidder, answerer, bid_index, role):
+        return 0.9 if bid_index < 1 else 0.1
+
+    def p2(hand, actor, bidder, answerer, bid_index, role):
+        return 0.8 if bid_index < 1 else 0.2
+
+    a = simulate_auction(HANDS, p1)
+    b = simulate_auction(HANDS, p2)
+    assert _auction_action_identity(a) == _auction_action_identity(b)

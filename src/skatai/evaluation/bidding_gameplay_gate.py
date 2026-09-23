@@ -118,6 +118,17 @@ def _auction_stable(auction: AuctionResult) -> dict[str, Any]:
     }
 
 
+
+def _auction_action_identity(auction: AuctionResult) -> tuple[Any, ...]:
+    return (
+        auction.winner,
+        auction.winning_bid,
+        tuple(
+            (d.actor, d.current_offer, d.decision_role, d.native_action)
+            for d in auction.decisions
+        ),
+    )
+
 def _downstream_identity(auction: AuctionResult) -> tuple[Any, ...]:
     return (
         auction.winner,
@@ -508,11 +519,25 @@ def run_gate(
         for record in records
         for pair in record["paired"]
     ]
-    changed_auctions = sum(
-        pair["treatment_auction"] != record["baseline_auction"]
-        for record in records
-        for pair in record["paired"]
-    )
+    changed_auctions = 0
+    for record in records:
+        baseline_actions = tuple(
+            (d["actor"], d["current_offer"], d["decision_role"], d["native_action"])
+            for d in record["baseline_auction"]["decisions"]
+        )
+        baseline_identity = (
+            record["baseline_auction"]["winner"],
+            record["baseline_auction"]["winning_bid"],
+            baseline_actions,
+        )
+        for pair in record["paired"]:
+            ta = pair["treatment_auction"]
+            treatment_actions = tuple(
+                (d["actor"], d["current_offer"], d["decision_role"], d["native_action"])
+                for d in ta["decisions"]
+            )
+            treatment_identity = (ta["winner"], ta["winning_bid"], treatment_actions)
+            changed_auctions += treatment_identity != baseline_identity
     return {
         "schema": SCHEMA,
         "interpretation": {
