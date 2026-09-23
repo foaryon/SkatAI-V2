@@ -48,12 +48,17 @@ def replay_is_eligible(game: Mapping[str, Any]) -> bool:
 def iter_bidding_decisions(game: Mapping[str, Any]) -> Iterator[dict[str, Any]]:
     """Yield legal decision-time bidding observations and binary targets."""
     r = replay(game.get("bidding_history") or ())
-    if not (
-        r.ok
-        and r.winner == int(game["declarer"])
-        and r.winning_bid == int(game["bid_level"])
-    ):
-        return
+    all_pass = bool(game.get("all_pass"))
+    if all_pass:
+        if not (r.ok and r.all_pass):
+            return
+    else:
+        if not (
+            r.ok
+            and r.winner == int(game["declarer"])
+            and r.winning_bid == int(game["bid_level"])
+        ):
+            return
 
     initial_hands = game["initial_hands"]
     split = split_for_game(game)

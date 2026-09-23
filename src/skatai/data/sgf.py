@@ -197,18 +197,43 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
     }
 
     if decl_i is None:
-        # ISS/SkatGame public archives contain many passed-in/aborted records
-        # where the raw log does not expose a complete three-player bidding
-        # sequence. Preserve exactly what is present and quarantine rather
-        # than inventing implicit actions.
+        # Preserve only explicit decisions. Complete all-pass auctions are
+        # useful bidding evidence; abbreviated/aborted prefixes stay quarantined.
         try:
             widx = tail.index("w")
         except ValueError:
             widx = len(tail)
+        bidding_prefix = tail[:widx]
+        br = replay(bidding_prefix)
+        if br.ok and br.all_pass:
+            out = {
+                **common,
+                "classification": "VERIFIED_ALL_PASS",
+                "bidding_history": bidding_prefix,
+                "all_pass": True,
+            }
+            identity_core = {
+                "source": out["source"],
+                "game_id": out["game_id"],
+                "date": out["date"],
+                "players": out["players"],
+                "ratings": out["ratings"],
+                "initial_hands": out["initial_hands"],
+                "skat_initial": out["skat_initial"],
+                "bidding_history": out["bidding_history"],
+                "all_pass": True,
+            }
+            encoded = json.dumps(
+                identity_core, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            )
+            out["semantic_sha256"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+            return out
+
         common.update(
             {
                 "classification": "QUARANTINED_NO_CONTRACT",
-                "raw_bidding_prefix": tail[:widx],
+                "raw_bidding_prefix": bidding_prefix,
+                "quarantine_reason": br.error or "NO_DECLARED_CONTRACT",
                 "semantic_sha256": None,
             }
         )

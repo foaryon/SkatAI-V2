@@ -6,6 +6,8 @@ PLAYED = b"(;GM[Skat]PC[Internet Skat Server]CO[]SE[53]ID[9]DT[2007-10-29/04:58:
 
 NO_CONTRACT = b"(;GM[Skat]PC[Internet Skat Server]CO[]SE[50]ID[8]DT[2007-10-29/04:44:01/UTC]P0[Montana]P1[vaun]P2[Ben]R0[null]R1[0.0]R2[null]MV[w HT.ST.DK.HK.CT.CJ.SJ.SA.C8.S7.DQ.H8.HA.CA.DA.SK.HJ.C9.DJ.SQ.S9.H7.C7.DT.H9.S8.CK.D9.D8.CQ.HQ.D7 1 p w TI.2 ]R[d:-1 penalty v:0 m:0 bidok p:0 t:0 s:0 z:0 p0:0 p1:0 p2:1 l:-1 to:2 r:0] ;)"
 
+ALL_PASS = b"(;GM[Skat]PC[ISS]ID[99]DT[2024-07-01/00:00:00/UTC]P0[a]P1[b]P2[c]R0[1]R1[2]R2[3]MV[w C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8.S9.ST.SJ.SQ.SK.SA.H7.H8.H9.HT.HJ.HQ.HK.HA.D7.D8.D9.DT.DJ.DQ.DK.DA 1 p 2 p 0 p w TI.0 ]R[d:-1 penalty v:0 m:0 bidok p:0 t:0 s:0 z:0 p0:0 p1:0 p2:1 l:-1 to:0 r:0] ;)"
+
 
 def test_parse_properties_handles_basic_node():
     p = parse_properties(PLAYED.decode())
@@ -27,8 +29,16 @@ def test_parse_played_hand_game():
     assert g["skat_initial"] == ["SJ", "D8"]
 
 
-def test_no_contract_is_quarantined_without_implicit_actions():
+def test_incomplete_no_contract_is_quarantined_without_implicit_actions():
     g = parse_sgf_line("iss", NO_CONTRACT)
     assert g["classification"] == "QUARANTINED_NO_CONTRACT"
     assert g["raw_bidding_prefix"] == ["1", "p"]
     assert g["semantic_sha256"] is None
+
+
+def test_explicit_all_pass_is_verified_bidding_evidence():
+    g = parse_sgf_line("iss", ALL_PASS)
+    assert g["classification"] == "VERIFIED_ALL_PASS"
+    assert g["all_pass"] is True
+    assert g["bidding_history"] == ["1", "p", "2", "p", "0", "p"]
+    assert g["semantic_sha256"]

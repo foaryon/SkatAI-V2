@@ -96,3 +96,11 @@ def test_benchmark_holdout_overrides_date():
     g = _game(["kermit", "alice", "bob"])
     g["date"] = "2018-01-01"
     assert split_for_game(g) == "external_bot_holdout"
+
+
+def test_replay_complete_all_pass_is_legal_terminal():
+    r = replay(["1", "p", "2", "p", "0", "p"])
+    assert r.ok
+    assert r.all_pass
+    assert r.winner is None
+    assert [a["target"] for a in r.actions] == ["PASS", "PASS", "PASS"]

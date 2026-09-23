@@ -18,6 +18,7 @@ class Replay:
     actions: list[dict[str, Any]] = field(default_factory=list)
     winner: int | None = None
     winning_bid: int | None = None
+    all_pass: bool = False
     error: str | None = None
 
 
@@ -147,5 +148,11 @@ def replay(tokens: list[str] | tuple[str, ...]) -> Replay:
     if not state.finished:
         return Replay(False, actions=actions, error="NONTERMINAL_PREFIX")
     if state.winner is None:
-        return Replay(False, actions=actions, error="ALL_PASS_UNPLAYED")
-    return Replay(True, actions=actions, winner=state.winner, winning_bid=state.winning_bid)
+        return Replay(True, actions=actions, all_pass=True)
+    return Replay(
+        True,
+        actions=actions,
+        winner=state.winner,
+        winning_bid=state.winning_bid,
+        all_pass=False,
+    )
