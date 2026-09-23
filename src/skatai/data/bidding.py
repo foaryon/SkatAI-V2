@@ -15,17 +15,25 @@ def contains_benchmark_bot(players: list[str] | tuple[str, ...]) -> bool:
 
 
 def split_for_game(game: Mapping[str, Any]) -> str:
+    """Frozen V2 bidding split v1.
+
+    Benchmark-bot games never enter train/validation/test. Remaining games are
+    split chronologically to measure forward generalization.
+    """
     players = tuple(str(x) for x in game.get("players", ()))
     if contains_benchmark_bot(players):
         return "external_bot_holdout"
 
-    identity = str(game["semantic_sha256"])
-    bucket = int(hashlib.sha256(identity.encode("ascii")).hexdigest()[:8], 16) % 10_000
-    if bucket < 9_000:
+    date = str(game.get("date") or "")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        return "quarantine_date"
+    if date < "2023-01-01":
         return "train"
-    if bucket < 9_500:
+    if date < "2024-01-01":
         return "validation"
-    return "test"
+    if date < "2025-01-01":
+        return "test"
+    return "future_holdout"
 
 
 def replay_is_eligible(game: Mapping[str, Any]) -> bool:

@@ -5,6 +5,7 @@ from skatai.game.bidding import replay
 def _game(players=None):
     return {
         "source": "iss",
+        "date": "2022-06-15",
         "semantic_sha256": "a" * 64,
         "players": players or ["alice", "bob", "carol"],
         "declarer": 2,
@@ -75,3 +76,23 @@ def test_bidding_state_exposes_only_public_duel_state():
     assert row["bid_index"] == 1
     forbidden = {"skat_initial", "discards", "game_type", "won", "card_points", "plays"}
     assert forbidden.isdisjoint(row)
+
+
+def test_chronological_bidding_split():
+    g = _game()
+    g["date"] = "2022-12-31"
+    assert split_for_game(g) == "train"
+    g["date"] = "2023-01-01"
+    assert split_for_game(g) == "validation"
+    g["date"] = "2024-07-01"
+    assert split_for_game(g) == "test"
+    g["date"] = "2025-01-01"
+    assert split_for_game(g) == "future_holdout"
+    g["date"] = ""
+    assert split_for_game(g) == "quarantine_date"
+
+
+def test_benchmark_holdout_overrides_date():
+    g = _game(["kermit", "alice", "bob"])
+    g["date"] = "2018-01-01"
+    assert split_for_game(g) == "external_bot_holdout"

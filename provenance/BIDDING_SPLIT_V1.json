@@ -1,0 +1,27 @@
+{
+  "schema": "skatai.v2.bidding-split.v1",
+  "status": "FROZEN",
+  "precedence": [
+    "external_bot_holdout",
+    "chronological_split"
+  ],
+  "external_bot_holdout": {
+    "name_patterns_case_insensitive": [
+      "kermit",
+      "kermit:<digits>",
+      "zoot",
+      "zoot:<digits>",
+      "thecount",
+      "thecount:<digits>"
+    ],
+    "training_allowed": false
+  },
+  "chronological_split": {
+    "train": "date < 2023-01-01",
+    "validation": "2023-01-01 <= date < 2024-01-01",
+    "test": "2024-01-01 <= date < 2025-01-01",
+    "future_holdout": "date >= 2025-01-01",
+    "quarantine_date": "missing or invalid YYYY-MM-DD date"
+  },
+  "rationale": "Forward-time generalization with Kermit/Zoot/theCount kept entirely external to fitting and hyperparameter selection."
+}
