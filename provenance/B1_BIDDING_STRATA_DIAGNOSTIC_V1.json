@@ -1,0 +1,45 @@
+{
+  "schema": "skatai.v2.b1-bidding-strata-diagnostic-provenance.v1",
+  "status": "DIAGNOSTIC_ONLY_NOT_PROMOTION_EVIDENCE",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+  "dataset_manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+  "analysis": {
+    "implementation": "src/skatai/evaluation/bidding_strata.py",
+    "source_commit": "47cf88cb6c696c4638ca5c7776fe971e3f3abec1",
+    "artifact_sha256": "3def12ab78dbf430f8443fcce1b4b461ab451bac1d555ae7bc7a99d9fed4acc9",
+    "artifact_bytes": 46036,
+    "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/offline/bidding-strata-v1.json"
+  },
+  "sampling": {
+    "test": "all 1088286 rows",
+    "external_bot_holdout": "deterministic 1/10 game-level sample selected by first 32 bits of semantic SHA-256 identity",
+    "external_rows_scanned": 44781076,
+    "external_rows_selected": 4469370,
+    "external_selected_unique_games": 537185,
+    "game_cluster_preserving": true
+  },
+  "overall_reproduction": {
+    "test_accuracy_at_0_5": 0.77463001453662,
+    "test_brier": 0.15455832570168895,
+    "test_calibration_gap_predicted_minus_observed": 0.01014874120762388,
+    "external_sample_accuracy_at_0_5": 0.7798483902652946,
+    "external_sample_brier": 0.15220439677668288,
+    "external_sample_calibration_gap_predicted_minus_observed": -0.1343378117234043
+  },
+  "descriptive_findings": [
+    "The external-bot calibration shift is not uniform across strata.",
+    "Offer 20 shows the largest eligible shared-stratum calibration-gap shift in this report: external minus test approximately -0.318.",
+    "ANSWERER decisions show a larger negative external calibration-gap shift than the overall population, approximately -0.187.",
+    "Actor 1 as ANSWERER is a particularly shifted stratum in the deterministic sample, approximately -0.197 external-minus-test calibration-gap change.",
+    "The 18-24 bid band carries most of the observed external shift among the broad bid bands.",
+    "These are diagnostic distribution-shift observations, not evidence that changing thresholds or retraining on the external-bot holdout would improve gameplay."
+  ],
+  "information_policy": {
+    "external_bot_holdout_training_allowed": false,
+    "external_bot_holdout_hyperparameter_fitting_allowed": false,
+    "current_b1_may_be_modified_from_this_report": false,
+    "frozen_iss_gate_may_be_modified_from_this_report": false,
+    "future_experiment_hypothesis_generation_allowed_after_current_b1_disposition": true
+  }
+}
