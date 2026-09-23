@@ -193,3 +193,23 @@ def test_ouvert_defender_view_can_include_hidden_discards_and_open_hand():
     assert m.payload["game_type"] == "GHO"
     assert m.payload["cards"][:2] == ("??", "??")
     assert len(m.payload["cards"]) == 12
+
+
+def test_official_cardplay_control_moves_are_parsed():
+    from skatai.iss.protocol import ActionKind, parse_move, parse_move_line
+
+    assert parse_move("1 RE").kind == ActionKind.RESIGN
+    shown = parse_move_line("2 SC.CA.SJ")
+    assert shown.kind == "show_cards"
+    assert shown.payload == ("CA", "SJ")
+
+
+def test_official_world_terminal_moves_are_parsed():
+    from skatai.iss.protocol import ActionKind, parse_move
+
+    ti = parse_move("w TI.2")
+    le = parse_move("w LE.0")
+    assert ti.kind == ActionKind.TIMEOUT
+    assert le.kind == ActionKind.LEAVE
+    assert ti.seat is None
+    assert le.seat is None

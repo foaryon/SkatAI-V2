@@ -1,0 +1,35 @@
+{
+  "schema": "skatai.v2.b0-api-cardplay-smoke-correction.v1",
+  "status": "CORRECTED_REPRODUCTION_EVIDENCE",
+  "baseline_id": "V2-B0",
+  "does_not_invalidate": "provenance/B0_CARDPLAY_BENCHMARK.json",
+  "supersedes_check_only": "provenance/B0_REPRODUCTION.json#checks.original_api_cardplay_smoke",
+  "finding": {
+    "historical_recorded_card": "D8",
+    "correctly_encoded_card": "DJ",
+    "root_cause": "The historical smoke placed '1HT,2HA' in api.py argument index 12 (soloplayer_open_cards) and omitted argument index 13 (played_cards/history). With the documented API layout, index 12 is '??' and index 13 is '1HT,2HA'.",
+    "correct_cli_tail_result": "DJ",
+    "malformed_historical_cli_tail_result": "D8"
+  },
+  "correct_argument_vector": [
+    "CARDPLAY",
+    "D",
+    "CJ,DJ,DA,DT,DQ,D8,C7,SA,S9",
+    "0",
+    "25",
+    "0",
+    "0",
+    "30",
+    "DK",
+    "D7",
+    "0",
+    "0",
+    "??",
+    "1HT,2HA"
+  ],
+  "scientific_effect": [
+    "The 36-game deterministic B0 cardplay benchmark remains separate and is not changed by this correction.",
+    "The original single API smoke no longer serves as evidence for D8.",
+    "Future product-layer B0 equivalence must use the correct upstream CLI argument layout."
+  ]
+}

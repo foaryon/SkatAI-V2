@@ -1,0 +1,43 @@
+{
+  "schema": "skatai.v2.external-reference.iss-client.v1",
+  "status": "VERIFIED_REFERENCE",
+  "authority": "protocol/reference only; not V2 runtime authority",
+  "source": {
+    "publisher": "International Skat Server / skatgame.net",
+    "package": "clients.tgz",
+    "published_version": "14.11033.16",
+    "published_date": "2019-08-01",
+    "official_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
+    "verified_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
+    "sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656",
+    "license": "GPLv3"
+  },
+  "persistent_object": "s3://skatai-v2/provenance/external-reference/iss/14.11033.16/clients.tgz",
+  "remote_sha256_verified": true,
+  "reference_surfaces": [
+    "README-clients",
+    "src/client/AIClient.java",
+    "src/client/Player.java",
+    "src/client/ServiceClient.java",
+    "src/common/SimpleGame.java",
+    "src/common/SimpleState.java",
+    "doc/skat-game-format",
+    "c++/src/sample/SamplePlayer.cpp"
+  ],
+  "verified_protocol_findings": {
+    "canonical_state_classes": ["SimpleGame", "SimpleState"],
+    "move_format": "<player-to-move> <action>",
+    "phases": [
+      "DEAL",
+      "BID",
+      "ANSWER",
+      "SKAT_OR_HAND_DECL",
+      "GET_SKAT",
+      "DISCARD_AND_DECL",
+      "CARDPLAY",
+      "FINISHED"
+    ],
+    "control_moves": ["RE", "SC[.<cards>...]", "TI.<seat>", "LE.<seat>"],
+    "official_ai_legality_check": "clone current state, apply makeMove(), reject/replace illegal move before transmit"
+  }
+}

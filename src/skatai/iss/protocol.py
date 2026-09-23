@@ -44,6 +44,10 @@ class ActionKind(str, Enum):
     WORLD_SKAT = "WORLD_SKAT"
     DECLARATION = "DECLARATION"
     CARDPLAY = "CARDPLAY"
+    RESIGN = "RESIGN"
+    SHOW_CARDS = "SHOW_CARDS"
+    TIMEOUT = "TIMEOUT"
+    LEAVE = "LEAVE"
 
 
 @dataclass(frozen=True)
@@ -170,6 +174,29 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
             raise ISSProtocolError("WORLD_CANNOT_PICKUP_SKAT")
         return "skat_request", action
 
+    if action == "RE":
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_RESIGN")
+        return "resign", action
+
+    if action == "SC" or action.startswith("SC."):
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_SHOW_CARDS")
+        parts = action.split(".")
+        cards = tuple(_card(x) for x in parts[1:]) if len(parts) > 1 else ()
+        return "show_cards", cards
+
+    if actor == WORLD_ACTOR and (
+        action.startswith("TI.") or action.startswith("LE.")
+    ):
+        parts = action.split(".")
+        if len(parts) != 2 or parts[1] not in PLAYER_ACTORS:
+            raise ISSProtocolError(f"BAD_WORLD_TERMINAL:{action}")
+        if parts[0] == "TI":
+            return "timeout", int(parts[1])
+        if parts[0] == "LE":
+            return "leave", int(parts[1])
+
     parts = action.split(".")
     if len(parts) == 2 and all(is_card(x, allow_unknown=True) for x in parts):
         if actor != WORLD_ACTOR:
@@ -215,6 +242,10 @@ _KIND_MAP = {
     "skat_delivery": ActionKind.WORLD_SKAT,
     "declaration": ActionKind.DECLARATION,
     "cardplay": ActionKind.CARDPLAY,
+    "resign": ActionKind.RESIGN,
+    "show_cards": ActionKind.SHOW_CARDS,
+    "timeout": ActionKind.TIMEOUT,
+    "leave": ActionKind.LEAVE,
 }
 
 
