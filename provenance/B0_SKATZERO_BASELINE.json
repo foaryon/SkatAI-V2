@@ -1,0 +1,36 @@
+{
+  "baseline_id": "V2-B0",
+  "name": "SKATZERO_BASELINE",
+  "status": "SOURCE_AND_PRETRAINED_MODELS_FROZEN",
+  "upstream_repository": "https://github.com/Jimboom7/SkatZero",
+  "upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+  "git_tree": "97092b62e5e8a768ebfc1e5945514598e1502404",
+  "git_archive_sha256": "40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d",
+  "license_sha256": "a406579cd136771c705c521db86ca7d60a6f3de7c9b5460e6193a2df27861bde",
+  "dependency_manifest": {
+    "path": "requirements.txt",
+    "sha256": "9a133d36cbf414bf992d0e4cafaf9d523c180faf9689ed94cd63b8819128e633"
+  },
+  "implementation_hashes": {
+    "inference_api_py": "466833534eb0bfd699318596115237b82f2d34bbc4123cc32345d691c780508d",
+    "train_py": "ab53b1c1168489bc7c0f32c554ecd2bbd7490a6d78426ad065fa216e5fc73fd4",
+    "evaluate_py": "79877df9444e2e28934833bc161aeef19bcd5bc70551624056557cc2b31aec6a",
+    "dmc_model_py": "6bfe64cbef7ca21c6915d8f7a88dff11c8021412d4dcd2917eb774aeb9e3d00a",
+    "dmc_neural_net_py": "c476b4957878b0a0d9bb9f35e099853c9ca0ac31f500197f79e3337d5f21c6e7",
+    "dmc_trainer_py": "9829ce2044648d96b98aee08b22eea25d39e3bbef631a064f82c7f5f97f04edf",
+    "bidding_tree_hash": "ea41ec9bc80d7dc0111ef369bc2349c12495b34ae4b406b1932e59d6c7aa1ebf",
+    "iss_tree_hash": "7b55beed148bb10724d5c01a9e8aa9b386a1c22367d4aaace21b8b65d1daa962",
+    "evaluation_tree_hash": "b97f12b0bd27bf8964bd4532ece3e961eb5a7f6bc69608cd5ba4d08bc17bdb0d"
+  },
+  "pretrained_models": {
+    "D_0.pth": "11e09514a370933baa4dfc6a0334f2c45d0e2b6c1292d1c3c6f0991660a8452f",
+    "D_1.pth": "3a7489e2250324408800a7a0ca41489c9fd2328e2fb471353cac402c8e0fc65d",
+    "D_2.pth": "2b618269cc42bb199e6f0b07fed97c0256d69cec461accaf0330ebe3ba557c1b",
+    "G_0.pth": "9131b75aff1c20d436bdc4262ef614b16e438ec20b2d94beb2b8a6dd2a1876d4",
+    "G_1.pth": "9c2732c936ac15530efdcb114e188e2243772412f2d7a60ed600a9ba0a15e2a8",
+    "G_2.pth": "2973542e4922638b61b4a538e9b3d9113b6ad69927c35f193596cb81ae37def2",
+    "N_0.pth": "625f32c9594318da5f27ebd86cc8b1a6f9eb82d6a7d72586c615796e1f0791c6",
+    "N_1.pth": "fdf0e0377cc4fc090f54e84f1c369999d44a3ea5b724ef1f73578824bd03785a",
+    "N_2.pth": "c75585fb9a4c9fa9e784c3d47d39f11b4ef919bec17ae3b8810b35b343a9d3fc"
+  }
+}
