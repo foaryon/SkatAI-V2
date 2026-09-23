@@ -1,0 +1,19 @@
+{
+  "source": "https://skatgame.net/iss/",
+  "published_label": "Jul-2024",
+  "verified_on": "2026-09-23",
+  "objects": [
+    {
+      "name": "iss-games-07-2024.sgf.bz2",
+      "bytes": 545265254,
+      "sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "destination": "s3://skatai-v2/canonical/public-source/2024-07/iss-games-07-2024.sgf.bz2"
+    },
+    {
+      "name": "skatgame-games-07-2024.sgf.bz2",
+      "bytes": 138880727,
+      "sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "destination": "s3://skatai-v2/canonical/public-source/2024-07/skatgame-games-07-2024.sgf.bz2"
+    }
+  ]
+}

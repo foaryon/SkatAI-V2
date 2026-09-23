@@ -1,0 +1,12 @@
+{
+  "asset_id": "legacy-v1-canonical-corpus",
+  "classification": "VERIFIED_CANONICAL",
+  "source_reference": "/workspace/skatai/prod-code-9e35abc/_tooling/artifact-bound/full-2024-final/canonical.jsonl",
+  "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+  "bytes": 13077428492,
+  "records": 10845022,
+  "iss_records": 8692393,
+  "skatgame_records": 2152629,
+  "destination": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+  "destination_sha256_verified": true
+}
