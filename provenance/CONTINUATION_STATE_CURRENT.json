@@ -1,0 +1,128 @@
+{
+  "authority_note": "Verified current physical/system state snapshot; supersedes stale bootstrap state for continuation, without modifying founding specification authority.",
+  "canonical_data": {
+    "bidding_dataset": {
+      "dataset_id": "bidding-historical-v1",
+      "manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+      "rows": {
+        "external_bot_holdout": 44781076,
+        "test": 1088286,
+        "train": 21435764,
+        "validation": 2390888
+      },
+      "trust": "D3_SEMANTICALLY_VALID"
+    },
+    "legacy_corpus": {
+      "bytes": 13077428492,
+      "hetzner_copy_verified": true,
+      "iss_records": 8692393,
+      "records": 10845022,
+      "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+      "skatgame_records": 2152629
+    },
+    "public_refresh_2024_07": {
+      "accepted_extras": 405946,
+      "manifest": "provenance/PUBLIC_CORPUS_REFRESH_FINAL_V1.json",
+      "parse_errors": 1,
+      "quarantined_no_contract": 81427,
+      "raw_extra_lines": 487374,
+      "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
+    }
+  },
+  "captured_at": "2026-09-23T21:58:21Z",
+  "external_blockers": [
+    {
+      "action": "Inject ISS_HOST, ISS_PORT, ISS_CLIENT_ID and password via ISS_PASSWORD or mode-0600 ISS_PASSWORD_FILE; then run non-scoring login preflight.",
+      "id": "iss-v2-credentials"
+    },
+    {
+      "action": "Create brand-new V2 GitHub repository and attach/push this clean history without V1 ancestry.",
+      "id": "github-v2-repository-creation"
+    }
+  ],
+  "first_unfinished_dependency_for_b1_strength": "authenticated deployment-valid ISS external gate",
+  "git": {
+    "branch": "main",
+    "code_head": "cd7107f1115f8ad90b3228753cea78d0d75b02ac",
+    "new_v2_github_repository_attached": false,
+    "remote_present": false,
+    "workspace": "/workspace/skatai-v2"
+  },
+  "iss": {
+    "account_identity_known": true,
+    "active_game_crash_safe_authority": true,
+    "adapter_status": "IMPLEMENTED_TESTED_NOT_YET_LIVE_AUTHENTICATED",
+    "all_phase_single_adapter": true,
+    "authenticated_preflight_complete": false,
+    "durable_effect_guard": true,
+    "frozen_external_gate_ready_except_credentials": true,
+    "hetzner_per_game_evidence_mirror": true,
+    "host": "skatgame.net",
+    "port": 7000,
+    "scored_live_games": 0,
+    "secret_present_on_worker": false,
+    "stable_decision_boundary": true,
+    "worker_transport_reconnect": true
+  },
+  "next_safe_actions": [
+    "When ISS secret appears, run non-scoring authentication preflight and persist evidence before any game.",
+    "Then start the frozen external ISS gate worker without altering quotas or decision rule.",
+    "Continue independent non-contaminating Skat research while credentials remain blocked.",
+    "Do not use external-bot holdout or future ISS gate games for training/hyperparameter fitting before authorized disposition."
+  ],
+  "schema": "skatai.v2.continuation-state.v1",
+  "science": {
+    "B0": {
+      "id": "V2-B0",
+      "immutable": true,
+      "runtime_reproduced": true,
+      "skatzero_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
+    },
+    "B1": {
+      "id": "V2-B1-bidding-linearish-full-v1",
+      "local_confirmation": {
+        "accept_authorized": false,
+        "ci95_high": 3.3410176783233627,
+        "ci95_low": -9.184351011656696,
+        "clustered_mean": -2.921666666666667,
+        "deals": 100,
+        "next_action": "REQUIRE_EXTERNAL_DEPLOYMENT_VALID_EVALUATION",
+        "paired_seat_observations": 300,
+        "status": "LOCAL_GATE_NOT_REGRESSING"
+      },
+      "model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+      "promotion_status": "NOT_ACCEPTED_EXTERNAL_GAMEPLAY_REQUIRED",
+      "strength_claim_authorized": false
+    },
+    "diagnostics": {
+      "local_weakness": {
+        "artifact_sha256": "432472cba0f54bbe7d68677e8b24b1cd7f1bcc74da6891a5d679f3220c8e24ee",
+        "manifest": "provenance/B1_LOCAL_WEAKNESS_DIAGNOSTIC_V1.json"
+      },
+      "stratified_calibration": {
+        "artifact_sha256": "3def12ab78dbf430f8443fcce1b4b461ab451bac1d555ae7bc7a99d9fed4acc9",
+        "manifest": "provenance/B1_BIDDING_STRATA_DIAGNOSTIC_V1.json"
+      }
+    }
+  },
+  "sentinelx": {
+    "host_id": "host_c8c6a6b0a7123805",
+    "legacy_v1_supervisor_dependency_observed": false,
+    "neutral_root": "/workspace/sentinelx-host",
+    "pre_start_launches_neutral_supervisor": true,
+    "supervisor_parent_pid": 1
+  },
+  "storage": {
+    "authoritative_store": "s3://skatai-v2",
+    "endpoint": "https://fsn1.your-objectstorage.com",
+    "evidence_mirror_probe_passed": true,
+    "provider": "Hetzner Object Storage",
+    "region": "fsn1",
+    "runpod_role": "compute/cache/runtime only"
+  },
+  "tests": {
+    "environment": "/tmp/skatai-v2-dev",
+    "pytest_failed": 0,
+    "pytest_passed": 255
+  }
+}

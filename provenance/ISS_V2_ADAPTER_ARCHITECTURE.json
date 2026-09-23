@@ -1,24 +1,27 @@
 {
-  "schema": "skatai.v2.iss-adapter-architecture.v1",
-  "status": "IMPLEMENTED_TESTED_NOT_YET_LIVE_AUTHENTICATED",
-  "product_rule": "ISS is a thin external runtime/effect adapter around the single SkatAI V2 decision system; ISS contains no independent AI policy.",
-  "stable_boundary": {
-    "request_result": "DecisionRequest -> DecisionResult",
-    "implementation": "src/skatai/runtime/decision.py",
-    "request_identity": ["game_id", "position_hash", "sequence_no", "decision_type", "legal_actions", "source_context"],
-    "result_identity": ["request_id", "position_hash", "decision_id", "release_id", "action", "latency_ms"]
-  },
   "all_phase_adapter": {
-    "implementation": "src/skatai/iss/bridge.py::ISSSkatAIDecisionProvider",
-    "phases": ["bidding", "hand_or_pickup", "post_pickup_declaration", "discard", "cardplay"],
-    "official_split_pickup_flow": "declaration and discard are separate ISS half-moves, so each material network effect binds to one DecisionResult",
+    "b0_b1_backend": "src/skatai/runtime/skatzero_backend.py",
     "canonical_product_api": "src/skatai/runtime/interface.py",
-    "b0_b1_backend": "src/skatai/runtime/skatzero_backend.py"
+    "implementation": "src/skatai/iss/bridge.py::ISSSkatAIDecisionProvider",
+    "official_split_pickup_flow": "declaration and discard are separate ISS half-moves, so each material network effect binds to one DecisionResult",
+    "phases": [
+      "bidding",
+      "hand_or_pickup",
+      "post_pickup_declaration",
+      "discard",
+      "cardplay"
+    ]
   },
   "external_effect_authority": {
+    "events": [
+      "INTENT",
+      "SEND_RETURNED",
+      "RETRY_AUTHORIZED",
+      "CONFIRMED",
+      "ABORTED_STALE"
+    ],
     "implementation": "src/skatai/iss/effects.py",
     "journal": "append-only fsynced JSONL with tamper-evident hash chain",
-    "events": ["INTENT", "SEND_RETURNED", "RETRY_AUTHORIZED", "CONFIRMED", "ABORTED_STALE"],
     "rules": [
       "Persist INTENT before any external send.",
       "Unresolved persisted effects are never blindly replayed after restart.",
@@ -29,28 +32,94 @@
       "ISS-normalized ouvert discard echoes may append ten open-hand cards and still confirm the same two-card discard."
     ]
   },
-  "scientific_authority": {
-    "live_iss_games_initial_role": "EVALUATION_ONLY",
-    "training_authority": false,
-    "external_gate": "B1 vs B0 frozen external ISS gate",
-    "promotion_decisions": ["ACCEPT", "REJECT", "INCONCLUSIVE"],
-    "local_evidence_can_accept": false
-  },
   "key_commits": {
-    "stable_decision_boundary": "675adb2164d7a33116b5cb3a8bfd89e2340fe189",
-    "durable_effect_journal": "e2373cd1e69a3338194ace70d77c5c7b0a810b81",
     "decision_effect_client_routing": "d4754c32c1eb920e5ff3d8ae8551d3bb851dfe94",
-    "reconnect_reconciliation": "d4c0daf358e8617d3c38792e254b4f16b8159e1b",
+    "durable_effect_journal": "e2373cd1e69a3338194ace70d77c5c7b0a810b81",
     "official_table_lifecycle": "a4defad2c7b4fa543112d8994ff3c3cfe38687c2",
-    "single_adapter_consolidation": "2e383a72807f1352648bfb8bce0263311e53f113"
+    "reconnect_reconciliation": "d4c0daf358e8617d3c38792e254b4f16b8159e1b",
+    "single_adapter_consolidation": "2e383a72807f1352648bfb8bce0263311e53f113",
+    "stable_decision_boundary": "675adb2164d7a33116b5cb3a8bfd89e2340fe189",
+    "worker_reconnect_and_active_game_crash_safety": "cd7107f1115f8ad90b3228753cea78d0d75b02ac"
   },
   "live_readiness": {
-    "iss_host_reference": "skatgame.net",
-    "preferred_port": 7000,
-    "tcp_reachable": true,
+    "authenticated_live_preflight_complete": false,
     "credential_account_known": true,
     "credential_secret_present_on_worker": false,
-    "authenticated_live_preflight_complete": false,
-    "scored_live_game_started": false
+    "hetzner_evidence_mirror_ready": true,
+    "iss_host_reference": "skatgame.net",
+    "preferred_port": 7000,
+    "scientific_and_runtime_prerequisites_other_than_credentials_pass": true,
+    "scored_live_game_started": false,
+    "tcp_reachable": true
+  },
+  "product_rule": "ISS is a thin external runtime/effect adapter around the single SkatAI V2 decision system; ISS contains no independent AI policy.",
+  "schema": "skatai.v2.iss-adapter-architecture.v1",
+  "scientific_authority": {
+    "external_gate": "B1 vs B0 frozen external ISS gate",
+    "live_iss_games_initial_role": "EVALUATION_ONLY",
+    "local_evidence_can_accept": false,
+    "promotion_decisions": [
+      "ACCEPT",
+      "REJECT",
+      "INCONCLUSIVE"
+    ],
+    "training_authority": false
+  },
+  "stable_boundary": {
+    "implementation": "src/skatai/runtime/decision.py",
+    "request_identity": [
+      "game_id",
+      "position_hash",
+      "sequence_no",
+      "decision_type",
+      "legal_actions",
+      "source_context"
+    ],
+    "request_result": "DecisionRequest -> DecisionResult",
+    "result_identity": [
+      "request_id",
+      "position_hash",
+      "decision_id",
+      "release_id",
+      "action",
+      "latency_ms"
+    ]
+  },
+  "status": "IMPLEMENTED_TESTED_NOT_YET_LIVE_AUTHENTICATED",
+  "verification": {
+    "full_pytest_passed": 255,
+    "live_authentication_required_for_production_validation": true,
+    "verified_at_code_head": "cd7107f1115f8ad90b3228753cea78d0d75b02ac"
+  },
+  "worker_recovery": {
+    "active_game_authority": {
+      "cleared_only_after_terminal_evidence_is_persisted_and_mirrored": true,
+      "maximum_concurrent_active_games": 1,
+      "mirrored_to_hetzner": true,
+      "persisted_before_first_decision_send": true,
+      "preserves_arm_assignment_on_reconnect": true,
+      "preserves_protocol_and_effect_offsets_on_reconnect": true,
+      "schema": "skatai.v2.external-iss-active-games.v1",
+      "source_commit_bound": true
+    },
+    "authentication_and_protocol_errors_fail_closed": true,
+    "bounded_exponential_backoff": {
+      "attempts_per_cycle_default": 12,
+      "base_delay_s_default": 2.0,
+      "cooldown_s_default": 300.0,
+      "max_delay_s_default": 60.0
+    },
+    "connection_events": "append-only connection-events.jsonl",
+    "implementation": "src/skatai/iss/gate_worker.py",
+    "reconnect_create_does_not_reinvite_or_ready_midgame": true,
+    "recoverable_failures": [
+      "REMOTE_EOF",
+      "NOT_CONNECTED",
+      "CONNECT_FAILED:*",
+      "READ_FAILED:*",
+      "WRITE_FAILED:*"
+    ],
+    "server_reconnect_snapshot_replay": true,
+    "transport_only_reconnect": true
   }
 }
