@@ -1,0 +1,12 @@
+{
+  "schema": "skatai.v2.git-recovery-bundle.v1",
+  "status": "VERIFIED_RECOVERY_ARTIFACT",
+  "authoritative_git_remote": false,
+  "github_repository_creation_still_required": true,
+  "head": "712df8f8be1525d9429d8c110f6293e37424abc5",
+  "branch": "main",
+  "sha256": "b2814befd047652f6081527568065b943366af2c0886cd93bb4cca1f7d2797e2",
+  "bytes": 64772,
+  "object": "s3://skatai-v2/provenance/git-bundles/skatai-v2-main-${HEAD}.bundle",
+  "remote_sha256_verified": true
+}
