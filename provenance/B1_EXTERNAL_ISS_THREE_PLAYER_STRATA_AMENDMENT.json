@@ -1,0 +1,31 @@
+{
+  "decision_rule_unchanged_except_stratum_identity": true,
+  "multiplicity_rule_unchanged": "Bonferroni across three pre-specified looks",
+  "no_external_strength_results_existed_when_frozen": true,
+  "planned_looks_per_arm": [
+    300,
+    1000,
+    3000
+  ],
+  "primary_named_opponents": [
+    "kermit",
+    "zoot",
+    "theCount"
+  ],
+  "primary_opponent_stacks": [
+    "kermit+zoot",
+    "kermit+theCount",
+    "zoot+theCount"
+  ],
+  "primary_stratum": [
+    "opponent_stack",
+    "SkatAI_seat"
+  ],
+  "reason": "A three-player Skat game has two opponents. Single-opponent labels were ambiguous and could confound attribution.",
+  "same_distribution_required_for": [
+    "B0",
+    "B1"
+  ],
+  "schema": "skatai.v2.external-iss-three-player-strata-amendment.v1",
+  "status": "FROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME"
+}

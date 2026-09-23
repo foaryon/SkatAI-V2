@@ -1,18 +1,7 @@
 {
-  "schema": "skatai.v2.external-iss-ledger-contract.v1",
-  "status": "FROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME",
   "candidate": "V2-B1-bidding-linearish-full-v1",
   "control": "V2-B0",
-  "implementation": "src/skatai/evaluation/iss_ledger.py",
-  "scored_record_required_fields": [
-    "game_id",
-    "arm",
-    "opponent",
-    "seat",
-    "score",
-    "model_sha256",
-    "source_commit"
-  ],
+  "decision_rule": "provenance/B1_EXTERNAL_ISS_DECISION_RULE.json",
   "diagnostic_fields": [
     "declarer",
     "contract",
@@ -24,15 +13,31 @@
     "journal_sha256"
   ],
   "failure_separation": {
-    "statuses": ["INFRA_FAILURE", "PROTOCOL_FAILURE", "MODEL_FAILURE"],
-    "strength_score_must_be_null": true,
     "failure_reason_required": true,
-    "included_in_primary_strength_estimator": false
+    "included_in_primary_strength_estimator": false,
+    "statuses": [
+      "INFRA_FAILURE",
+      "PROTOCOL_FAILURE",
+      "MODEL_FAILURE"
+    ],
+    "strength_score_must_be_null": true
   },
+  "implementation": "src/skatai/evaluation/iss_ledger.py",
   "integrity": {
-    "duplicate_game_ids_rejected": true,
     "append_only_fsync": true,
+    "duplicate_game_ids_rejected": true,
     "raw_game_and_protocol_hashes_supported": true
   },
-  "decision_rule": "provenance/B1_EXTERNAL_ISS_DECISION_RULE.json"
+  "opponent_field_semantics": "For primary gate records, 'opponent' is the canonical '+'-joined two-opponent stack label (for example kermit+zoot), not a single opponent.",
+  "schema": "skatai.v2.external-iss-ledger-contract.v1",
+  "scored_record_required_fields": [
+    "game_id",
+    "arm",
+    "opponent",
+    "seat",
+    "score",
+    "model_sha256",
+    "source_commit"
+  ],
+  "status": "REFROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME"
 }

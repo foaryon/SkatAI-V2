@@ -1,42 +1,51 @@
 {
-  "schema": "skatai.v2.external-iss-gate-decision-rule.v1",
-  "status": "FROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME",
   "candidate": "V2-B1-bidding-linearish-full-v1",
   "control": "V2-B0",
-  "prerequisite": "Run only if clustered LOCAL_CONFIRMATION does not establish local regression.",
-  "primary_metric": "ISS per-game deployment score, B1 minus B0",
-  "stratification": {
-    "keys": ["opponent", "seat"],
-    "estimator": "weighted difference of arm means within opponent x seat strata",
-    "stratum_weight": "combined B0+B1 scored-game count in the matched stratum",
-    "unmatched_strata": "not used in the primary estimator until both arms have observations"
-  },
-  "planned_looks": {
-    "scored_games_per_arm": [300, 1000, 3000],
-    "ordering": "chronological recorded game order within each arm",
-    "no_unplanned_strength_looks": true
-  },
-  "uncertainty": {
-    "method": "stratified nonparametric bootstrap within arm x opponent x seat cells",
-    "bootstrap_replicates": 20000,
-    "seed": 20260923,
-    "family_alpha": 0.05,
-    "multiplicity": "Bonferroni across 3 pre-specified looks",
-    "per_look_alpha": 0.016666666666666666,
-    "two_sided_confidence": 0.9833333333333333
-  },
   "decision": {
     "ACCEPT": "At a frozen look, multiplicity-corrected interval lower bound > 0.",
-    "REJECT": "At a frozen look, multiplicity-corrected interval upper bound < 0.",
     "CONTINUE": "Interval includes 0 and fewer than 3000 scored games per arm have been reached.",
-    "INCONCLUSIVE": "At 3000 scored games per arm, interval still includes 0."
+    "INCONCLUSIVE": "At 3000 scored games per arm, interval still includes 0.",
+    "REJECT": "At a frozen look, multiplicity-corrected interval upper bound < 0."
   },
+  "implementation": "src/skatai/evaluation/iss_gate.py",
+  "planned_looks": {
+    "no_unplanned_strength_looks": true,
+    "ordering": "chronological recorded game order within each arm",
+    "scored_games_per_arm": [
+      300,
+      1000,
+      3000
+    ]
+  },
+  "prerequisite": "Run only if clustered LOCAL_CONFIRMATION does not establish local regression.",
+  "primary_metric": "ISS per-game deployment score, B1 minus B0",
   "safety_and_validity": [
     "Infrastructure/protocol failures are excluded from strength scoring until attributed.",
     "Duplicate game identities are rejected.",
     "External gate games remain frozen evaluation evidence until the gate decision.",
     "Named-opponent results are diagnostics; no single opponent defines acceptance.",
-    "Local/offline metrics cannot alter this external decision rule after external scoring begins."
+    "Local/offline metrics cannot alter this external decision rule after external scoring begins.",
+    "Each primary game identifies both non-SkatAI opponents; a single named opponent is never treated as the complete table opposition."
   ],
-  "implementation": "src/skatai/evaluation/iss_gate.py"
+  "schema": "skatai.v2.external-iss-gate-decision-rule.v1",
+  "status": "REFROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME",
+  "stratification": {
+    "estimator": "weighted difference of arm means within opponent-stack x SkatAI-seat strata",
+    "keys": [
+      "opponent_stack",
+      "seat"
+    ],
+    "opponent_field_mapping": "Implementation uses ISSGameOutcome.opponent to hold canonical opponent-stack labels.",
+    "stratum_weight": "combined B0+B1 scored-game count in the matched opponent-stack x seat stratum",
+    "unmatched_strata": "not used in the primary estimator until both arms have observations"
+  },
+  "uncertainty": {
+    "bootstrap_replicates": 20000,
+    "family_alpha": 0.05,
+    "method": "stratified nonparametric bootstrap within arm x opponent x seat cells",
+    "multiplicity": "Bonferroni across 3 pre-specified looks",
+    "per_look_alpha": 0.016666666666666666,
+    "seed": 20260923,
+    "two_sided_confidence": 0.9833333333333333
+  }
 }

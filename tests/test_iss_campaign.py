@@ -30,7 +30,7 @@ def test_quota_status_starts_incomplete():
 
 def test_next_targets_prioritize_arm_with_fewer_games():
     rows = [
-        {"game_id": f"b0-{i}", "arm": "B0", "opponent": "kermit", "seat": 0}
+        {"game_id": f"b0-{i}", "arm": "B0", "opponent": "kermit+zoot", "seat": 0}
         for i in range(5)
     ]
     nxt = next_targets(rows, per_arm=300)
@@ -59,3 +59,17 @@ def test_all_named_opponent_seat_strata_are_present():
     q = target_quotas(300)
     got = {(s.opponent, s.seat) for s in q}
     assert got == {(o, seat) for o in DEFAULT_OPPONENTS for seat in SEATS}
+
+
+def test_default_primary_strata_use_complete_two_opponent_stacks():
+    from skatai.evaluation.iss_campaign import DEFAULT_OPPONENTS, target_quotas
+
+    assert DEFAULT_OPPONENTS == (
+        "kermit+zoot",
+        "kermit+theCount",
+        "zoot+theCount",
+    )
+    q = target_quotas(300)
+    assert len(q) == 18
+    assert sum(v for k, v in q.items() if k.arm == "B0") == 300
+    assert sum(v for k, v in q.items() if k.arm == "B1") == 300

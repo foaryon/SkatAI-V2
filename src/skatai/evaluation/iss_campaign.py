@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Iterable, Mapping, Sequence
 
 ARMS = ("B0", "B1")
-DEFAULT_OPPONENTS = ("kermit", "zoot", "theCount")
+DEFAULT_OPPONENTS = ("kermit+zoot", "kermit+theCount", "zoot+theCount")
 SEATS = (0, 1, 2)
 LOOKS_PER_ARM = (300, 1000, 3000)
 SCHEMA = "skatai.v2.external-iss-campaign-quota.v1"
