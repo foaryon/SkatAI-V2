@@ -128,3 +128,50 @@ def test_checkpoint_rejects_configuration_mismatch(tmp_path):
             configuration={"deal_count": 2},
             selected_deal_identities=["d1"],
         )
+
+
+def test_deal_set_roundtrip(tmp_path):
+    import json
+    from skatai.evaluation.bidding_gameplay_gate import DEAL_SET_SCHEMA, load_deal_set
+
+    path = tmp_path / "deals.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema": DEAL_SET_SCHEMA,
+                "source": {"sha256": "a" * 64, "bytes": 1, "records": 1},
+                "selection": {"split": "test", "seed": 1, "count": 1},
+                "deals": [
+                    {
+                        "game_identity": "1" * 64,
+                        "hands": [list(h) for h in HANDS],
+                        "skat": ["DK", "DA"],
+                    }
+                ],
+            }
+        )
+        + "\n"
+    )
+    deals = load_deal_set(path)
+    assert len(deals) == 1
+    assert deals[0].game_identity == "1" * 64
+    assert deals[0].skat == ("DK", "DA")
+
+
+def test_gate_requires_exactly_one_deal_source():
+    from skatai.evaluation.bidding_gameplay_gate import run_gate
+
+    with pytest.raises(ValueError, match="EXACTLY_ONE_DEAL_SOURCE_REQUIRED"):
+        run_gate(
+            None,
+            None,
+            None,
+            None,
+            deal_count=1,
+            selection_seed=1,
+            master_seed=1,
+            threshold=0.5,
+            accuracy=231,
+            bid_threshold=-5.0,
+            deal_set_path=None,
+        )

@@ -9,7 +9,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from skatai.data.bidding import split_for_game
 from skatai.evaluation.skatzero_bidding_baseline import (
@@ -28,6 +28,7 @@ from skatai.gameplay.skatzero_bidding import max_accepted_bids_by_seat
 
 SCHEMA = "skatai.v2.b0-vs-b1-local-paired-gameplay.v1"
 CHECKPOINT_SCHEMA = "skatai.v2.b0-vs-b1-local-paired-checkpoint.v1"
+DEAL_SET_SCHEMA = "skatai.v2.local-pregate-deal-set.v1"
 
 
 @dataclass(frozen=True)
@@ -61,40 +62,90 @@ def _selection_key(seed: int, identity: str) -> int:
     return int.from_bytes(hashlib.sha256(f"{seed}:{identity}".encode()).digest(), "big")
 
 
+def select_deals_from_games(
+    games: Iterable[Mapping[str, Any]],
+    *,
+    count: int,
+    seed: int,
+) -> tuple[list[Deal], int]:
+    heap: list[tuple[int, int, Deal]] = []
+    serial = 0
+    scanned = 0
+    for game in games:
+        scanned += 1
+        if split_for_game(game) != "test":
+            continue
+        hands = tuple(tuple(str(c) for c in hand) for hand in game["initial_hands"])
+        skat = tuple(str(c) for c in game["skat_initial"])
+        flat = [c for hand in hands for c in hand] + list(skat)
+        if len(hands) != 3 or any(len(h) != 10 for h in hands):
+            continue
+        if len(skat) != 2 or len(flat) != 32 or len(set(flat)) != 32:
+            continue
+        identity = str(game["semantic_sha256"])
+        deal = Deal(identity, hands, (skat[0], skat[1]))
+        key = _selection_key(seed, identity)
+        entry = (-key, serial, deal)
+        serial += 1
+        if len(heap) < count:
+            heapq.heappush(heap, entry)
+        elif entry > heap[0]:
+            heapq.heapreplace(heap, entry)
+    selected = [(-k, d) for k, _, d in heap]
+    selected.sort(key=lambda x: x[0])
+    if len(selected) != count:
+        raise ValueError(f"INSUFFICIENT_DEALS:{len(selected)}<{count}")
+    return [d for _, d in selected], scanned
+
+
 def select_deals(
     canonical_path: Path,
     *,
     count: int,
     seed: int,
 ) -> list[Deal]:
-    heap: list[tuple[int, int, Deal]] = []
-    serial = 0
-    with canonical_path.open("r", encoding="utf-8") as f:
-        for line in f:
-            game = json.loads(line)
-            if split_for_game(game) != "test":
-                continue
-            hands = tuple(tuple(str(c) for c in hand) for hand in game["initial_hands"])
-            skat = tuple(str(c) for c in game["skat_initial"])
-            flat = [c for hand in hands for c in hand] + list(skat)
-            if len(hands) != 3 or any(len(h) != 10 for h in hands):
-                continue
-            if len(skat) != 2 or len(flat) != 32 or len(set(flat)) != 32:
-                continue
-            identity = str(game["semantic_sha256"])
-            deal = Deal(identity, hands, (skat[0], skat[1]))
-            key = _selection_key(seed, identity)
-            entry = (-key, serial, deal)
-            serial += 1
-            if len(heap) < count:
-                heapq.heappush(heap, entry)
-            elif entry > heap[0]:
-                heapq.heapreplace(heap, entry)
-    selected = [(-k, d) for k, _, d in heap]
-    selected.sort(key=lambda x: x[0])
-    if len(selected) != count:
-        raise ValueError(f"INSUFFICIENT_DEALS:{len(selected)}<{count}")
-    return [d for _, d in selected]
+    def games() -> Iterable[Mapping[str, Any]]:
+        with canonical_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                yield json.loads(line)
+
+    deals, _ = select_deals_from_games(games(), count=count, seed=seed)
+    return deals
+
+
+def _deal_to_json(deal: Deal) -> dict[str, Any]:
+    return {
+        "game_identity": deal.game_identity,
+        "hands": [list(hand) for hand in deal.hands],
+        "skat": list(deal.skat),
+    }
+
+
+def load_deal_set(path: Path) -> list[Deal]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema") != DEAL_SET_SCHEMA:
+        raise ValueError("DEAL_SET_SCHEMA_MISMATCH")
+    raw_deals = payload.get("deals") or []
+    deals = [
+        Deal(
+            str(item["game_identity"]),
+            tuple(tuple(str(c) for c in hand) for hand in item["hands"]),
+            tuple(str(c) for c in item["skat"]),
+        )
+        for item in raw_deals
+    ]
+    identities = [d.game_identity for d in deals]
+    if len(set(identities)) != len(identities):
+        raise ValueError("DEAL_SET_DUPLICATE_IDENTITY")
+    if any(len(d.hands) != 3 or any(len(h) != 10 for h in d.hands) for d in deals):
+        raise ValueError("DEAL_SET_BAD_HAND_SHAPE")
+    if any(len(d.skat) != 2 for d in deals):
+        raise ValueError("DEAL_SET_BAD_SKAT_SHAPE")
+    for d in deals:
+        flat = [c for hand in d.hands for c in hand] + list(d.skat)
+        if len(flat) != 32 or len(set(flat)) != 32:
+            raise ValueError("DEAL_SET_INVALID_DECK")
+    return deals
 
 
 def _auction_stable(auction: AuctionResult) -> dict[str, Any]:
@@ -505,7 +556,7 @@ def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
 
 def _checkpoint_configuration(
     *,
-    canonical_path: Path,
+    deal_source: Mapping[str, Any],
     skatzero_root: Path,
     model_root: Path,
     b1_model: Path,
@@ -517,7 +568,7 @@ def _checkpoint_configuration(
     bid_threshold: float,
 ) -> dict[str, Any]:
     return {
-        "canonical_path": str(canonical_path.resolve()),
+        "deal_source": dict(deal_source),
         "skatzero_root": str(skatzero_root.resolve()),
         "model_root": str(model_root.resolve()),
         "b1_model": str(b1_model.resolve()),
@@ -556,7 +607,7 @@ def _load_checkpoint(
 
 
 def run_gate(
-    canonical_path: Path,
+    canonical_path: Path | None,
     skatzero_root: Path,
     model_root: Path,
     b1_model: Path,
@@ -568,11 +619,30 @@ def run_gate(
     accuracy: int,
     bid_threshold: float,
     checkpoint_path: Path | None = None,
+    deal_set_path: Path | None = None,
 ) -> dict[str, Any]:
-    deals = select_deals(canonical_path, count=deal_count, seed=selection_seed)
+    if (canonical_path is None) == (deal_set_path is None):
+        raise ValueError("EXACTLY_ONE_DEAL_SOURCE_REQUIRED")
+    if deal_set_path is not None:
+        deals = load_deal_set(deal_set_path)
+        if len(deals) != deal_count:
+            raise ValueError(f"DEAL_SET_COUNT_MISMATCH:{len(deals)}!={deal_count}")
+        deal_source = {
+            "kind": "deal_set",
+            "path": str(deal_set_path.resolve()),
+            "sha256": _sha256_file(deal_set_path),
+        }
+    else:
+        assert canonical_path is not None
+        deals = select_deals(canonical_path, count=deal_count, seed=selection_seed)
+        deal_source = {
+            "kind": "canonical_jsonl",
+            "path": str(canonical_path.resolve()),
+        }
+
     b1 = NeuralBiddingPolicy.load(b1_model, device="cpu")
     configuration = _checkpoint_configuration(
-        canonical_path=canonical_path,
+        deal_source=deal_source,
         skatzero_root=skatzero_root,
         model_root=model_root,
         b1_model=b1_model,
@@ -696,7 +766,8 @@ def run_gate(
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--canonical", type=Path, required=True)
+    p.add_argument("--canonical", type=Path)
+    p.add_argument("--deal-set", type=Path)
     p.add_argument("--skatzero-root", type=Path, required=True)
     p.add_argument("--model-root", type=Path, required=True)
     p.add_argument("--b1-model", type=Path, required=True)
@@ -722,6 +793,7 @@ def main() -> None:
         accuracy=args.b0_accuracy,
         bid_threshold=args.b0_bid_threshold,
         checkpoint_path=args.checkpoint,
+        deal_set_path=args.deal_set,
     )
     _atomic_write_json(args.output, result)
     print(json.dumps(result["summary"], indent=2, sort_keys=True))
