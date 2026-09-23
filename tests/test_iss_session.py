@@ -122,3 +122,10 @@ def test_table_start_reconnect_restores_move_transcript():
     assert [m.kind for m in table.moves] == [
         "initial_deal", "bid", "pass", "pass"
     ]
+
+
+def test_table_directory_updates_do_not_require_local_table_session():
+    s = ISSSessionState()
+    assert s.apply(parse_service_line("tables + T9 3 0 . . . -1")) is None
+    assert s.apply(parse_service_line("tables - T9")) is None
+    assert s.tables == {}

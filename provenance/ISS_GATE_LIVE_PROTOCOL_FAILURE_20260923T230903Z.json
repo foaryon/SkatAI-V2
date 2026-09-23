@@ -1,0 +1,22 @@
+{
+  "attempt_source_commit": "4e5fb38798ca01ec420d9ff81499c93ff948d9ee",
+  "authenticated": true,
+  "captured_at": "2026-09-23T23:11:33Z",
+  "classification": "NON_SCORING_INFRASTRUCTURE_PROTOCOL_FAILURE",
+  "connection_events_sha256": "0af49c9b2ce4c474e4598eb91d9161ba5f279e1401df892da675b91baddba5fe",
+  "failure": "EVENT_FOR_UNKNOWN_TABLE on global tables + directory update",
+  "fix": {
+    "full_suite_passed": 256,
+    "regression_test": "tests/test_iss_session.py::test_table_directory_updates_do_not_require_local_table_session",
+    "source": "src/skatai/iss/session.py",
+    "targeted_tests_passed": 10
+  },
+  "next_action": "Commit the protocol fix, preserve this failure as non-scoring evidence, and retry the frozen gate without changing quotas or decision rule.",
+  "root_cause": "ISSSessionState.apply evaluated generic table_* handling before table_update/table_remove directory events.",
+  "schema": "skatai.v2.iss-live-protocol-failure.v1",
+  "scored_game": false,
+  "service_journal_sha256": "b015a8073d0d81efee26cec2d6d116f34c105af2895404cf7ec28c248a2104ef",
+  "table_game_started": false,
+  "worker_exit_code": 1,
+  "worker_stderr_sha256": "e093d1a985d3ca789d8be18dcfd5d6b3276358ed0e8cf8e4771500c5bdb8e81c"
+}

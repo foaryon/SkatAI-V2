@@ -205,14 +205,6 @@ class ISSSessionState:
             self.service_errors.append(str(event.fields.get("text") or ""))
             return None
 
-        if event.kind.startswith("table_"):
-            table_id = str(event.fields.get("table_id") or "")
-            table = self.tables.get(table_id)
-            if table is None:
-                raise ISSSessionError(f"EVENT_FOR_UNKNOWN_TABLE:{table_id}")
-            table.apply(event)
-            return table
-
         # Directory/listing events are intentionally outside the per-game state.
         if event.kind in {
             "client_update",
@@ -222,5 +214,13 @@ class ISSSessionState:
             "unknown",
         }:
             return None
+
+        if event.kind.startswith("table_"):
+            table_id = str(event.fields.get("table_id") or "")
+            table = self.tables.get(table_id)
+            if table is None:
+                raise ISSSessionError(f"EVENT_FOR_UNKNOWN_TABLE:{table_id}")
+            table.apply(event)
+            return table
 
         raise ISSSessionError(f"UNSUPPORTED_SERVICE_EVENT:{event.kind}")
