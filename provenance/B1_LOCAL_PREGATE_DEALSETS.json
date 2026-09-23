@@ -1,0 +1,39 @@
+{
+  "schema": "skatai.v2.local-pregate-deal-set-provenance.v1",
+  "status": "FROZEN_REMOTE_VERIFIED",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "source": {
+    "object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+    "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+    "bytes": 13077428492,
+    "records": 10845022,
+    "split": "test (2024 non-benchmark-bot games)"
+  },
+  "selection": {
+    "algorithm": "deterministic SHA-256 rank by seed:semantic_identity",
+    "seed": 20260923,
+    "nested_prefix_property_tested": true,
+    "nested_prefix_test_commit": "0ddeee8a64e9c07bd1d11fba05212b1e5ee77899"
+  },
+  "artifacts": {
+    "screen_30": {
+      "count": 30,
+      "bytes": 22126,
+      "sha256": "3a31a2bafa6ebb4669a63fa12ce4aa6fb604438fa644cec21672c401241b3889",
+      "object": "s3://skatai-v2/evaluation/V2-B1-bidding-linearish-full-v1/local-pregate/dealsets/screen-30.json",
+      "remote_sha256_verified": true
+    },
+    "local_confirmation_100": {
+      "count": 100,
+      "bytes": 72304,
+      "sha256": "cc5766ba3ccedd3a7f65eedd32fd6aae585d6b236de6091758a3a6217974ef0f",
+      "object": "s3://skatai-v2/evaluation/V2-B1-bidding-linearish-full-v1/local-pregate/dealsets/local-confirmation-100.json",
+      "remote_sha256_verified": true
+    }
+  },
+  "relationship": {
+    "screen_is_first_30_of_confirmation_same_seed_order": true
+  },
+  "strength_claim_authorized": false
+}
