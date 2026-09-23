@@ -196,6 +196,41 @@ def parse_service_line(line: str) -> ServiceEvent:
     return ServiceEvent("unknown", raw, {"parts": parts})
 
 
+
+def parse_table_start_payload(payload: str) -> dict[str, Any]:
+    """Parse the documented ISS table start payload.
+
+    Format:
+      <game-num> <p0> <time0> <p1> <time1> <p2> <time2>
+      [<!|p|w> <sgf-game>]
+    """
+    raw = str(payload).strip()
+    parts = raw.split()
+    if len(parts) < 7:
+        raise ISSServiceError(f"TABLE_START_EXPECTED_AT_LEAST_7_FIELDS:{len(parts)}")
+    try:
+        game_num = int(parts[0])
+        remaining = (float(parts[2]), float(parts[4]), float(parts[6]))
+    except ValueError as exc:
+        raise ISSServiceError("TABLE_START_BAD_NUMBER") from exc
+    players = (parts[1], parts[3], parts[5])
+    if any(not x for x in players):
+        raise ISSServiceError("TABLE_START_EMPTY_PLAYER")
+    view_mode = None
+    replay_sgf = None
+    if len(parts) > 7:
+        view_mode = parts[7]
+        if view_mode not in {"!", "p", "w"}:
+            raise ISSServiceError(f"TABLE_START_BAD_VIEW_MODE:{view_mode}")
+        replay_sgf = raw.split(None, 8)[8] if len(parts) > 8 else ""
+    return {
+        "game_num": game_num,
+        "players": players,
+        "remaining_time_s": remaining,
+        "view_mode": view_mode,
+        "replay_sgf": replay_sgf,
+    }
+
 def command_ready(table_id: str, viewer_name: str) -> str:
     return f"table {table_id} {viewer_name} ready"
 

@@ -115,3 +115,23 @@ def test_table_lifecycle_commands_fail_closed_on_bad_tokens():
         command_create_table(players=3, table_password="pw")
     with pytest.raises(ISSServiceError):
         command_invite("T 7", "SkatAI", "kermit")
+
+
+def test_parse_documented_table_start_payload():
+    from skatai.iss.service import parse_table_start_payload
+
+    x = parse_table_start_payload("17 SkatAI 233.5 kermit 210 zoot 199.25")
+    assert x["game_num"] == 17
+    assert x["players"] == ("SkatAI", "kermit", "zoot")
+    assert x["remaining_time_s"] == (233.5, 210.0, 199.25)
+    assert x["view_mode"] is None
+
+
+def test_parse_reconnect_start_payload_preserves_replay_sgf():
+    from skatai.iss.service import parse_table_start_payload
+
+    x = parse_table_start_payload(
+        "17 SkatAI 200 kermit 199 zoot 198 ! (;GM[Skat]ID[17])"
+    )
+    assert x["view_mode"] == "!"
+    assert x["replay_sgf"] == "(;GM[Skat]ID[17])"
