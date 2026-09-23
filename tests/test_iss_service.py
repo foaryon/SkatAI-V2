@@ -81,3 +81,37 @@ def test_outbound_command_formatters():
 def test_outbound_newline_rejected():
     with pytest.raises(ISSServiceError):
         command_play("T1", "skatai", "18\nerror")
+
+
+def test_official_table_lifecycle_commands():
+    from skatai.iss.service import (
+        command_create_table,
+        command_invite,
+        command_observe,
+    )
+
+    assert command_create_table(players=3) == "create / 3"
+    assert command_create_table(
+        players=3, table_name="SkatAItest", table_password="pw123"
+    ) == "create / 3 SkatAItest pw123"
+    assert command_observe("T7") == "observe T7"
+    assert command_join("T7") == "join T7"
+    assert command_invite("T7", "SkatAI", "kermit") == (
+        "table T7 SkatAI invite kermit"
+    )
+
+
+def test_table_lifecycle_commands_fail_closed_on_bad_tokens():
+    from skatai.iss.service import (
+        ISSServiceError,
+        command_create_table,
+        command_invite,
+    )
+    import pytest
+
+    with pytest.raises(ISSServiceError):
+        command_create_table(players=2)
+    with pytest.raises(ISSServiceError):
+        command_create_table(players=3, table_password="pw")
+    with pytest.raises(ISSServiceError):
+        command_invite("T 7", "SkatAI", "kermit")

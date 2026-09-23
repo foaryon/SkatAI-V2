@@ -206,16 +206,56 @@ def command_play(table_id: str, viewer_name: str, move: str) -> str:
     return f"table {table_id} {viewer_name} play {move}"
 
 
-def command_join(table_id: str, table_password: str) -> str:
-    if not table_id or not table_password:
-        raise ISSServiceError("JOIN_REQUIRES_TABLE_AND_PASSWORD")
-    if any(ch in table_id + table_password for ch in "\r\n "):
-        raise ISSServiceError("BAD_JOIN_TOKEN")
-    return f"join {table_id} {table_password}"
+def _service_token(value: str, *, name: str) -> str:
+    value = str(value)
+    if not value or any(ch.isspace() for ch in value):
+        raise ISSServiceError(f"BAD_{name}_TOKEN")
+    return value
+
+
+def command_join(table_id: str, table_password: str | None = None) -> str:
+    table = _service_token(table_id, name="TABLE")
+    if table_password in (None, ""):
+        return f"join {table}"
+    password = _service_token(str(table_password), name="TABLE_PASSWORD")
+    return f"join {table} {password}"
+
+
+def command_observe(table_id: str) -> str:
+    return f"observe {_service_token(table_id, name='TABLE')}"
+
+
+def command_create_table(
+    *,
+    players: int = 3,
+    table_name: str | None = None,
+    table_password: str | None = None,
+) -> str:
+    if int(players) not in (3, 4):
+        raise ISSServiceError(f"BAD_TABLE_PLAYER_COUNT:{players}")
+    if table_name is None:
+        if table_password not in (None, ""):
+            raise ISSServiceError("PUBLIC_TABLE_CANNOT_HAVE_PASSWORD")
+        return f"create / {int(players)}"
+
+    name = _service_token(table_name, name="TABLE_NAME")
+    if table_password in (None, ""):
+        raise ISSServiceError("PRIVATE_TABLE_REQUIRES_PASSWORD")
+    password = _service_token(str(table_password), name="TABLE_PASSWORD")
+    return f"create / {int(players)} {name} {password}"
+
+
+def command_invite(table_id: str, viewer_name: str, invitee: str) -> str:
+    table = _service_token(table_id, name="TABLE")
+    viewer = _service_token(viewer_name, name="VIEWER")
+    target = _service_token(invitee, name="INVITEE")
+    return f"table {table} {viewer} invite {target}"
 
 
 def command_leave(table_id: str, viewer_name: str) -> str:
-    return f"table {table_id} {viewer_name} leave"
+    table = _service_token(table_id, name="TABLE")
+    viewer = _service_token(viewer_name, name="VIEWER")
+    return f"table {table} {viewer} leave"
 
 
 def command_keepalive() -> str:
