@@ -1,31 +1,12 @@
 {
-  "schema": "skatai.v2.iss-protocol-reference.v1",
-  "status": "VERIFIED_REFERENCE",
-  "source": {
-    "provider": "International Skat Server",
-    "software_page": "https://skatgame.net/iss/software.html",
-    "archive": "https://skatgame.net/iss/clients.tgz",
-    "published_version": "14.11033.16",
-    "published_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
-    "verified_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
-    "sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656",
-    "bytes": 3142758,
-    "license": "GPLv3"
-  },
-  "reference_files": [
-    "README-clients",
-    "doc/skat-game-format",
-    "src/common/SimpleState.java",
-    "src/common/SimpleGame.java",
-    "src/client/SamplePlayer.java",
-    "c++/src/jni/README"
+  "documented_service_facts_used": [
+    "TCP login sends client ID, expects literal password:, sends password, expects Welcome line",
+    "create <table-id> <player|.> <table-type> creates player/observer table context",
+    "invite <from> <table-id> <table-password> can be accepted via join <table-id> <table-password>",
+    "table events include play/start/end/state/go/stop/tell/error",
+    "table outbound actions include ready and play",
+    "time is used as a connection keepalive"
   ],
-  "v2_policy": {
-    "legacy_or_reference_code_copied_into_v2": false,
-    "protocol_facts_reimplemented_cleanly": true,
-    "active_live_client_authorized": false,
-    "credentials_present_in_git": false
-  },
   "documented_wire_facts_used": [
     "actors w/0/1/2",
     "initial deal view uses three 10-card hands plus two-card skat with ?? for unknown cards",
@@ -36,5 +17,33 @@
     "world delivers two skat cards",
     "declaration/discard encoded as game-type plus optional dot-separated cards",
     "cardplay uses two-character card tokens"
-  ]
+  ],
+  "reference_files": [
+    "README-clients",
+    "doc/skat-game-format",
+    "src/common/SimpleState.java",
+    "src/common/SimpleGame.java",
+    "src/client/SamplePlayer.java",
+    "c++/src/jni/README"
+  ],
+  "schema": "skatai.v2.iss-protocol-reference.v1",
+  "source": {
+    "archive": "https://skatgame.net/iss/clients.tgz",
+    "bytes": 3142758,
+    "license": "GPLv3",
+    "provider": "International Skat Server",
+    "published_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
+    "published_version": "14.11033.16",
+    "sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656",
+    "software_page": "https://skatgame.net/iss/software.html",
+    "verified_md5": "2e8ee6f1550bf02de70c20d19e1dc64c"
+  },
+  "status": "VERIFIED_REFERENCE",
+  "v2_policy": {
+    "active_live_client_authorized": false,
+    "credentials_present_in_git": false,
+    "legacy_or_reference_code_copied_into_v2": false,
+    "live_network_login_performed": false,
+    "protocol_facts_reimplemented_cleanly": true
+  }
 }
