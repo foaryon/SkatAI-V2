@@ -1,21 +1,13 @@
 {
-  "schema": "skatai.v2.external-reference.v1",
   "asset_id": "iss-official-clients-2019",
-  "status": "VERIFIED_EXTERNAL_REFERENCE_ONLY",
-  "source": {
-    "home": "https://skatgame.net/iss/",
-    "software_page": "https://skatgame.net/iss/software.html",
-    "download_page": "https://skatgame.net/iss/download.html",
-    "archive": "https://skatgame.net/iss/clients.tgz",
-    "published_version": "14.11033.16",
-    "published_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
-    "verified_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
-    "verified_sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656",
-    "license": "GPLv3"
-  },
+  "persistent_object": "s3://skatai-v2/provenance/external-reference/iss/14.11033.16/clients.tgz",
   "reference_findings": {
-    "message_protocol_declared_open": true,
-    "program_interface_available": true,
+    "documented_control_moves": [
+      "RE",
+      "SC[.<cards>...]",
+      "TI.<seat>",
+      "LE.<seat>"
+    ],
     "documented_core_state_abstractions": [
       "SimpleGame",
       "SimpleState"
@@ -28,13 +20,36 @@
       "skat-or-hand-declaration",
       "skat delivery",
       "discard-and-declaration",
-      "cardplay"
-    ]
+      "cardplay",
+      "finished"
+    ],
+    "hidden_information_behavior": [
+      "skat delivery is hidden from defenders/public view",
+      "discard identities are hidden from defenders/public view",
+      "ouvert declarer cards are revealed to opponents/public view"
+    ],
+    "message_protocol_declared_open": true,
+    "official_ai_legality_boundary": "client clones current state, applies candidate move locally, and refuses/replaces illegal moves before transmit",
+    "program_interface_available": true
   },
+  "remote_sha256_verified": true,
+  "schema": "skatai.v2.external-reference.v1",
+  "source": {
+    "archive": "https://skatgame.net/iss/clients.tgz",
+    "download_page": "https://skatgame.net/iss/download.html",
+    "home": "https://skatgame.net/iss/",
+    "license": "GPLv3",
+    "published_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
+    "published_version": "14.11033.16",
+    "software_page": "https://skatgame.net/iss/software.html",
+    "verified_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
+    "verified_sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656"
+  },
+  "status": "VERIFIED_EXTERNAL_REFERENCE_ONLY",
   "v2_policy": {
     "copy_source_into_v2": false,
     "execute_as_v2_runtime": false,
-    "use": "protocol/documentation reference for independent V2 implementation",
-    "reason": "V2 clean-slate boundary plus GPL reference-source separation"
+    "reason": "V2 clean-slate boundary plus GPL reference-source separation",
+    "use": "protocol/documentation reference for independent V2 implementation"
   }
 }
