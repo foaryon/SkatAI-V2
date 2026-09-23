@@ -254,6 +254,8 @@ def client_from_environment(
       one of ISS_PASSWORD or ISS_PASSWORD_FILE
     Optional:
       ISS_PORT (default 7000)
+      ISS_CONNECT_TIMEOUT_S (default 15)
+      ISS_READ_TIMEOUT_S (default 120; empty disables read timeout)
 
     ISS_PASSWORD_FILE is intended for mounted/RunPod secrets and must not be
     group- or world-readable.
@@ -272,8 +274,11 @@ def client_from_environment(
         password = secret_path.read_text(encoding="utf-8").rstrip("\r\n")
     try:
         port = int(os.environ.get("ISS_PORT", "7000"))
+        connect_timeout_s = float(os.environ.get("ISS_CONNECT_TIMEOUT_S", "15"))
+        read_timeout_raw = os.environ.get("ISS_READ_TIMEOUT_S", "120").strip()
+        read_timeout_s = None if not read_timeout_raw else float(read_timeout_raw)
     except ValueError as exc:
-        raise ValueError("BAD_ISS_PORT_ENV") from exc
+        raise ValueError("BAD_ISS_CONNECTION_ENV") from exc
 
     if not host:
         raise ValueError("MISSING_ISS_HOST")
@@ -283,7 +288,13 @@ def client_from_environment(
         raise ValueError("MISSING_ISS_PASSWORD")
 
     transport = ISSLineTransport(
-        ISSConnectionConfig(host=host, port=port, client_id=client_id)
+        ISSConnectionConfig(
+            host=host,
+            port=port,
+            client_id=client_id,
+            connect_timeout_s=connect_timeout_s,
+            read_timeout_s=read_timeout_s,
+        )
     )
     client = ISSClientCore(
         transport,

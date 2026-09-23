@@ -31,6 +31,7 @@ from skatai.evaluation.iss_result import ISSResultError, live_game_result, playe
 from skatai.iss.bridge import ISSSkatAIDecisionProvider
 from skatai.iss.client import ISSClientCore, ISSClientPolicy, client_from_environment
 from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+from skatai.iss.transport import ISSTransportError
 from skatai.iss.service import (
     command_create_table,
     command_invite,
@@ -100,6 +101,134 @@ class ActiveGame:
     assignment: GameAssignment
     protocol_offset: int
     effect_offset: int
+
+
+ACTIVE_GAMES_SCHEMA = "skatai.v2.external-iss-active-games.v1"
+
+
+@dataclass(frozen=True)
+class ReconnectPolicy:
+    base_delay_s: float = 2.0
+    max_delay_s: float = 60.0
+    attempts_per_cycle: int = 12
+    cooldown_s: float = 300.0
+
+    def validate(self) -> None:
+        if self.base_delay_s <= 0 or self.max_delay_s <= 0:
+            raise ValueError("RECONNECT_DELAY_MUST_BE_POSITIVE")
+        if self.max_delay_s < self.base_delay_s:
+            raise ValueError("RECONNECT_MAX_DELAY_LT_BASE")
+        if self.attempts_per_cycle < 1:
+            raise ValueError("RECONNECT_ATTEMPTS_PER_CYCLE_LT_ONE")
+        if self.cooldown_s <= 0:
+            raise ValueError("RECONNECT_COOLDOWN_MUST_BE_POSITIVE")
+
+
+def reconnect_policy_from_environment(
+    environ: Mapping[str, str] | None = None,
+) -> ReconnectPolicy:
+    env = os.environ if environ is None else environ
+    try:
+        policy = ReconnectPolicy(
+            base_delay_s=float(env.get("ISS_RECONNECT_BASE_DELAY_S", "2")),
+            max_delay_s=float(env.get("ISS_RECONNECT_MAX_DELAY_S", "60")),
+            attempts_per_cycle=int(env.get("ISS_RECONNECT_ATTEMPTS_PER_CYCLE", "12")),
+            cooldown_s=float(env.get("ISS_RECONNECT_COOLDOWN_S", "300")),
+        )
+    except ValueError as exc:
+        raise ValueError("BAD_ISS_RECONNECT_ENV") from exc
+    policy.validate()
+    return policy
+
+
+def reconnect_delay_s(policy: ReconnectPolicy, attempt_in_cycle: int) -> float:
+    policy.validate()
+    if attempt_in_cycle < 1:
+        raise ValueError("RECONNECT_ATTEMPT_LT_ONE")
+    return min(
+        policy.max_delay_s,
+        policy.base_delay_s * (2 ** (attempt_in_cycle - 1)),
+    )
+
+
+def recoverable_transport_error(exc: ISSTransportError) -> bool:
+    text = str(exc)
+    return (
+        text == "REMOTE_EOF"
+        or text == "NOT_CONNECTED"
+        or text.startswith("CONNECT_FAILED:")
+        or text.startswith("READ_FAILED:")
+        or text.startswith("WRITE_FAILED:")
+    )
+
+
+def active_games_payload(
+    games: Mapping[tuple[str, int], ActiveGame],
+    *,
+    source_commit: str,
+) -> dict[str, Any]:
+    return {
+        "schema": ACTIVE_GAMES_SCHEMA,
+        "source_commit": str(source_commit),
+        "games": [
+            {
+                "table_id": table_id,
+                "game_sequence": int(game_sequence),
+                "assignment": {
+                    "arm": active.assignment.arm,
+                    "stack": active.assignment.stack,
+                    "seat": active.assignment.seat,
+                    "per_arm_target": active.assignment.per_arm_target,
+                    "primary": active.assignment.primary,
+                },
+                "protocol_offset": int(active.protocol_offset),
+                "effect_offset": int(active.effect_offset),
+            }
+            for (table_id, game_sequence), active in sorted(games.items())
+        ],
+    }
+
+
+def parse_active_games_payload(
+    payload: Mapping[str, Any],
+    *,
+    expected_source_commit: str,
+) -> dict[tuple[str, int], ActiveGame]:
+    if payload.get("schema") != ACTIVE_GAMES_SCHEMA:
+        raise ISSGateWorkerError("ACTIVE_GAMES_SCHEMA_MISMATCH")
+    rows = payload.get("games")
+    if not isinstance(rows, list):
+        raise ISSGateWorkerError("ACTIVE_GAMES_ROWS_NOT_LIST")
+    if rows and payload.get("source_commit") != expected_source_commit:
+        raise ISSGateWorkerError(
+            "ACTIVE_GAME_SOURCE_COMMIT_MISMATCH:"
+            + str(payload.get("source_commit"))
+            + "!="
+            + str(expected_source_commit)
+        )
+    out: dict[tuple[str, int], ActiveGame] = {}
+    for row in rows:
+        key = (str(row["table_id"]), int(row["game_sequence"]))
+        if key in out:
+            raise ISSGateWorkerError(f"DUPLICATE_ACTIVE_GAME:{key}")
+        a = row["assignment"]
+        assignment = GameAssignment(
+            arm=str(a["arm"]),
+            stack=str(a["stack"]),
+            seat=int(a["seat"]),
+            per_arm_target=int(a["per_arm_target"]),
+            primary=bool(a["primary"]),
+        )
+        if assignment.arm not in ARMS or assignment.seat not in (0, 1, 2):
+            raise ISSGateWorkerError(f"BAD_ACTIVE_GAME_ASSIGNMENT:{key}")
+        out[key] = ActiveGame(
+            assignment=assignment,
+            protocol_offset=int(row["protocol_offset"]),
+            effect_offset=int(row["effect_offset"]),
+        )
+    if len(out) > 1:
+        raise ISSGateWorkerError("MULTIPLE_ACTIVE_ISS_GAMES_NOT_SUPPORTED")
+    return out
 
 
 def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
@@ -269,6 +398,43 @@ class HetznerEvidenceMirror:
             "returncode": proc.returncode,
         }
 
+    def download_optional(self, remote_rel: str, local: Path) -> bool:
+        remote_rel = remote_rel.lstrip("/")
+        parent_rel, _, name = remote_rel.rpartition("/")
+        parent = self.remote_root + ("/" + parent_rel if parent_rel else "")
+        listed = subprocess.run(
+            ["rclone", "lsf", parent, "--files-only", *RCLONE_S3_ARGS],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if listed.returncode != 0:
+            raise ISSGateWorkerError(
+                f"MIRROR_REMOTE_LIST_FAILED:{remote_rel}:{listed.returncode}"
+            )
+        names = {x.rstrip("/") for x in listed.stdout.splitlines() if x.strip()}
+        if name not in names:
+            return False
+        remote = self.remote_root + "/" + remote_rel
+        local.parent.mkdir(parents=True, exist_ok=True)
+        tmp = local.with_suffix(local.suffix + ".restore-tmp")
+        proc = subprocess.run(
+            ["rclone", "copyto", remote, str(tmp), *RCLONE_S3_ARGS],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            tmp.unlink(missing_ok=True)
+            raise ISSGateWorkerError(
+                f"MIRROR_REMOTE_RESTORE_FAILED:{remote_rel}:{proc.returncode}"
+            )
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, local)
+        return True
+
     def upload_verified(self, local: Path, remote_rel: str) -> dict[str, Any]:
         if not local.is_file():
             raise ISSGateWorkerError(f"MIRROR_LOCAL_FILE_MISSING:{local}")
@@ -412,7 +578,61 @@ class GateEvidence:
         self.effect_journal = paths.runtime_root / "effects.jsonl"
         self.games_dir = paths.runtime_root / "games"
         self.games_dir.mkdir(parents=True, exist_ok=True)
+        self.active_games_path = paths.runtime_root / "active-games.json"
+        self.connection_events_path = paths.runtime_root / "connection-events.jsonl"
         self.mirror = HetznerEvidenceMirror(local_root=paths.runtime_root)
+
+    def append_connection_event(self, event: str, **fields: Any) -> None:
+        payload = {
+            "schema": "skatai.v2.external-iss-connection-event.v1",
+            "unix_ns": time.time_ns(),
+            "event": str(event),
+            **fields,
+        }
+        fd = os.open(
+            self.connection_events_path,
+            os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+            0o600,
+        )
+        try:
+            os.write(
+                fd,
+                (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode(),
+            )
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def restore_active_games(
+        self,
+        *,
+        source_commit: str,
+    ) -> dict[tuple[str, int], ActiveGame]:
+        if not self.active_games_path.exists():
+            self.mirror.download_optional(
+                "current/active-games.json",
+                self.active_games_path,
+            )
+        if not self.active_games_path.exists():
+            return {}
+        payload = json.loads(self.active_games_path.read_text(encoding="utf-8"))
+        return parse_active_games_payload(
+            payload,
+            expected_source_commit=source_commit,
+        )
+
+    def persist_active_games(
+        self,
+        games: Mapping[tuple[str, int], ActiveGame],
+        *,
+        source_commit: str,
+    ) -> dict[str, Any]:
+        payload = active_games_payload(games, source_commit=source_commit)
+        _atomic_json(self.active_games_path, payload)
+        return self.mirror.upload_verified(
+            self.active_games_path,
+            "current/active-games.json",
+        )
 
     @staticmethod
     def _file_size(path: Path) -> int:
@@ -667,6 +887,8 @@ class GateEvidence:
             (self.diagnostic_path, "current/diagnostic-games.jsonl"),
             (self.protocol_journal, "current/service.jsonl"),
             (self.effect_journal, "current/effects.jsonl"),
+            (self.active_games_path, "current/active-games.json"),
+            (self.connection_events_path, "current/connection-events.jsonl"),
             (self.paths.runtime_root / "status.json", "current/status.json"),
         ):
             if local.exists():
@@ -735,6 +957,23 @@ class ExternalGateWorker:
         self.desired_stack: str | None = None
         self.table_id: str | None = None
         self._table_password: str | None = None
+        self._transport_failure_streak = 0
+
+    def _restore_active_game_authority(self) -> None:
+        restored = self.evidence.restore_active_games(source_commit=self.source_commit)
+        self.assignment_by_game = restored
+        if not restored:
+            return
+        (table_id, _), active = next(iter(restored.items()))
+        self.table_id = table_id
+        self.desired_stack = active.assignment.stack
+        self.switch.set_arm(active.assignment.arm)
+
+    def _persist_active_game_authority(self) -> None:
+        self.evidence.persist_active_games(
+            self.assignment_by_game,
+            source_commit=self.source_commit,
+        )
 
     def campaign_status(self) -> dict[str, Any]:
         rows = self.evidence.scored_rows()
@@ -778,7 +1017,15 @@ class ExternalGateWorker:
             return
         if self.desired_stack is None:
             return
-        self.table_id = str(event.fields["table_id"])
+        incoming_table_id = str(event.fields["table_id"])
+        if (
+            self.table_id == incoming_table_id
+            and any(key[0] == incoming_table_id for key in self.assignment_by_game)
+        ):
+            # Reconnect replay for an already-started game. Do not re-invite
+            # opponents or send READY while that game is in progress.
+            return
+        self.table_id = incoming_table_id
         viewer = str(event.fields["viewer_name"])
         for opponent in self.desired_stack.split("+"):
             self.client.send_service_command(
@@ -795,6 +1042,16 @@ class ExternalGateWorker:
         viewer = str(event.fields["viewer_name"])
         seat = player_seat(players, viewer)
         stack = canonical_opponent_stack(players, skatai_seat=seat)
+        key = (str(event.fields["table_id"]), int(meta["game_num"]))
+        existing = self.assignment_by_game.get(key)
+        if existing is not None:
+            if existing.assignment.stack != stack or existing.assignment.seat != seat:
+                raise ISSGateWorkerError(
+                    f"RECONNECT_ACTIVE_GAME_IDENTITY_MISMATCH:{key}"
+                )
+            self.switch.set_arm(existing.assignment.arm)
+            return
+
         rows = self.evidence.scored_rows()
         target, gate = current_target(rows)
         if target is None:
@@ -807,18 +1064,20 @@ class ExternalGateWorker:
                 seat=seat,
             )
         self.switch.set_arm(assignment.arm)
-        key = (str(event.fields["table_id"]), int(meta["game_num"]))
         self.assignment_by_game[key] = ActiveGame(
             assignment=assignment,
             protocol_offset=self.evidence._file_size(self.evidence.protocol_journal),
             effect_offset=self.evidence._file_size(self.evidence.effect_journal),
         )
+        # This executes before client.handle_line(start), therefore before any
+        # decision produced from the new game can be sent.
+        self._persist_active_game_authority()
 
     def _on_end(self, event, table) -> bool:
         if self.client is None:
             raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
         key = (table.table_id, table.game_sequence)
-        active = self.assignment_by_game.pop(key, None)
+        active = self.assignment_by_game.get(key)
         if active is None:
             raise ISSGateWorkerError(f"MISSING_GAME_ASSIGNMENT:{key}")
         assignment = active.assignment
@@ -840,6 +1099,9 @@ class ExternalGateWorker:
         )
         status = self.campaign_status()
         self.evidence.mirror_game(stored["result"]["game_id"])
+        self.assignment_by_game.pop(key, None)
+        self._persist_active_game_authority()
+        self._transport_failure_streak = 0
         target = status["next_per_arm_target"]
         if target is None:
             self.client.send_service_command(
@@ -864,27 +1126,14 @@ class ExternalGateWorker:
         )
         return True
 
-    def run(self) -> dict[str, Any]:
-        ready = readiness(self.paths)
-        _atomic_json(self.paths.runtime_root / "readiness.json", ready)
-        if not ready["ready"]:
-            raise ISSGateWorkerError(
-                "ISS_GATE_NOT_READY:" + ",".join(ready["blockers"])
-            )
-
-        storage = self.evidence.mirror.probe()
-        _atomic_json(self.paths.runtime_root / "object-storage-readiness.json", storage)
-        if not storage["ok"]:
-            raise ISSGateWorkerError("HETZNER_EVIDENCE_MIRROR_NOT_READY")
-
-        policy = ISSClientPolicy(
-            accept_invitations=True,
-            ready_when_joined=False,
-            ready_after_game=False,
-        )
+    def _run_connected_session(
+        self,
+        *,
+        client_policy: ISSClientPolicy,
+    ) -> dict[str, Any] | None:
         client, password = client_from_environment(
             journal_path=self.evidence.protocol_journal,
-            policy=policy,
+            policy=client_policy,
             move_provider=self.switch,
             effect_guard=self.effect_guard,
         )
@@ -903,22 +1152,33 @@ class ExternalGateWorker:
                     return
 
         keepalive_thread = None
+        connected_at = None
         try:
-            client.connect_and_login(password)
+            actual_client_id = client.connect_and_login(password)
+            connected_at = time.monotonic()
             self.password = None
             password = ""
+            self.evidence.append_connection_event(
+                "CONNECTED",
+                client_id=actual_client_id,
+                transport_failure_streak=self._transport_failure_streak,
+            )
             keepalive_thread = threading.Thread(
                 target=keepalive_loop,
                 name="iss-keepalive",
                 daemon=True,
             )
             keepalive_thread.start()
-            self._create_next_table()
+            if self.table_id is None:
+                self._create_next_table()
             while True:
                 if keepalive_error:
+                    exc = keepalive_error[0]
+                    if isinstance(exc, ISSTransportError):
+                        raise exc
                     raise ISSGateWorkerError(
-                        f"KEEPALIVE_FAILED:{type(keepalive_error[0]).__name__}"
-                    ) from keepalive_error[0]
+                        f"KEEPALIVE_FAILED:{type(exc).__name__}"
+                    ) from exc
                 line = client.transport.read_line()
                 self._on_start_preapply(line)
                 event = client.handle_line(line)
@@ -938,9 +1198,71 @@ class ExternalGateWorker:
             keepalive_stop.set()
             if keepalive_thread is not None:
                 keepalive_thread.join(timeout=2.0)
+            elapsed = (
+                None if connected_at is None else time.monotonic() - connected_at
+            )
+            self.evidence.append_connection_event(
+                "CONNECTION_CLOSED",
+                connected_duration_s=elapsed,
+            )
             self.password = None
             password = ""
             client.close()
+            self.client = None
+
+    def run(self) -> dict[str, Any]:
+        ready = readiness(self.paths)
+        _atomic_json(self.paths.runtime_root / "readiness.json", ready)
+        if not ready["ready"]:
+            raise ISSGateWorkerError(
+                "ISS_GATE_NOT_READY:" + ",".join(ready["blockers"])
+            )
+
+        storage = self.evidence.mirror.probe()
+        _atomic_json(self.paths.runtime_root / "object-storage-readiness.json", storage)
+        if not storage["ok"]:
+            raise ISSGateWorkerError("HETZNER_EVIDENCE_MIRROR_NOT_READY")
+
+        self._restore_active_game_authority()
+        client_policy = ISSClientPolicy(
+            accept_invitations=True,
+            ready_when_joined=False,
+            ready_after_game=False,
+        )
+        reconnect = reconnect_policy_from_environment()
+        attempt_in_cycle = 0
+
+        while True:
+            try:
+                result = self._run_connected_session(client_policy=client_policy)
+                if result is not None:
+                    return result
+            except ISSTransportError as exc:
+                if not recoverable_transport_error(exc):
+                    raise
+                self._transport_failure_streak += 1
+                attempt_in_cycle += 1
+                if attempt_in_cycle >= reconnect.attempts_per_cycle:
+                    delay = reconnect.cooldown_s
+                    self.evidence.append_connection_event(
+                        "RECONNECT_CYCLE_COOLDOWN",
+                        reason=str(exc),
+                        failure_streak=self._transport_failure_streak,
+                        attempts_in_cycle=attempt_in_cycle,
+                        delay_s=delay,
+                    )
+                    attempt_in_cycle = 0
+                else:
+                    delay = reconnect_delay_s(reconnect, attempt_in_cycle)
+                    self.evidence.append_connection_event(
+                        "RECONNECT_WAIT",
+                        reason=str(exc),
+                        failure_streak=self._transport_failure_streak,
+                        attempt_in_cycle=attempt_in_cycle,
+                        delay_s=delay,
+                    )
+                time.sleep(delay)
+                continue
 
 
 def main() -> None:

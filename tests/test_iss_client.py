@@ -249,3 +249,27 @@ def test_service_send_lock_serializes_public_command_path(tmp_path):
     assert hasattr(c, "_send_lock")
     c.send_service_command("time")
     assert tr.sent[-1] == "time"
+
+
+def test_client_environment_sets_safe_connection_timeouts(monkeypatch):
+    from skatai.iss.client import client_from_environment
+
+    monkeypatch.setenv("ISS_HOST", "skatgame.net")
+    monkeypatch.setenv("ISS_CLIENT_ID", "SkatAI")
+    monkeypatch.setenv("ISS_PASSWORD", "test-only")
+    monkeypatch.setenv("ISS_CONNECT_TIMEOUT_S", "7")
+    monkeypatch.setenv("ISS_READ_TIMEOUT_S", "90")
+    client, _ = client_from_environment()
+    assert client.transport.config.connect_timeout_s == 7
+    assert client.transport.config.read_timeout_s == 90
+
+
+def test_client_environment_can_disable_read_timeout(monkeypatch):
+    from skatai.iss.client import client_from_environment
+
+    monkeypatch.setenv("ISS_HOST", "skatgame.net")
+    monkeypatch.setenv("ISS_CLIENT_ID", "SkatAI")
+    monkeypatch.setenv("ISS_PASSWORD", "test-only")
+    monkeypatch.setenv("ISS_READ_TIMEOUT_S", "")
+    client, _ = client_from_environment()
+    assert client.transport.config.read_timeout_s is None
