@@ -55,7 +55,11 @@ def test_invite_join_create_ready_end_ready_lifecycle(tmp_path):
 
     rows = [json.loads(x) for x in (tmp_path / "iss.jsonl").read_text().splitlines()]
     assert any(x["direction"] == "in" and x["line"].startswith("invite ") for x in rows)
-    assert any(x["direction"] == "out" and x["line"] == "join T1 pw1" for x in rows)
+    assert any(
+        x["direction"] == "out"
+        and x["line"] == "join T1 <redacted-table-password>"
+        for x in rows
+    )
     assert "secret-test-only" not in (tmp_path / "iss.jsonl").read_text()
 
 
@@ -199,3 +203,23 @@ def test_decision_aware_restart_does_not_replay_unresolved_effect(tmp_path):
 
     _, tr2 = build()
     assert tr2.sent.count("table T SkatAIV2 play 20") == 0
+
+
+def test_service_journal_redacts_ephemeral_table_passwords(tmp_path):
+    import json
+    from skatai.iss.client import ISSJournal
+
+    p = tmp_path / "journal.jsonl"
+    j = ISSJournal(p)
+    j.write("in", "invite kermit T7 secretpw")
+    j.write("out", "join T7 secretpw")
+    j.write("out", "create / 3 AIG12345 secretpw")
+    j.write("out", "table T7 SkatAI ready")
+
+    rows = [json.loads(x) for x in p.read_text().splitlines()]
+    text = "\\n".join(x["line"] for x in rows)
+    assert "secretpw" not in text
+    assert rows[0]["line"] == "invite kermit T7 <redacted-table-password>"
+    assert rows[1]["line"] == "join T7 <redacted-table-password>"
+    assert rows[2]["line"] == "create / 3 AIG12345 <redacted-table-password>"
+    assert rows[3]["line"] == "table T7 SkatAI ready"

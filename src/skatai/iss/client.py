@@ -57,6 +57,22 @@ class ISSJournal:
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _redact_service_secret(direction: str, line: str) -> str:
+        parts = str(line).split()
+        if direction == "in" and len(parts) >= 4 and parts[0] == "invite":
+            return " ".join(parts[:3] + ["<redacted-table-password>"])
+        if direction == "out" and len(parts) >= 3 and parts[0] == "join":
+            return " ".join(parts[:2] + ["<redacted-table-password>"])
+        if (
+            direction == "out"
+            and len(parts) >= 5
+            and parts[0] == "create"
+            and parts[1] == "/"
+        ):
+            return " ".join(parts[:4] + ["<redacted-table-password>"])
+        return str(line)
+
     def write(self, direction: str, line: str) -> None:
         if direction not in {"in", "out"}:
             raise ValueError("BAD_JOURNAL_DIRECTION")
@@ -64,7 +80,7 @@ class ISSJournal:
             "schema": CLIENT_RUNTIME_SCHEMA,
             "unix_ns": time.time_ns(),
             "direction": direction,
-            "line": line,
+            "line": self._redact_service_secret(direction, line),
         }
         with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n")
