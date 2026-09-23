@@ -21,6 +21,7 @@ from skatai.evaluation.iss_campaign import (
     observed_counts,
     quota_status,
     target_quotas,
+    next_targets,
 )
 from skatai.evaluation.iss_gate import ISSGameOutcome, decide_external_gate
 from skatai.evaluation.iss_identity import load_identities
@@ -199,10 +200,9 @@ def next_underfilled_stack(
     *,
     per_arm: int,
 ) -> str | None:
-    for stack in PRIMARY_STACKS:
-        if not stack_complete(scored_rows, per_arm=per_arm, stack=stack):
-            return stack
-    return None
+    """Choose the stack from the frozen global quota-priority rule."""
+    targets = next_targets(scored_rows, per_arm=per_arm)
+    return None if not targets else str(targets[0]["opponent"])
 
 
 class RecordingSwitchProvider:
@@ -328,13 +328,27 @@ def verify_deployment_assets(paths: GatePaths) -> dict[str, Any]:
     )
     if not paths.skatzero_python.is_file():
         raise ISSGateWorkerError("SKATZERO_PYTHON_MISSING")
-    proc = subprocess.run(
-        ["git", "-C", str(paths.skatzero_root), "rev-parse", "HEAD"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    )
-    actual_commit = proc.stdout.strip()
+    git_dir = paths.skatzero_root / ".git"
+    if git_dir.exists():
+        proc = subprocess.run(
+            ["git", "-C", str(paths.skatzero_root), "rev-parse", "HEAD"],
+            check=True,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        actual_commit = proc.stdout.strip()
+    else:
+        commit_marker = paths.skatzero_root / ".skatai-upstream-commit"
+        archive_marker = paths.skatzero_root / ".skatai-source-archive-sha256"
+        if not commit_marker.is_file() or not archive_marker.is_file():
+            raise ISSGateWorkerError("B0_SOURCE_IDENTITY_MARKERS_MISSING")
+        actual_commit = commit_marker.read_text(encoding="utf-8").strip()
+        archive_sha = archive_marker.read_text(encoding="utf-8").strip()
+        expected_archive = b0["git_archive_sha256"]
+        if archive_sha != expected_archive:
+            raise ISSGateWorkerError(
+                f"B0_SOURCE_ARCHIVE_MISMATCH:{archive_sha}!={expected_archive}"
+            )
     if actual_commit != b0["upstream_commit"]:
         raise ISSGateWorkerError(
             f"B0_SOURCE_COMMIT_MISMATCH:{actual_commit}!={b0['upstream_commit']}"
@@ -739,9 +753,10 @@ class ExternalGateWorker:
             )
             return False
 
-        # Rotate tables as soon as this complete opponent-stack quota is filled.
+        # Diagnostic/wrong-stack games never pin the campaign to that table.
         rows = self.evidence.scored_rows()
-        if stack_complete(rows, per_arm=target, stack=assignment.stack):
+        next_stack = next_underfilled_stack(rows, per_arm=target)
+        if (not assignment.primary) or next_stack != assignment.stack:
             self.client.send_service_command(
                 command_leave(table.table_id, table.viewer_name)
             )

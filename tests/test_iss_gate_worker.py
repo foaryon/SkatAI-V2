@@ -70,3 +70,12 @@ def test_active_game_offsets_are_explicit():
     assert g.assignment is a
     assert g.protocol_offset == 123
     assert g.effect_offset == 45
+
+
+def test_next_stack_follows_global_frozen_priority_not_first_incomplete_only():
+    # Make kermit+zoot slightly less deficient than kermit+theCount.
+    rows = []
+    for arm in ("B0", "B1"):
+        for seat in (0, 1, 2):
+            rows.append(row(f"kz-{arm}-{seat}", arm, "kermit+zoot", seat))
+    assert next_underfilled_stack(rows, per_arm=300) == "kermit+theCount"
