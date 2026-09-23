@@ -3,29 +3,29 @@ set -euo pipefail
 
 V2_ROOT=/workspace/skatai-v2
 PY=/tmp/skatai-v2-dev/bin/python
-JOURNAL=/workspace/skatai-v2-runtime/iss/preflight/service.jsonl
-RESULT=/workspace/skatai-v2-runtime/iss/preflight/result.json
-if [ -n "$ISS_PREFLIGHT_JOURNAL" ]; then JOURNAL=$ISS_PREFLIGHT_JOURNAL; fi
-if [ -n "$ISS_PREFLIGHT_RESULT" ]; then RESULT=$ISS_PREFLIGHT_RESULT; fi
+JOURNAL=${ISS_PREFLIGHT_JOURNAL:-/workspace/skatai-v2-runtime/iss/preflight/service.jsonl}
+RESULT=${ISS_PREFLIGHT_RESULT:-/workspace/skatai-v2-runtime/iss/preflight/result.json}
 
 mkdir -p "$(dirname "$RESULT")"
 mkdir -p "$(dirname "$JOURNAL")"
 
 export PYTHONPATH="$V2_ROOT/src"
 
-"$PY" - "$RESULT" <<'PY'
+"$PY" - "$RESULT" "$JOURNAL" <<'PY'
 import json, sys, time
 from pathlib import Path
 from skatai.iss.client import client_from_environment
 
 out = Path(sys.argv[1])
-client, password = client_from_environment()
+journal = Path(sys.argv[2])
+client, password = client_from_environment(journal_path=journal)
 start = time.monotonic()
 result = {
     "schema": "skatai.v2.iss-login-preflight.v1",
     "host": client.transport.config.host,
     "port": client.transport.config.port,
     "requested_client_id": client.transport.config.client_id,
+    "journal_path": str(journal),
     "scored_game": False,
     "joined_table": False,
 }
