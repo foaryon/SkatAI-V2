@@ -54,3 +54,19 @@ def test_illegal_follow_suit_is_rejected():
         assert "FOLLOW_VIOLATION" in str(exc) or "PLAY_NOT_OWNED" in str(exc)
     else:
         raise AssertionError("illegal play must be rejected")
+
+
+def test_semantic_identity_is_source_and_record_id_agnostic():
+    a = parse_sgf_line("iss", PLAYED)
+    changed = PLAYED.replace(b"ID[9]", b"ID[9999]").replace(b"R0[0.0]", b"R0[1234.5]")
+    b = parse_sgf_line("mirror", changed)
+    assert a["raw_sha256"] != b["raw_sha256"]
+    assert a["source"] != b["source"]
+    assert a["game_id"] != b["game_id"]
+    assert a["semantic_sha256"] == b["semantic_sha256"]
+
+
+def test_parser_preserves_full_source_timestamp():
+    g = parse_sgf_line("iss", PLAYED)
+    assert g["date"] == "2007-10-29"
+    assert g["timestamp_utc"] == "2007-10-29/04:58:00/UTC"

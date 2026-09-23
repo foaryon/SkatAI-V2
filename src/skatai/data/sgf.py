@@ -87,14 +87,23 @@ def _int_field(fields: dict[str, str], name: str) -> int | None:
 
 
 def _semantic_identity(obj: dict[str, Any]) -> str:
-    core = {
-        k: obj[k]
-        for k in (
-            "source",
-            "game_id",
-            "date",
+    """Source-agnostic game identity.
+
+    Provenance fields (source, source record id, ratings) and derived scoring
+    fields are deliberately excluded. The identity binds the observable game
+    transcript itself so mirrored archive records deduplicate cleanly.
+    """
+    if obj.get("all_pass"):
+        keys = (
             "players",
-            "ratings",
+            "initial_hands",
+            "skat_initial",
+            "bidding_history",
+            "all_pass",
+        )
+    else:
+        keys = (
+            "players",
             "initial_hands",
             "skat_initial",
             "bidding_history",
@@ -106,11 +115,8 @@ def _semantic_identity(obj: dict[str, Any]) -> str:
             "is_ouvert",
             "discards",
             "plays",
-            "won",
-            "game_value",
-            "card_points",
         )
-    }
+    core = {k: obj[k] for k in keys}
     encoded = json.dumps(core, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -262,6 +268,7 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         "raw_sha256": hashlib.sha256(raw_bytes).hexdigest(),
         "game_id": int(tags["ID"]) if tags.get("ID", "").isdigit() else None,
         "date": (tags.get("DT") or "")[:10],
+        "timestamp_utc": tags.get("DT") or "",
         "players": [tags.get("P0", ""), tags.get("P1", ""), tags.get("P2", "")],
         "ratings": [_rating(tags.get("R0")), _rating(tags.get("R1")), _rating(tags.get("R2"))],
         "initial_hands": initial_hands,
@@ -284,21 +291,7 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
                 "bidding_history": bidding_prefix,
                 "all_pass": True,
             }
-            identity_core = {
-                "source": out["source"],
-                "game_id": out["game_id"],
-                "date": out["date"],
-                "players": out["players"],
-                "ratings": out["ratings"],
-                "initial_hands": out["initial_hands"],
-                "skat_initial": out["skat_initial"],
-                "bidding_history": out["bidding_history"],
-                "all_pass": True,
-            }
-            encoded = json.dumps(
-                identity_core, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-            )
-            out["semantic_sha256"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+            out["semantic_sha256"] = _semantic_identity(out)
             return out
 
         common.update(
