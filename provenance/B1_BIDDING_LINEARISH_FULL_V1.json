@@ -1,0 +1,77 @@
+{
+  "artifacts": {
+    "checkpoint-epoch-001.pt": {
+      "sha256": "f23d244f5a8b26c593db1d0d9fa4c357ab22c3f42905eba67ac419d0a8f6953e"
+    },
+    "model.pt": {
+      "sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4"
+    },
+    "offline-eval.json": {
+      "sha256": "709f38374c157c9616bed8b4d47df44440f1d484bc2190b430687ac26aa717a3"
+    },
+    "training-result.json": {
+      "sha256": "f67e34a01c5d991aef92aa6e63dce4804cbcc81d93aaf43f861ff803dba63eb7"
+    }
+  },
+  "candidate_id": "V2-B1-bidding-linearish-full-v1",
+  "dataset": {
+    "dataset_id": "bidding-historical-v1",
+    "external_bot_holdout_rows": 44781076,
+    "manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+    "test_rows": 1088286,
+    "train_rows": 21435764,
+    "trust_level": "D3_SEMANTICALLY_VALID",
+    "validation_rows": 2390888
+  },
+  "limitations": [
+    "Offline imitation/calibration metrics are diagnostic only.",
+    "External-bot calibration shift is material and requires gameplay evidence.",
+    "No ACCEPT/REJECT/INCONCLUSIVE strength decision exists yet."
+  ],
+  "offline_diagnostics": {
+    "external_bot_holdout": {
+      "accuracy_at_0_5": 0.7796192302301981,
+      "brier": 0.1522974389174476,
+      "ece_20": 0.13446364324847368,
+      "log_loss": 0.46616535985430824,
+      "rows": 44781076
+    },
+    "test": {
+      "accuracy_at_0_5": 0.77463001453662,
+      "brier": 0.15455832778023482,
+      "ece_20": 0.01772268638899181,
+      "log_loss": 0.47141804740005155,
+      "rows": 1088286
+    },
+    "validation": {
+      "accuracy_at_0_5": 0.7767561675829232,
+      "brier": 0.1534087612049438,
+      "ece_20": 0.019488527164199278,
+      "log_loss": 0.4685279625397682,
+      "rows": 2390888
+    }
+  },
+  "parent_baseline": "V2-B0",
+  "promotion_status": "NOT_EVALUATED_BY_GAMEPLAY_GATE",
+  "schema": "skatai.v2.candidate-model-provenance.v1",
+  "status": "CANDIDATE_OFFLINE_ONLY",
+  "storage": {
+    "object_prefix": "s3://skatai-v2/models/V2-B1-candidates/bidding-linearish-full-v1/",
+    "remote_artifacts_verified": true,
+    "remote_files": 6,
+    "verification_note": "model/checkpoint/offline-eval/training-result hashes re-read from Hetzner; train.stdout copied as auxiliary log; provenance stored separately"
+  },
+  "strength_claim_authorized": false,
+  "training": {
+    "depth": 0,
+    "dropout": 0.0,
+    "epochs": 1,
+    "hidden_dim": 16,
+    "model_definition_commit": "cee6f1b98625cd0b7dfc3de83ebaa79801642367",
+    "model_schema": "skatai.v2.bidding-mlp.v1",
+    "seed": 20260923,
+    "steps": 665,
+    "training_code_commit": "d4e5ca21fee7c447d6998c25476e03dab221247a"
+  },
+  "treatment": "replace bidding only; keep SkatZero declaration/discard/cardplay frozen"
+}
