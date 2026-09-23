@@ -9,8 +9,9 @@ import torch
 from skatai.data.bidding_features import encode_hand
 from skatai.game.bidding import BiddingState
 from skatai.models.bidding import BiddingMLP, BiddingModelConfig, dense_features
-from skatai.training.bidding import TRAINING_SCHEMA
 from skatai.data.bidding_features import FEATURE_SCHEMA
+
+TRAINING_SCHEMA = "skatai.v2.bidding-training.v1"
 
 
 @dataclass(frozen=True)
