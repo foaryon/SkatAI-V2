@@ -1,0 +1,42 @@
+{
+  "schema": "skatai.v2.b1-local-weakness-diagnostic-provenance.v1",
+  "status": "DIAGNOSTIC_ONLY_NOT_PROMOTION_EVIDENCE",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "source": {
+    "artifact": "local-confirmation-100-v1/result.json",
+    "sha256": "836785a374437bc3417d9865a7a9ca22396765d2eb60fd930c72dad4e184d634",
+    "deals": 100,
+    "paired_candidate_seat_observations": 300
+  },
+  "analysis": {
+    "implementation": "src/skatai/evaluation/bidding_weakness.py",
+    "source_commit": "085ff879207ae403ea18cbc3514e31d5d6bd3a4f",
+    "artifact_sha256": "432472cba0f54bbe7d68677e8b24b1cd7f1bcc74da6891a5d679f3220c8e24ee",
+    "artifact_bytes": 7785,
+    "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/weakness-diagnostic.json"
+  },
+  "descriptive_findings": {
+    "auction_changed_pairs": 71,
+    "auction_unchanged_pairs": 229,
+    "changed_pair_mean_delta": -12.345070422535212,
+    "changed_pair_positive_rate": 0.43661971830985913,
+    "changed_pair_negative_rate": 0.4225352112676056,
+    "declarer_changed_pairs": 50,
+    "candidate_became_declarer": 48,
+    "candidate_lost_declarer": 6,
+    "treatment_null_contract_count": 19,
+    "treatment_null_mean_delta": -30.0
+  },
+  "interpretation": [
+    "The local causal signal is concentrated in auction-changing pairs; unchanged auction/downstream identity pairs have zero payoff delta by construction.",
+    "Declarer changes dominate the changed-auction sample and are the highest-value diagnostic class for future bidding research.",
+    "The Null stratum is small and descriptive only; it is a candidate for focused diagnostic review, not a conclusion of regression.",
+    "This evidence does not ACCEPT or REJECT B1 and must not alter the frozen external ISS rule."
+  ],
+  "training_policy": {
+    "may_modify_current_b1_from_this_report": false,
+    "may_modify_external_gate_protocol_from_this_report": false,
+    "may_use_after_b1_disposition_to_design_new_bounded_experiments": true
+  }
+}
