@@ -1,0 +1,20 @@
+{
+  "schema": "skatai.v2.external-iss-campaign-quota.v1",
+  "status": "FROZEN_BEFORE_FIRST_SCORED_EXTERNAL_GAME",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "arms": ["B0", "B1"],
+  "primary_named_opponents": ["kermit", "zoot", "theCount"],
+  "seats": [0, 1, 2],
+  "looks_per_arm": [300, 1000, 3000],
+  "allocation": {
+    "rule": "At each look, distribute each arm as evenly as integer arithmetic permits across opponent x seat strata.",
+    "maximum_target_imbalance_within_arm": 1,
+    "runtime_priority": "Prefer the arm with fewer scored games, then the most underfilled target stratum; if the highest-priority opponent/seat is unavailable, use the next available underfilled target.",
+    "same_target_distribution_for_b0_and_b1": true,
+    "extra_nonprimary_opponents": "May be recorded diagnostically but are not substituted silently for missing primary quotas in the primary named-opponent gate."
+  },
+  "implementation": "src/skatai/evaluation/iss_campaign.py",
+  "decision_rule": "provenance/B1_EXTERNAL_ISS_DECISION_RULE.json",
+  "ledger_contract": "provenance/B1_EXTERNAL_ISS_LEDGER_CONTRACT.json"
+}
