@@ -175,3 +175,29 @@ def test_gate_requires_exactly_one_deal_source():
             bid_threshold=-5.0,
             deal_set_path=None,
         )
+
+
+def test_hash_selection_is_nested_prefix_for_same_seed():
+    from skatai.evaluation.bidding_gameplay_gate import select_deals_from_games
+
+    games = []
+    cards = [s + r for s in "CSHD" for r in "789TJQKA"]
+    for i in range(140):
+        # rotate a legal deck to make distinct deterministic deal payloads.
+        d = cards[i % 32 :] + cards[: i % 32]
+        games.append(
+            {
+                "source": "iss",
+                "date": "2024-06-01",
+                "players": ["alice", "bob", "carol"],
+                "semantic_sha256": f"{i:064x}",
+                "initial_hands": [d[:10], d[10:20], d[20:30]],
+                "skat_initial": d[30:32],
+            }
+        )
+
+    small, _ = select_deals_from_games(games, count=30, seed=20260923)
+    large, _ = select_deals_from_games(games, count=100, seed=20260923)
+    assert [d.game_identity for d in small] == [
+        d.game_identity for d in large[:30]
+    ]
