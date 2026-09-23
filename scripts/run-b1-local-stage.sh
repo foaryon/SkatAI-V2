@@ -47,6 +47,7 @@ case "$STAGE" in
 esac
 
 V2_ROOT=/workspace/skatai-v2
+"$V2_ROOT/scripts/bootstrap-local-b1-pregate.sh"
 SKATZERO_ROOT=/tmp/skatai-v2-b0
 B0_MODEL_ROOT=/tmp/skatai-v2-b0/models/latest
 B0_PYTHON=/tmp/skatai-v2-b0-venv/bin/python
@@ -64,7 +65,11 @@ RUN_IDENTITY=$OUTPUT_DIR/run-identity.json
 test -x "$B0_PYTHON"
 test -f "$B1_MODEL"
 test -f "$DEAL_SET"
-test "$(git -C "$SKATZERO_ROOT" rev-parse HEAD)" = "$EXPECTED_SKATZERO_COMMIT"
+if [ -d "$SKATZERO_ROOT/.git" ]; then
+  test "$(git -C "$SKATZERO_ROOT" rev-parse HEAD)" = "$EXPECTED_SKATZERO_COMMIT"
+else
+  test "$(cat "$SKATZERO_ROOT/.skatai-upstream-commit")" = "$EXPECTED_SKATZERO_COMMIT"
+fi
 test "$(sha256sum "$B1_MODEL" | cut -d' ' -f1)" = "$EXPECTED_B1_SHA"
 
 "$B0_PYTHON" - <<'PY'
