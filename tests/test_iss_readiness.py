@@ -72,4 +72,28 @@ def test_readiness_reports_missing_credentials_without_values(tmp_path):
         "ISS_HOST": False,
         "ISS_CLIENT_ID": False,
         "ISS_PASSWORD": False,
+        "ISS_PASSWORD_FILE": False,
     }
+
+
+def test_readiness_accepts_password_file_indicator(tmp_path):
+    model = _write(tmp_path / "model.pt", b"model")
+    import hashlib
+    decision = tmp_path / "decision.json"
+    decision.write_text(json.dumps({
+        "status": "LOCAL_GATE_NOT_REGRESSING",
+        "next_action": "REQUIRE_EXTERNAL_DEPLOYMENT_VALID_EVALUATION",
+    }))
+    r = assess_iss_gate_readiness(
+        local_confirmation_decision=decision,
+        b1_model=model,
+        expected_b1_sha256=hashlib.sha256(b"model").hexdigest(),
+        protocol_files={},
+        environ={
+            "ISS_HOST": "skatgame.net",
+            "ISS_CLIENT_ID": "SkatAI",
+            "ISS_PASSWORD_FILE": "/run/secrets/iss-password",
+        },
+    )
+    assert r["checks"]["iss_credentials"]["ok"] is True
+    assert r["checks"]["iss_credentials"]["secret_values_exposed"] is False

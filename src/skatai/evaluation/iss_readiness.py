@@ -63,11 +63,17 @@ def assess_iss_gate_readiness(
         "files": files,
     }
 
-    required_env = ("ISS_HOST", "ISS_CLIENT_ID", "ISS_PASSWORD")
-    present = {name: bool(env.get(name)) for name in required_env}
+    present = {
+        "ISS_HOST": bool(env.get("ISS_HOST")),
+        "ISS_CLIENT_ID": bool(env.get("ISS_CLIENT_ID")),
+        "ISS_PASSWORD": bool(env.get("ISS_PASSWORD")),
+        "ISS_PASSWORD_FILE": bool(env.get("ISS_PASSWORD_FILE")),
+    }
+    has_secret = present["ISS_PASSWORD"] or present["ISS_PASSWORD_FILE"]
     checks["iss_credentials"] = {
-        "ok": all(present.values()),
+        "ok": present["ISS_HOST"] and present["ISS_CLIENT_ID"] and has_secret,
         "present": present,
+        "accepted_secret_inputs": ["ISS_PASSWORD", "ISS_PASSWORD_FILE"],
         "secret_values_exposed": False,
     }
 
