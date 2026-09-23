@@ -5,7 +5,8 @@ import re
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-_BID_VALUE = re.compile(r"^\d+$")
+from skatai.game.bidding import replay
+
 _BENCHMARK_BOT = re.compile(r"^(?:kermit|zoot|thecount)(?::?\d+)?$", re.IGNORECASE)
 
 
@@ -14,11 +15,6 @@ def contains_benchmark_bot(players: list[str] | tuple[str, ...]) -> bool:
 
 
 def split_for_game(game: Mapping[str, Any]) -> str:
-    """Deterministic V2 split from immutable game identity.
-
-    Games containing Kermit, Zoot, or theCount are never training data.
-    Remaining games use a 90/5/5 hash split.
-    """
     players = tuple(str(x) for x in game.get("players", ()))
     if contains_benchmark_bot(players):
         return "external_bot_holdout"
@@ -32,27 +28,32 @@ def split_for_game(game: Mapping[str, Any]) -> str:
     return "test"
 
 
-def iter_bidding_decisions(game: Mapping[str, Any]) -> Iterator[dict[str, Any]]:
-    """Yield supervised bidding decisions using legal decision-time information only.
+def replay_is_eligible(game: Mapping[str, Any]) -> bool:
+    r = replay(game.get("bidding_history") or ())
+    return (
+        r.ok
+        and r.winner == int(game["declarer"])
+        and r.winning_bid == int(game["bid_level"])
+    )
 
-    The canonical history is actor/action pairs. Bidding terminates before the
-    post-bid skat/declaration tokens (s/w/etc.). Future contract/outcome fields
-    are intentionally excluded from model inputs.
-    """
-    history = list(game.get("bidding_history") or ())
+
+def iter_bidding_decisions(game: Mapping[str, Any]) -> Iterator[dict[str, Any]]:
+    """Yield legal decision-time bidding observations and binary targets."""
+    r = replay(game.get("bidding_history") or ())
+    if not (
+        r.ok
+        and r.winner == int(game["declarer"])
+        and r.winning_bid == int(game["bid_level"])
+    ):
+        return
+
     initial_hands = game["initial_hands"]
     split = split_for_game(game)
-    prefix: list[str] = []
+    public_prefix: list[str] = []
 
-    for i in range(0, len(history) - 1, 2):
-        actor_token = str(history[i])
-        action = str(history[i + 1])
-        if actor_token not in {"0", "1", "2"}:
-            break
-        if not (action in {"p", "y"} or _BID_VALUE.fullmatch(action)):
-            break
-
-        actor = int(actor_token)
+    for action in r.actions:
+        actor = action["actor"]
+        before = action["before"]
         yield {
             "schema": "skatai.v2.bidding-decision.v1",
             "source": game["source"],
@@ -61,7 +62,11 @@ def iter_bidding_decisions(game: Mapping[str, Any]) -> Iterator[dict[str, Any]]:
             "actor": actor,
             "seat": actor,
             "hand": list(initial_hands[actor]),
-            "history_before": list(prefix),
-            "target_action": action,
+            "public_bidding_prefix": list(public_prefix),
+            "current_offer": before["current_offer"],
+            "decision_role": before["decision_role"],
+            "legal_native_actions": before["legal_native_actions"],
+            "target": action["target"],
+            "native_observed_action": action["native_action"],
         }
-        prefix.extend((actor_token, action))
+        public_prefix.extend((str(actor), action["native_action"]))
