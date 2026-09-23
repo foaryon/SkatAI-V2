@@ -1,4 +1,5 @@
-from skatai.iss.bridge import ISSFullDecisionProvider, reconstruct_state
+from skatai.iss.bridge import ISSSkatAIDecisionProvider
+from skatai.iss.gameview import replay_player_view
 from skatai.iss.service import parse_service_line
 from skatai.iss.session import TableSession
 from skatai.runtime.interface import SkatAI
@@ -54,7 +55,7 @@ def auction_to_seat2(t):
 def test_full_provider_runs_pickup_declaration_discard_as_separate_decisions():
     t = table()
     auction_to_seat2(t)
-    p = ISSFullDecisionProvider(ai(), release_id="R-B1")
+    p = ISSSkatAIDecisionProvider(ai(), release_id="R-B1")
 
     d = p.next_decision(t)
     assert d.result.decision_type.value == "DECLARATION"
@@ -75,10 +76,9 @@ def test_full_provider_runs_pickup_declaration_discard_as_separate_decisions():
     assert d.wire_action == "H9.H8"
 
     apply(t, "2 H9.H8")
-    s = reconstruct_state(t)
-    assert s is not None
-    assert len(s.current_hand) == 10
-    assert s.discards == ("H9", "H8")
+    s = replay_player_view(t.moves)
+    assert len(s.hand) == 10
+    assert s.discarded_cards == ("H9", "H8")
 
 
 def test_full_provider_cardplay_uses_canonical_legality_and_public_points():
@@ -92,7 +92,7 @@ def test_full_provider_cardplay_uses_canonical_legality_and_public_points():
     apply(t, "0 C7")
     apply(t, "1 D7")
 
-    p = ISSFullDecisionProvider(ai(), release_id="R-B1")
+    p = ISSSkatAIDecisionProvider(ai(), release_id="R-B1")
     d = p.next_decision(t)
     assert d.result.decision_type.value == "PLAY_CARD"
     assert d.wire_action == "C9"  # seat 2 must follow clubs
@@ -113,7 +113,7 @@ def test_hand_game_skips_skat_and_discard():
     t = table()
     auction_to_seat2(t)
     hand_ai = SkatAI(Bid(), HandGrand(), DiscardSkat(), PlayFirst())
-    p = ISSFullDecisionProvider(hand_ai, release_id="R-B0")
+    p = ISSSkatAIDecisionProvider(hand_ai, release_id="R-B0")
     d = p.next_decision(t)
     assert d.result.action == "GH"
     assert d.wire_action == "GH"
@@ -132,7 +132,7 @@ def test_hand_ouvert_wire_reveals_exact_ten_cards_deterministically():
     t = table()
     auction_to_seat2(t)
     hand_ai = SkatAI(Bid(), HandNullOuvert(), DiscardSkat(), PlayFirst())
-    d = ISSFullDecisionProvider(hand_ai, release_id="R").next_decision(t)
+    d = ISSSkatAIDecisionProvider(hand_ai, release_id="R").next_decision(t)
     assert d is not None
     assert d.wire_action.startswith("NHO.")
     assert len(d.wire_action.split(".")) == 11
