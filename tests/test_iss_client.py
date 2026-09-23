@@ -1,0 +1,87 @@
+import json
+
+from skatai.iss.client import ISSClientCore, ISSClientPolicy, ISSJournal
+
+
+class FakeTransport:
+    def __init__(self, lines=()):
+        self.lines = list(lines)
+        self.sent = []
+        self.connected = False
+        self.authenticated_client_id = None
+        self.closed = False
+
+    def connect(self):
+        self.connected = True
+
+    def login(self, password):
+        assert self.connected
+        assert password == "secret-test-only"
+        self.authenticated_client_id = "SkatAIV2"
+        return "SkatAIV2"
+
+    def read_line(self):
+        if not self.lines:
+            raise EOFError
+        return self.lines.pop(0)
+
+    def send_line(self, line):
+        self.sent.append(line)
+
+    def close(self):
+        self.closed = True
+
+
+def test_invite_join_create_ready_end_ready_lifecycle(tmp_path):
+    transport = FakeTransport()
+    journal = ISSJournal(tmp_path / "iss.jsonl")
+    client = ISSClientCore(transport, journal=journal)
+    assert client.connect_and_login("secret-test-only") == "SkatAIV2"
+
+    client.handle_line("invite kermit T1 pw1")
+    assert transport.sent == ["join T1 pw1"]
+
+    client.handle_line("create T1 SkatAIV2 3")
+    assert transport.sent[-1] == "table T1 SkatAIV2 ready"
+
+    client.handle_line("table T1 SkatAIV2 start initial")
+    client.handle_line("table T1 SkatAIV2 play w C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8|??.??.??.??.??.??.??.??.??.??|??.??.??.??.??.??.??.??.??.??|??.??")
+    client.handle_line("table T1 SkatAIV2 end (;GM[Skat])")
+    assert transport.sent[-1] == "table T1 SkatAIV2 ready"
+
+    client.close()
+    assert transport.closed
+    assert not client.state.connected
+
+    rows = [json.loads(x) for x in (tmp_path / "iss.jsonl").read_text().splitlines()]
+    assert any(x["direction"] == "in" and x["line"].startswith("invite ") for x in rows)
+    assert any(x["direction"] == "out" and x["line"] == "join T1 pw1" for x in rows)
+    assert "secret-test-only" not in (tmp_path / "iss.jsonl").read_text()
+
+
+def test_policy_can_disable_automatic_server_actions():
+    transport = FakeTransport()
+    client = ISSClientCore(
+        transport,
+        policy=ISSClientPolicy(
+            accept_invitations=False,
+            ready_when_joined=False,
+            ready_after_game=False,
+        ),
+    )
+    client.connect_and_login("secret-test-only")
+    client.handle_line("invite zoot T2 pw2")
+    client.handle_line("create T2 SkatAIV2 3")
+    client.handle_line("table T2 SkatAIV2 end (;GM[Skat])")
+    assert transport.sent == []
+
+
+def test_table_play_updates_state_without_guessing_a_move():
+    transport = FakeTransport()
+    client = ISSClientCore(transport)
+    client.connect_and_login("secret-test-only")
+    client.handle_line("create T3 SkatAIV2 3")
+    sent_before = list(transport.sent)
+    client.handle_line("table T3 SkatAIV2 play 1 18")
+    assert client.state.tables["T3"].last_move.action == "18"
+    assert transport.sent == sent_before
