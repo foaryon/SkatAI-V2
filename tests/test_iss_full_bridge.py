@@ -1,155 +1,138 @@
-from skatai.iss.bridge import next_skat_action
+from skatai.iss.bridge import ISSFullDecisionProvider, reconstruct_state
 from skatai.iss.service import parse_service_line
 from skatai.iss.session import TableSession
+from skatai.runtime.interface import SkatAI
 
 
-SEAT2_HAND = ("HJ","C9","SK","S8","S7","HT","DA","DK","D9","D7")
-SEAT0_HAND = ("C7","C8","C9","CT","CJ","CQ","CK","CA","S7","S8")
+DEAL_SEAT2 = (
+    "??.??.??.??.??.??.??.??.??.??|"
+    "??.??.??.??.??.??.??.??.??.??|"
+    "HJ.C9.SK.S8.S7.HT.DA.DK.D9.D7|??.??"
+)
 
 
-def deal_for(seat, hand):
-    groups = []
-    for i in range(3):
-        groups.append(".".join(hand if i == seat else ("??",) * 10))
-    return "|".join(groups + ["??.??"])
+class Bid:
+    def probability_continue(self, obs):
+        return 1.0
 
 
-def table_with(lines):
-    t = TableSession("T", "SkatAI", "3", True, in_progress=True)
-    for line in lines:
-        t.apply(parse_service_line("table T SkatAI play " + line))
-    return t
-
-
-AUCTION_SEAT2_WINS = ["1 18", "0 y", "1 p", "2 20", "0 p"]
-
-
-class Engine:
-    def __init__(self, *, bid="CONTINUE", contract="GH", discard=("H9","H8"), card="C7"):
-        self.bid = bid
-        self.contract = contract
-        self.discard = discard
-        self.card = card
-        self.bid_obs = []
-        self.decl_obs = []
-        self.discard_obs = []
-        self.card_obs = []
-
-    def decide_bid(self, obs):
-        self.bid_obs.append(obs)
-        return self.bid
-
+class DeclarePickupThenGrand:
     def choose_contract(self, obs):
-        self.decl_obs.append(obs)
-        return self.contract
+        return "PICKUP" if not obs.picked_up_skat else "G"
 
+
+class DiscardSkat:
     def choose_discard(self, obs):
-        self.discard_obs.append(obs)
-        return self.discard
+        return ("H9", "H8")
 
+
+class PlayFirst:
     def play_card(self, obs):
-        self.card_obs.append(obs)
-        return self.card
+        return obs.legal_cards[0]
 
 
-def test_full_bridge_hand_declaration_for_auction_winner():
-    t = table_with(["w " + deal_for(2, SEAT2_HAND), *AUCTION_SEAT2_WINS])
-    e = Engine(contract="GH")
-    assert next_skat_action(t, e) == "GH"
-    obs = e.decl_obs[-1]
-    assert obs.seat == 2
-    assert obs.winning_bid == 20
-    assert obs.max_accepted_bids_by_seat == (18,18,20)
-    assert "PICKUP" in obs.legal_contracts
+def ai():
+    return SkatAI(Bid(), DeclarePickupThenGrand(), DiscardSkat(), PlayFirst())
 
 
-def test_full_bridge_pickup_then_combined_declaration_and_discard():
-    t = table_with(["w " + deal_for(2, SEAT2_HAND), *AUCTION_SEAT2_WINS])
-    assert next_skat_action(t, Engine(contract="PICKUP")) == "s"
-
-    t.apply(parse_service_line("table T SkatAI play 2 s"))
-    assert next_skat_action(t, Engine(contract="G")) is None
-
-    t.apply(parse_service_line("table T SkatAI play w H9.H8"))
-    e = Engine(contract="G", discard=("H9","H8"))
-    assert next_skat_action(t, e) == "G.H9.H8"
-    assert len(e.decl_obs[-1].cards) == 12
-    assert set(("H9","H8")).issubset(e.decl_obs[-1].cards)
+def table():
+    return TableSession("T", "SkatAI", "3", True, in_progress=True)
 
 
-def test_full_bridge_recovers_split_pickup_declaration():
-    t = table_with([
-        "w " + deal_for(2, SEAT2_HAND),
-        *AUCTION_SEAT2_WINS,
-        "2 s",
-        "w H9.H8",
-        "2 G",
-    ])
-    e = Engine(discard=("H9","H8"))
-    assert next_skat_action(t, e) == "H9.H8"
-    assert len(e.discard_obs) == 1
+def apply(t, move):
+    t.apply(parse_service_line(f"table T SkatAI play {move}"))
 
 
-def test_full_bridge_defender_cardplay_uses_public_state_only():
-    t = table_with([
-        "w " + deal_for(0, SEAT0_HAND),
-        *AUCTION_SEAT2_WINS,
-        "2 GH",
-    ])
-    e = Engine(card="C7")
-    assert next_skat_action(t, e) == "C7"
-    obs = e.card_obs[-1]
-    assert obs.seat == 0
-    assert obs.declarer == 2
-    assert obs.contract == "GH"
+def auction_to_seat2(t):
+    apply(t, f"w {DEAL_SEAT2}")
+    apply(t, "1 18")
+    apply(t, "0 p")
+    apply(t, "2 20")
+    apply(t, "1 p")
+
+
+def test_full_provider_runs_pickup_declaration_discard_as_separate_decisions():
+    t = table()
+    auction_to_seat2(t)
+    p = ISSFullDecisionProvider(ai(), release_id="R-B1")
+
+    d = p.next_decision(t)
+    assert d.result.decision_type.value == "DECLARATION"
+    assert d.result.action == "PICKUP"
+    assert d.wire_action == "s"
+
+    apply(t, "2 s")
+    apply(t, "w H9.H8")
+    d = p.next_decision(t)
+    assert d.result.action == "G"
+    assert d.wire_action == "G"
+    assert len(d.request.observation.cards) == 12
+
+    apply(t, "2 G")
+    d = p.next_decision(t)
+    assert d.result.decision_type.value == "DISCARD"
+    assert d.result.action == "H9.H8"
+    assert d.wire_action == "H9.H8"
+
+    apply(t, "2 H9.H8")
+    s = reconstruct_state(t)
+    assert s is not None
+    assert len(s.current_hand) == 10
+    assert s.discards == ("H9", "H8")
+
+
+def test_full_provider_cardplay_uses_canonical_legality_and_public_points():
+    t = table()
+    auction_to_seat2(t)
+    apply(t, "2 s")
+    apply(t, "w H9.H8")
+    apply(t, "2 G")
+    apply(t, "2 H9.H8")
+    # Forehand and middlehand lead; seat 2 then acts.
+    apply(t, "0 C7")
+    apply(t, "1 D7")
+
+    p = ISSFullDecisionProvider(ai(), release_id="R-B1")
+    d = p.next_decision(t)
+    assert d.result.decision_type.value == "PLAY_CARD"
+    assert d.wire_action == "C9"  # seat 2 must follow clubs
+    obs = d.request.observation
+    assert obs.legal_cards == ("C9",)
+    # Declarer knows own discarded skat; those points seed B0's declarer counter.
     assert obs.points_self == 0
     assert obs.points_other == 0
-    assert obs.skat_cards == ()
-    assert obs.blind_hand is True
+    assert obs.skat_cards == ("H9", "H8")
 
 
-def test_full_bridge_tracks_completed_trick_points_for_defender():
-    t = table_with([
-        "w " + deal_for(0, SEAT0_HAND),
-        *AUCTION_SEAT2_WINS,
-        "2 GH",
-        "0 CA",
-        "1 C7",
-        "2 CT",
-    ])
-    e = Engine(card="C8")
-    assert next_skat_action(t, e) == "C8"
-    obs = e.card_obs[-1]
-    assert obs.points_self == 0
-    assert obs.points_other == 21
-    assert "CA" not in obs.hand
-    assert obs.current_trick == ()
+class HandGrand:
+    def choose_contract(self, obs):
+        return "GH"
 
 
-def test_pickup_declarer_cardplay_includes_visible_discard_points():
-    t = table_with([
-        "w " + deal_for(2, SEAT2_HAND),
-        *AUCTION_SEAT2_WINS,
-        "2 s",
-        "w H9.H8",
-        "2 G.DA.H9",
-        "0 C7",
-        "1 C8",
-    ])
-    e = Engine(card="C9")
-    assert next_skat_action(t, e) == "C9"
-    obs = e.card_obs[-1]
-    assert obs.declarer == 2
-    assert obs.points_self == 11
-    assert obs.points_other == 0
-    assert obs.skat_cards == ("DA","H9")
-    assert "DA" not in obs.hand
-    assert "H9" not in obs.hand
+def test_hand_game_skips_skat_and_discard():
+    t = table()
+    auction_to_seat2(t)
+    hand_ai = SkatAI(Bid(), HandGrand(), DiscardSkat(), PlayFirst())
+    p = ISSFullDecisionProvider(hand_ai, release_id="R-B0")
+    d = p.next_decision(t)
+    assert d.result.action == "GH"
+    assert d.wire_action == "GH"
+
+    apply(t, "2 GH")
+    # Forehand leads, not seat2, so no extra declarer/discard action is produced.
+    assert p.next_decision(t) is None
 
 
-def test_other_player_declaration_phase_never_calls_private_ai_methods():
-    t = table_with(["w " + deal_for(0, SEAT0_HAND), *AUCTION_SEAT2_WINS])
-    e = Engine()
-    assert next_skat_action(t, e) is None
-    assert e.decl_obs == []
-    assert e.discard_obs == []
+class HandNullOuvert:
+    def choose_contract(self, obs):
+        return "NHO"
+
+
+def test_hand_ouvert_wire_reveals_exact_ten_cards_deterministically():
+    t = table()
+    auction_to_seat2(t)
+    hand_ai = SkatAI(Bid(), HandNullOuvert(), DiscardSkat(), PlayFirst())
+    d = ISSFullDecisionProvider(hand_ai, release_id="R").next_decision(t)
+    assert d is not None
+    assert d.wire_action.startswith("NHO.")
+    assert len(d.wire_action.split(".")) == 11
