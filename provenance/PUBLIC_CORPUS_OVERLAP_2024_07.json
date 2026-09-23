@@ -1,0 +1,29 @@
+{
+  "method": "independent raw-line identity audit",
+  "raw_identity": "sha256(raw_line.strip().encode())",
+  "canonical_corpus_sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+  "results": {
+    "iss": {
+      "canonical_unique": 8692393,
+      "public_lines": 9094699,
+      "public_unique": 9094699,
+      "public_duplicates": 0,
+      "canonical_missing_from_public": 0,
+      "public_not_in_canonical": 402306
+    },
+    "skatgame": {
+      "canonical_unique": 2152629,
+      "public_lines": 2237697,
+      "public_unique": 2237697,
+      "public_duplicates": 0,
+      "canonical_missing_from_public": 0,
+      "public_not_in_canonical": 85068
+    }
+  },
+  "conclusion": {
+    "all_canonical_records_present_in_current_public_archives": true,
+    "new_archive_generation_detected": false,
+    "additional_public_raw_lines": 487374,
+    "semantic_classification_of_additional_lines": "PENDING_INDEPENDENT_V2_PARSE"
+  }
+}
