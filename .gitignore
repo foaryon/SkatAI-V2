@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.cache/
+scratch/
+data/
+checkpoints/
+models/
+artifacts-local/
+.env
+*.secret

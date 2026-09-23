@@ -1,0 +1,9 @@
+[object_store]
+provider = "hetzner"
+bucket = "skatai-v2"
+endpoint = "https://fsn1.your-objectstorage.com"
+region = "fsn1"
+
+[policy]
+authoritative_persistent_state = "object_store"
+runpod_workspace_role = "working_cache"
