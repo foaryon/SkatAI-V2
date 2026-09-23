@@ -115,13 +115,62 @@ def _semantic_identity(obj: dict[str, Any]) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _validate_play_ownership(
+def _category(card: str, game_type: str) -> str:
+    suit, rank = card[0], card[1]
+    if game_type == "GRAND":
+        return "TRUMP" if rank == "J" else suit
+    if game_type in {"CLUBS", "SPADES", "HEARTS", "DIAMONDS"}:
+        trump_suit = {
+            "CLUBS": "C",
+            "SPADES": "S",
+            "HEARTS": "H",
+            "DIAMONDS": "D",
+        }[game_type]
+        return "TRUMP" if rank == "J" or suit == trump_suit else suit
+    return suit
+
+
+def _trick_strength(card: str, game_type: str, lead_category: str) -> tuple[int, int]:
+    category = _category(card, game_type)
+    suit, rank = card[0], card[1]
+
+    if game_type == "NULL":
+        null_order = {"7": 0, "8": 1, "9": 2, "T": 3, "J": 4, "Q": 5, "K": 6, "A": 7}
+        return (1 if category == lead_category else 0, null_order[rank])
+
+    if category == "TRUMP":
+        if rank == "J":
+            jack_order = {"D": 11, "H": 12, "S": 13, "C": 14}
+            return (3, jack_order[suit])
+        suit_order = {"7": 0, "8": 1, "9": 2, "Q": 3, "K": 4, "T": 5, "A": 6}
+        return (3, suit_order[rank])
+
+    normal_order = {"7": 0, "8": 1, "9": 2, "Q": 3, "K": 4, "T": 5, "A": 6}
+    if rank == "J":
+        raise SGFParseError("NONTRUMP_JACK_IMPOSSIBLE")
+    return (2 if category == lead_category else 1, normal_order[rank])
+
+
+def _trick_winner(trick: list[list[Any]], game_type: str) -> int:
+    lead_category = _category(trick[0][1], game_type)
+    best_actor = trick[0][0]
+    best = _trick_strength(trick[0][1], game_type, lead_category)
+    for actor, card in trick[1:]:
+        strength = _trick_strength(card, game_type, lead_category)
+        if strength > best:
+            best = strength
+            best_actor = actor
+    return int(best_actor)
+
+
+def _validate_play_legality(
     hands: list[list[str]],
     skat: list[str],
     declarer: int,
     is_hand: bool,
     discards: list[str] | None,
     plays: list[list[Any]],
+    game_type: str,
 ) -> None:
     current = [set(h) for h in hands]
     if not is_hand:
@@ -133,14 +182,37 @@ def _validate_play_ownership(
                 raise SGFParseError(f"DISCARD_NOT_OWNED:{card}")
             current[declarer].remove(card)
 
+    leader = 0
     seen: set[str] = set()
-    for actor, card in plays:
+    trick: list[list[Any]] = []
+
+    for ordinal, (actor, card) in enumerate(plays):
+        expected_actor = (leader + len(trick)) % 3
+        if actor != expected_actor:
+            raise SGFParseError(
+                f"TURN_ORDER:{ordinal}:{actor}!={expected_actor}"
+            )
         if card in seen:
             raise SGFParseError(f"CARD_PLAYED_TWICE:{card}")
         if card not in current[actor]:
             raise SGFParseError(f"PLAY_NOT_OWNED:{actor}:{card}")
+
+        if trick:
+            lead_category = _category(trick[0][1], game_type)
+            played_category = _category(card, game_type)
+            if played_category != lead_category:
+                if any(_category(c, game_type) == lead_category for c in current[actor]):
+                    raise SGFParseError(
+                        f"FOLLOW_VIOLATION:{actor}:{card}:must_follow={lead_category}"
+                    )
+
         current[actor].remove(card)
         seen.add(card)
+        trick.append([actor, card])
+
+        if len(trick) == 3:
+            leader = _trick_winner(trick, game_type)
+            trick = []
 
 
 def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
@@ -302,8 +374,8 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         plays.append([int(suffix[i]), card])
         i += 2
 
-    _validate_play_ownership(
-        initial_hands, skat, declarer, is_hand, discards, plays
+    _validate_play_legality(
+        initial_hands, skat, declarer, is_hand, discards, plays, game_type
     )
 
     rf = _result_fields(tags.get("R", ""))

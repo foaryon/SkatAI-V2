@@ -42,3 +42,15 @@ def test_explicit_all_pass_is_verified_bidding_evidence():
     assert g["all_pass"] is True
     assert g["bidding_history"] == ["1", "p", "2", "p", "0", "p"]
     assert g["semantic_sha256"]
+
+
+def test_illegal_follow_suit_is_rejected():
+    # Change the first lead from SQ to CQ. In Clubs, CQ is trump. Seat 1
+    # still holds trump jacks but attempts H9, so it must be rejected at once.
+    bad = PLAYED.replace(b"0 SQ 1 H9 2 SA", b"0 CQ 1 H9 2 SA")
+    try:
+        parse_sgf_line("iss", bad)
+    except SGFParseError as exc:
+        assert "FOLLOW_VIOLATION" in str(exc) or "PLAY_NOT_OWNED" in str(exc)
+    else:
+        raise AssertionError("illegal play must be rejected")
