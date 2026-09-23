@@ -1,0 +1,29 @@
+{
+  "schema": "skatai.v2.external-blockers.v1",
+  "status": "OPEN_BLOCKERS_RECORDED",
+  "blockers": [
+    {
+      "id": "github-v2-repository-creation",
+      "scope": "Phase 1 clean V2 isolation",
+      "status": "OPEN_EXTERNAL_ACTION",
+      "effect": "Local clean V2 Git history exists, but no authoritative new GitHub V2 remote is attached.",
+      "verified_state": {
+        "local_repo": "/workspace/skatai-v2",
+        "git_remote_present": false,
+        "github_connector_repo_creation_action_available": false,
+        "runpod_authenticated_gh_available": false
+      },
+      "required_resolution": "Create a brand-new GitHub repository (preferred foaryon/SkatAI-V2 or another approved clean name), then attach and push the existing clean V2 history without importing V1 history.",
+      "does_not_block": [
+        "local V2 development",
+        "Hetzner-backed data/model/evidence persistence",
+        "B0/B1 scientific evaluation",
+        "local paired gameplay pre-gates"
+      ]
+    }
+  ],
+  "notes": [
+    "The saved SentinelX integration SkatAI_V2 is a Hetzner compute integration, not an S3 object-storage interface.",
+    "Hetzner S3 access remains direct through the RunPod worker's S3-compatible environment credentials."
+  ]
+}
