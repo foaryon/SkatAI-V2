@@ -62,6 +62,9 @@ class BiddingState:
 
         before = {
             "current_offer": self.offer,
+            "bid_index": self.bid_index,
+            "bidder": self.bidder,
+            "answerer": self.answerer,
             "decision_role": self.decision_role,
             "legal_native_actions": list(legal),
         }

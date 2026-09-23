@@ -9,7 +9,11 @@ def _game(players=None):
         "players": players or ["alice", "bob", "carol"],
         "declarer": 2,
         "bid_level": 20,
-        "initial_hands": [["C7"] * 10, ["S7"] * 10, ["H7"] * 10],
+        "initial_hands": [
+            ["C7", "C8", "C9", "CT", "CJ", "CQ", "CK", "CA", "S7", "S8"],
+            ["S9", "ST", "SJ", "SQ", "SK", "SA", "H7", "H8", "H9", "HT"],
+            ["HJ", "HQ", "HK", "HA", "D7", "D8", "D9", "DT", "DJ", "DQ"],
+        ],
         "bidding_history": ["1", "18", "0", "p", "2", "20", "1", "p", "2", "s"],
     }
 
@@ -45,3 +49,29 @@ def test_decision_reconstruction_uses_only_bidding_information():
     assert rows[-1]["public_bidding_prefix"] == ["1", "18", "0", "p", "2", "20"]
     assert all("game_type" not in r for r in rows)
     assert all("won" not in r for r in rows)
+
+
+def test_bidding_feature_encoder_is_decision_time_only():
+    from skatai.data.bidding_features import encode_decision
+
+    row = list(iter_bidding_decisions(_game()))[0]
+    encoded = encode_decision(row)
+    dense = encoded.dense()
+
+    assert len(dense) == 44
+    assert sum(dense[:32]) == 10
+    assert encoded.actor == 1
+    assert encoded.bidder == 1
+    assert encoded.answerer == 0
+    assert encoded.bid_index == 0
+    assert encoded.target_continue == 1
+
+
+def test_bidding_state_exposes_only_public_duel_state():
+    row = list(iter_bidding_decisions(_game()))[2]
+    assert row["actor"] == 2
+    assert row["bidder"] == 2
+    assert row["answerer"] == 1
+    assert row["bid_index"] == 1
+    forbidden = {"skat_initial", "discards", "game_type", "won", "card_points", "plays"}
+    assert forbidden.isdisjoint(row)
