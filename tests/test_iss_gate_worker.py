@@ -60,3 +60,13 @@ def test_current_target_starts_at_first_frozen_look_without_strength_peek():
     target, gate = current_target([])
     assert target == 300
     assert gate is None
+
+
+def test_active_game_offsets_are_explicit():
+    from skatai.iss.gate_worker import ActiveGame, GameAssignment
+
+    a = GameAssignment("B1", "kermit+zoot", 2, 300, True)
+    g = ActiveGame(a, protocol_offset=123, effect_offset=45)
+    assert g.assignment is a
+    assert g.protocol_offset == 123
+    assert g.effect_offset == 45

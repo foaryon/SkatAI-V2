@@ -94,6 +94,13 @@ class GameAssignment:
     primary: bool
 
 
+@dataclass(frozen=True)
+class ActiveGame:
+    assignment: GameAssignment
+    protocol_offset: int
+    effect_offset: int
+
+
 def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -232,6 +239,78 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+RCLONE_S3_ARGS = (
+    "--s3-provider", "Other",
+    "--s3-env-auth",
+    "--s3-endpoint", "https://fsn1.your-objectstorage.com",
+    "--s3-region", "fsn1",
+)
+
+
+class HetznerEvidenceMirror:
+    def __init__(self, *, local_root: Path) -> None:
+        self.local_root = local_root
+        self.remote_root = os.environ.get(
+            "ISS_GATE_S3_PREFIX",
+            ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
+        ).rstrip("/")
+
+    def probe(self) -> dict[str, Any]:
+        proc = subprocess.run(
+            ["rclone", "lsd", ":s3:skatai-v2", *RCLONE_S3_ARGS],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        return {
+            "ok": proc.returncode == 0,
+            "remote_root": self.remote_root,
+            "returncode": proc.returncode,
+        }
+
+    def upload_verified(self, local: Path, remote_rel: str) -> dict[str, Any]:
+        if not local.is_file():
+            raise ISSGateWorkerError(f"MIRROR_LOCAL_FILE_MISSING:{local}")
+        expected = sha256_file(local)
+        remote = self.remote_root + "/" + remote_rel.lstrip("/")
+        subprocess.run(
+            ["rclone", "copyto", str(local), remote, *RCLONE_S3_ARGS],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        proc = subprocess.Popen(
+            ["rclone", "cat", remote, *RCLONE_S3_ARGS],
+            stdout=subprocess.PIPE,
+        )
+        h = hashlib.sha256()
+        assert proc.stdout is not None
+        while True:
+            chunk = proc.stdout.read(1024 * 1024)
+            if not chunk:
+                break
+            h.update(chunk)
+        rc = proc.wait()
+        if rc != 0:
+            raise ISSGateWorkerError(f"MIRROR_REMOTE_READ_FAILED:{remote_rel}:{rc}")
+        actual = h.hexdigest()
+        if actual != expected:
+            raise ISSGateWorkerError(
+                f"MIRROR_HASH_MISMATCH:{remote_rel}:{actual}!={expected}"
+            )
+        return {
+            "local": str(local),
+            "remote": remote.replace(":s3:", "s3://", 1),
+            "sha256": expected,
+            "bytes": local.stat().st_size,
+        }
+
+
+def object_storage_readiness(paths: GatePaths | None = None) -> dict[str, Any]:
+    paths = GatePaths.defaults() if paths is None else paths
+    return HetznerEvidenceMirror(local_root=paths.runtime_root).probe()
+
+
 def _source_commit(repo_root: Path) -> str:
     proc = subprocess.run(
         ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
@@ -319,6 +398,24 @@ class GateEvidence:
         self.effect_journal = paths.runtime_root / "effects.jsonl"
         self.games_dir = paths.runtime_root / "games"
         self.games_dir.mkdir(parents=True, exist_ok=True)
+        self.mirror = HetznerEvidenceMirror(local_root=paths.runtime_root)
+
+    @staticmethod
+    def _file_size(path: Path) -> int:
+        return path.stat().st_size if path.exists() else 0
+
+    @staticmethod
+    def _write_slice(source: Path, start: int, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        data = b""
+        if source.exists():
+            with source.open("rb") as f:
+                f.seek(start)
+                data = f.read()
+        tmp = destination.with_suffix(destination.suffix + ".tmp")
+        tmp.write_bytes(data)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, destination)
 
     def scored_rows(self) -> list[dict[str, Any]]:
         return self.ledger.scored_for_gate()
@@ -347,6 +444,8 @@ class GateEvidence:
         sgf: str,
         latency_p50: float | None,
         latency_p95: float | None,
+        protocol_offset: int,
+        effect_offset: int,
     ) -> dict[str, Any]:
         result = live_game_result(sgf, viewer_name=viewer_name)
         actual_stack = canonical_opponent_stack(
@@ -370,11 +469,11 @@ class GateEvidence:
         elif sha256_file(sgf_path) != result["raw_sgf_sha256"]:
             raise ISSGateWorkerError("GAME_ID_COLLISION_WITH_DIFFERENT_SGF")
 
-        journal_sha = (
-            sha256_file(self.protocol_journal)
-            if self.protocol_journal.exists()
-            else None
-        )
+        protocol_slice = self.games_dir / f"{result['game_id']}.service.jsonl"
+        effect_slice = self.games_dir / f"{result['game_id']}.effects.jsonl"
+        self._write_slice(self.protocol_journal, protocol_offset, protocol_slice)
+        self._write_slice(self.effect_journal, effect_offset, effect_slice)
+        journal_sha = sha256_file(protocol_slice)
         ident = self.identities[assignment.arm]
         if result["failure_reason"] is not None:
             status = "INFRA_FAILURE"
@@ -445,6 +544,46 @@ class GateEvidence:
         self.ledger.append(record)
         return {"primary": True, "duplicate_reused": False, **payload}
 
+    def mirror_game(self, game_id: str) -> dict[str, Any]:
+        files: list[tuple[Path, str]] = [
+            (self.games_dir / f"{game_id}.sgf", f"games/{game_id}.sgf"),
+            (
+                self.games_dir / f"{game_id}.service.jsonl",
+                f"games/{game_id}.service.jsonl",
+            ),
+            (
+                self.games_dir / f"{game_id}.effects.jsonl",
+                f"games/{game_id}.effects.jsonl",
+            ),
+        ]
+        for local, remote in (
+            (self.ledger.path, "current/gate-ledger.jsonl"),
+            (self.diagnostic_path, "current/diagnostic-games.jsonl"),
+            (self.protocol_journal, "current/service.jsonl"),
+            (self.effect_journal, "current/effects.jsonl"),
+            (self.paths.runtime_root / "status.json", "current/status.json"),
+        ):
+            if local.exists():
+                files.append((local, remote))
+
+        uploaded = [
+            self.mirror.upload_verified(local, remote)
+            for local, remote in files
+        ]
+        manifest = {
+            "schema": "skatai.v2.external-iss-evidence-mirror.v1",
+            "game_id": game_id,
+            "source_commit": self.source_commit,
+            "files": uploaded,
+        }
+        manifest_path = self.games_dir / f"{game_id}.mirror.json"
+        _atomic_json(manifest_path, manifest)
+        uploaded_manifest = self.mirror.upload_verified(
+            manifest_path, f"manifests/{game_id}.json"
+        )
+        manifest["manifest"] = uploaded_manifest
+        return manifest
+
 
 def _private_table_credentials() -> tuple[str, str]:
     # Official client rules: ID 3..8 chars, first alphabetic; password >=3
@@ -486,7 +625,7 @@ class ExternalGateWorker:
         )
         self.client: ISSClientCore | None = None
         self.password: str | None = None
-        self.assignment_by_game: dict[tuple[str, int], GameAssignment] = {}
+        self.assignment_by_game: dict[tuple[str, int], ActiveGame] = {}
         self.desired_stack: str | None = None
         self.table_id: str | None = None
         self._table_password: str | None = None
@@ -563,28 +702,36 @@ class ExternalGateWorker:
             )
         self.switch.set_arm(assignment.arm)
         key = (str(event.fields["table_id"]), int(meta["game_num"]))
-        self.assignment_by_game[key] = assignment
+        self.assignment_by_game[key] = ActiveGame(
+            assignment=assignment,
+            protocol_offset=self.evidence._file_size(self.evidence.protocol_journal),
+            effect_offset=self.evidence._file_size(self.evidence.effect_journal),
+        )
 
     def _on_end(self, event, table) -> bool:
         if self.client is None:
             raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
         key = (table.table_id, table.game_sequence)
-        assignment = self.assignment_by_game.pop(key, None)
-        if assignment is None:
+        active = self.assignment_by_game.pop(key, None)
+        if active is None:
             raise ISSGateWorkerError(f"MISSING_GAME_ASSIGNMENT:{key}")
+        assignment = active.assignment
         if not table.game_sgf:
             raise ISSGateWorkerError("TABLE_END_WITHOUT_SGF")
 
         game_id = f"iss:{table.table_id}:{table.game_sequence}"
         p50, p95 = self.switch.latency_summary(game_id)
-        self.evidence.append_game(
+        stored = self.evidence.append_game(
             assignment=assignment,
             viewer_name=table.viewer_name,
             sgf=table.game_sgf,
             latency_p50=p50,
             latency_p95=p95,
+            protocol_offset=active.protocol_offset,
+            effect_offset=active.effect_offset,
         )
         status = self.campaign_status()
+        self.evidence.mirror_game(stored["result"]["game_id"])
         target = status["next_per_arm_target"]
         if target is None:
             self.client.send_service_command(
@@ -615,6 +762,11 @@ class ExternalGateWorker:
             raise ISSGateWorkerError(
                 "ISS_GATE_NOT_READY:" + ",".join(ready["blockers"])
             )
+
+        storage = self.evidence.mirror.probe()
+        _atomic_json(self.paths.runtime_root / "object-storage-readiness.json", storage)
+        if not storage["ok"]:
+            raise ISSGateWorkerError("HETZNER_EVIDENCE_MIRROR_NOT_READY")
 
         policy = ISSClientPolicy(
             accept_invitations=True,
@@ -694,6 +846,7 @@ def main() -> None:
     if args.check:
         payload = {
             "readiness": readiness(paths),
+            "object_storage": object_storage_readiness(paths),
             "assets": verify_deployment_assets(paths),
             "identities": load_identities(paths.repo_root),
         }
