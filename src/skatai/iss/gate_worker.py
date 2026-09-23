@@ -1,0 +1,678 @@
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+import hashlib
+import json
+import os
+from pathlib import Path
+import secrets
+import statistics
+import subprocess
+import time
+from typing import Any, Iterable, Mapping
+
+from skatai.evaluation.iss_campaign import (
+    ARMS,
+    DEFAULT_OPPONENTS,
+    LOOKS_PER_ARM,
+    Stratum,
+    observed_counts,
+    quota_status,
+    target_quotas,
+)
+from skatai.evaluation.iss_gate import ISSGameOutcome, decide_external_gate
+from skatai.evaluation.iss_identity import load_identities
+from skatai.evaluation.iss_ledger import ISSGateLedger, ISSGateLedgerRecord
+from skatai.evaluation.iss_readiness import assess_iss_gate_readiness, sha256_file
+from skatai.evaluation.iss_result import ISSResultError, live_game_result, player_seat
+from skatai.iss.bridge import ISSSkatAIDecisionProvider
+from skatai.iss.client import ISSClientCore, ISSClientPolicy, client_from_environment
+from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+from skatai.iss.service import (
+    command_create_table,
+    command_invite,
+    command_leave,
+    command_ready,
+    parse_service_line,
+    parse_table_start_payload,
+)
+from skatai.runtime.skatzero_backend import build_b0_skat_ai, build_b1_skat_ai
+
+SCHEMA = "skatai.v2.external-iss-gate-worker.v1"
+PRIMARY_STACKS = tuple(DEFAULT_OPPONENTS)
+
+
+class ISSGateWorkerError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class GatePaths:
+    repo_root: Path
+    runtime_root: Path
+    skatzero_root: Path
+    skatzero_python: Path
+    b1_model: Path
+
+    @classmethod
+    def defaults(cls) -> "GatePaths":
+        return cls(
+            repo_root=Path(os.environ.get("SKATAI_V2_ROOT", "/workspace/skatai-v2")),
+            runtime_root=Path(
+                os.environ.get(
+                    "ISS_GATE_RUNTIME_ROOT",
+                    "/workspace/skatai-v2-runtime/iss/external-gate",
+                )
+            ),
+            skatzero_root=Path(
+                os.environ.get("SKATZERO_ROOT", "/tmp/skatai-v2-b0")
+            ),
+            skatzero_python=Path(
+                os.environ.get(
+                    "SKATZERO_PYTHON",
+                    "/tmp/skatai-v2-b0-venv/bin/python",
+                )
+            ),
+            b1_model=Path(
+                os.environ.get(
+                    "B1_MODEL",
+                    "/tmp/skatai-v2-b1-linearish-full-v1/model.pt",
+                )
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class GameAssignment:
+    arm: str
+    stack: str
+    seat: int
+    per_arm_target: int
+    primary: bool
+
+
+def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        f.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
+def _group(name: str) -> str:
+    return str(name).split(":", 1)[0]
+
+
+def canonical_opponent_stack(
+    players: Iterable[str],
+    *,
+    skatai_seat: int,
+) -> str:
+    names = tuple(_group(x) for x in players)
+    if len(names) != 3 or skatai_seat not in (0, 1, 2):
+        raise ISSGateWorkerError("BAD_THREE_PLAYER_STACK_INPUT")
+    opponents = [x for i, x in enumerate(names) if i != skatai_seat]
+    rank = {"kermit": 0, "zoot": 1, "theCount": 2}
+    if all(x in rank for x in opponents):
+        opponents.sort(key=rank.__getitem__)
+    else:
+        opponents.sort()
+    return "+".join(opponents)
+
+
+def current_target(scored_rows: list[dict[str, Any]]) -> tuple[int | None, dict | None]:
+    """Return the next cumulative frozen look and any completed gate decision."""
+    last_analysis = None
+    outcomes = [ISSGameOutcome.from_mapping(x) for x in scored_rows]
+    for look in LOOKS_PER_ARM:
+        q = quota_status(scored_rows, per_arm=look)
+        if not q["complete"]:
+            return look, last_analysis
+        analysis = decide_external_gate(outcomes)
+        last_analysis = analysis
+        if analysis["status"] == "COMPLETE":
+            return None, analysis
+        if analysis["status"] != "CONTINUE":
+            raise ISSGateWorkerError(
+                f"UNEXPECTED_GATE_STATUS_AT_COMPLETE_QUOTA:{analysis['status']}"
+            )
+    return None, last_analysis
+
+
+def choose_arm_for_stratum(
+    scored_rows: list[dict[str, Any]],
+    *,
+    per_arm: int,
+    stack: str,
+    seat: int,
+) -> GameAssignment:
+    if stack not in PRIMARY_STACKS or seat not in (0, 1, 2):
+        return GameAssignment("B0", stack, seat, per_arm, False)
+
+    targets = target_quotas(per_arm)
+    counts = observed_counts(scored_rows)
+    arm_totals = {
+        arm: sum(v for s, v in counts.items() if s.arm == arm)
+        for arm in ARMS
+    }
+    candidates = []
+    for arm in ARMS:
+        s = Stratum(arm, stack, seat)
+        remaining = max(0, targets[s] - counts[s])
+        if remaining:
+            candidates.append(
+                (-remaining, arm_totals[arm], ARMS.index(arm), arm)
+            )
+    if not candidates:
+        # The game may already have been started by ISS before the worker could
+        # rotate tables. Play a valid B0 diagnostic game but do not score it.
+        return GameAssignment("B0", stack, seat, per_arm, False)
+    candidates.sort()
+    return GameAssignment(candidates[0][-1], stack, seat, per_arm, True)
+
+
+def stack_complete(
+    scored_rows: list[dict[str, Any]],
+    *,
+    per_arm: int,
+    stack: str,
+) -> bool:
+    q = quota_status(scored_rows, per_arm=per_arm)
+    items = [x for x in q["strata"] if x["opponent"] == stack]
+    return bool(items) and all(int(x["remaining"]) == 0 for x in items)
+
+
+def next_underfilled_stack(
+    scored_rows: list[dict[str, Any]],
+    *,
+    per_arm: int,
+) -> str | None:
+    for stack in PRIMARY_STACKS:
+        if not stack_complete(scored_rows, per_arm=per_arm, stack=stack):
+            return stack
+    return None
+
+
+class RecordingSwitchProvider:
+    def __init__(self, providers: Mapping[str, ISSSkatAIDecisionProvider]) -> None:
+        self.providers = dict(providers)
+        self.arm = "B0"
+        self.latencies: dict[str, dict[str, float]] = {}
+
+    def set_arm(self, arm: str) -> None:
+        if arm not in self.providers:
+            raise ISSGateWorkerError(f"UNKNOWN_ARM:{arm}")
+        self.arm = arm
+
+    def next_decision(self, table):
+        decision = self.providers[self.arm].next_decision(table)
+        if decision is not None:
+            game = decision.request.game_id
+            self.latencies.setdefault(game, {})[decision.result.decision_id] = float(
+                decision.result.latency_ms
+            )
+        return decision
+
+    def latency_summary(self, game_id: str) -> tuple[float | None, float | None]:
+        xs = sorted(self.latencies.pop(game_id, {}).values())
+        if not xs:
+            return None, None
+        p50 = statistics.median(xs)
+        # Nearest-rank p95, deterministic for small decision counts.
+        idx = max(0, min(len(xs) - 1, int((0.95 * len(xs) + 0.999999999) // 1) - 1))
+        return float(p50), float(xs[idx])
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _source_commit(repo_root: Path) -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    return proc.stdout.strip()
+
+
+def verify_deployment_assets(paths: GatePaths) -> dict[str, Any]:
+    b0 = json.loads((paths.repo_root / "provenance/B0_SKATZERO_BASELINE.json").read_text())
+    b1 = json.loads(
+        (paths.repo_root / "provenance/B1_BIDDING_LINEARISH_FULL_V1.json").read_text()
+    )
+    if not paths.skatzero_python.is_file():
+        raise ISSGateWorkerError("SKATZERO_PYTHON_MISSING")
+    proc = subprocess.run(
+        ["git", "-C", str(paths.skatzero_root), "rev-parse", "HEAD"],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    actual_commit = proc.stdout.strip()
+    if actual_commit != b0["upstream_commit"]:
+        raise ISSGateWorkerError(
+            f"B0_SOURCE_COMMIT_MISMATCH:{actual_commit}!={b0['upstream_commit']}"
+        )
+    for name, expected in b0["pretrained_models"].items():
+        model = paths.skatzero_root / "models/latest" / name
+        if not model.is_file() or sha256_file(model) != expected:
+            raise ISSGateWorkerError(f"B0_MODEL_MISMATCH:{name}")
+    expected_b1 = b1["artifacts"]["model.pt"]["sha256"]
+    if not paths.b1_model.is_file() or sha256_file(paths.b1_model) != expected_b1:
+        raise ISSGateWorkerError("B1_MODEL_MISMATCH")
+    return {
+        "b0_upstream_commit": actual_commit,
+        "b1_model_sha256": expected_b1,
+        "deployment_identities": load_identities(paths.repo_root),
+    }
+
+
+def readiness(paths: GatePaths) -> dict[str, Any]:
+    b1 = json.loads(
+        (paths.repo_root / "provenance/B1_BIDDING_LINEARISH_FULL_V1.json").read_text()
+    )
+    result = assess_iss_gate_readiness(
+        local_confirmation_decision=(
+            paths.repo_root / "provenance/B1_LOCAL_CONFIRMATION_RESULT.json"
+        ),
+        b1_model=paths.b1_model,
+        expected_b1_sha256=b1["artifacts"]["model.pt"]["sha256"],
+        protocol_files={
+            "gate_protocol": paths.repo_root
+            / "provenance/B1_EXTERNAL_ISS_GATE_PROTOCOL.json",
+            "decision_rule": paths.repo_root
+            / "provenance/B1_EXTERNAL_ISS_DECISION_RULE.json",
+            "ledger_contract": paths.repo_root
+            / "provenance/B1_EXTERNAL_ISS_LEDGER_CONTRACT.json",
+            "campaign_quotas": paths.repo_root
+            / "provenance/B1_EXTERNAL_ISS_CAMPAIGN_QUOTAS.json",
+            "deployment_identities": paths.repo_root
+            / "provenance/B1_EXTERNAL_ISS_DEPLOYMENT_IDENTITIES.json",
+            "three_player_amendment": paths.repo_root
+            / "provenance/B1_EXTERNAL_ISS_THREE_PLAYER_STRATA_AMENDMENT.json",
+        },
+    )
+    return result
+
+
+class GateEvidence:
+    def __init__(
+        self,
+        *,
+        paths: GatePaths,
+        identities: Mapping[str, Mapping[str, Any]],
+        source_commit: str,
+    ) -> None:
+        self.paths = paths
+        self.identities = identities
+        self.source_commit = source_commit
+        self.ledger = ISSGateLedger(paths.runtime_root / "gate-ledger.jsonl")
+        self.diagnostic_path = paths.runtime_root / "diagnostic-games.jsonl"
+        self.protocol_journal = paths.runtime_root / "service.jsonl"
+        self.effect_journal = paths.runtime_root / "effects.jsonl"
+        self.games_dir = paths.runtime_root / "games"
+        self.games_dir.mkdir(parents=True, exist_ok=True)
+
+    def scored_rows(self) -> list[dict[str, Any]]:
+        return self.ledger.scored_for_gate()
+
+    def append_diagnostic(self, payload: Mapping[str, Any]) -> None:
+        self.diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(
+            self.diagnostic_path,
+            os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+            0o600,
+        )
+        try:
+            os.write(
+                fd,
+                (json.dumps(dict(payload), sort_keys=True, separators=(",", ":")) + "\n").encode(),
+            )
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def append_game(
+        self,
+        *,
+        assignment: GameAssignment,
+        viewer_name: str,
+        sgf: str,
+        latency_p50: float | None,
+        latency_p95: float | None,
+    ) -> dict[str, Any]:
+        result = live_game_result(sgf, viewer_name=viewer_name)
+        actual_stack = canonical_opponent_stack(
+            result["players"], skatai_seat=int(result["seat"])
+        )
+        if actual_stack != assignment.stack:
+            assignment = GameAssignment(
+                assignment.arm,
+                actual_stack,
+                int(result["seat"]),
+                assignment.per_arm_target,
+                False,
+            )
+
+        sgf_path = self.games_dir / f"{result['game_id']}.sgf"
+        if not sgf_path.exists():
+            tmp = sgf_path.with_suffix(".sgf.tmp")
+            tmp.write_text(sgf, encoding="utf-8")
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, sgf_path)
+        elif sha256_file(sgf_path) != result["raw_sgf_sha256"]:
+            raise ISSGateWorkerError("GAME_ID_COLLISION_WITH_DIFFERENT_SGF")
+
+        journal_sha = (
+            sha256_file(self.protocol_journal)
+            if self.protocol_journal.exists()
+            else None
+        )
+        ident = self.identities[assignment.arm]
+        if result["failure_reason"] is not None:
+            status = "INFRA_FAILURE"
+            score = None
+        else:
+            status = "SCORED"
+            score = result["score"]
+
+        payload = {
+            "schema": SCHEMA,
+            "assignment": assignment.__dict__,
+            "actual_stack": actual_stack,
+            "result": result,
+        }
+        if not assignment.primary:
+            self.append_diagnostic(payload)
+            return {"primary": False, **payload}
+
+        record = ISSGateLedgerRecord.create(
+            game_id=result["game_id"],
+            arm=assignment.arm,
+            opponent=actual_stack,
+            seat=int(result["seat"]),
+            status=status,
+            score=score,
+            declarer=(
+                None
+                if result["declarer"] is None
+                else int(result["declarer"]) == int(result["seat"])
+            ),
+            contract=result["contract"],
+            winning_bid=result["winning_bid"],
+            overbid=result["overbid"],
+            latency_ms_p50=latency_p50,
+            latency_ms_p95=latency_p95,
+            raw_sgf_sha256=result["raw_sgf_sha256"],
+            journal_sha256=journal_sha,
+            model_sha256=ident["deployment_identity_sha256"],
+            source_commit=self.source_commit,
+            failure_reason=result["failure_reason"],
+        )
+        existing = {x.game_id: x for x in self.ledger.records()}
+        if record.game_id in existing:
+            old = existing[record.game_id]
+            comparable = (
+                old.arm,
+                old.opponent,
+                old.seat,
+                old.status,
+                old.score,
+                old.model_sha256,
+                old.source_commit,
+                old.raw_sgf_sha256,
+            )
+            new = (
+                record.arm,
+                record.opponent,
+                record.seat,
+                record.status,
+                record.score,
+                record.model_sha256,
+                record.source_commit,
+                record.raw_sgf_sha256,
+            )
+            if comparable != new:
+                raise ISSGateWorkerError("CONFLICTING_DUPLICATE_GAME_RESULT")
+            return {"primary": True, "duplicate_reused": True, **payload}
+        self.ledger.append(record)
+        return {"primary": True, "duplicate_reused": False, **payload}
+
+
+def _private_table_credentials() -> tuple[str, str]:
+    # Official client rules: ID 3..8 chars, first alphabetic; password >=3
+    # printable ASCII. These are ephemeral and intentionally never persisted.
+    return "AI" + secrets.token_hex(3), "p" + secrets.token_hex(6)
+
+
+class ExternalGateWorker:
+    def __init__(self, paths: GatePaths) -> None:
+        self.paths = paths
+        verified = verify_deployment_assets(paths)
+        self.identities = verified["deployment_identities"]
+        self.source_commit = _source_commit(paths.repo_root)
+
+        b0_ai = build_b0_skat_ai(paths.skatzero_root, paths.skatzero_python)
+        b1_ai = build_b1_skat_ai(
+            paths.b1_model,
+            paths.skatzero_root,
+            paths.skatzero_python,
+            threshold=0.5,
+        )
+        self.switch = RecordingSwitchProvider(
+            {
+                "B0": ISSSkatAIDecisionProvider(
+                    b0_ai, release_id=self.identities["B0"]["release_id"]
+                ),
+                "B1": ISSSkatAIDecisionProvider(
+                    b1_ai, release_id=self.identities["B1"]["release_id"]
+                ),
+            }
+        )
+        self.evidence = GateEvidence(
+            paths=paths,
+            identities=self.identities,
+            source_commit=self.source_commit,
+        )
+        self.effect_guard = ISSAuthorityGuard(
+            ISSEffectJournal(self.evidence.effect_journal)
+        )
+        self.client: ISSClientCore | None = None
+        self.password: str | None = None
+        self.assignment_by_game: dict[tuple[str, int], GameAssignment] = {}
+        self.desired_stack: str | None = None
+        self.table_id: str | None = None
+        self._table_password: str | None = None
+
+    def campaign_status(self) -> dict[str, Any]:
+        rows = self.evidence.scored_rows()
+        target, gate = current_target(rows)
+        payload = {
+            "schema": SCHEMA,
+            "source_commit": self.source_commit,
+            "scored_games": len(rows),
+            "next_per_arm_target": target,
+            "gate": gate,
+            "next_stack": (
+                None if target is None else next_underfilled_stack(rows, per_arm=target)
+            ),
+        }
+        _atomic_json(self.paths.runtime_root / "status.json", payload)
+        return payload
+
+    def _create_next_table(self) -> None:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+        status = self.campaign_status()
+        target = status["next_per_arm_target"]
+        if target is None:
+            return
+        stack = status["next_stack"]
+        if stack is None:
+            raise ISSGateWorkerError("NO_UNDERFILLED_STACK_WITH_OPEN_GATE")
+        name, password = _private_table_credentials()
+        self.desired_stack = str(stack)
+        self._table_password = password
+        self.client.send_service_command(
+            command_create_table(
+                players=3,
+                table_name=name,
+                table_password=password,
+            )
+        )
+
+    def _on_create(self, event) -> None:
+        if self.client is None or not bool(event.fields.get("is_player")):
+            return
+        if self.desired_stack is None:
+            return
+        self.table_id = str(event.fields["table_id"])
+        viewer = str(event.fields["viewer_name"])
+        for opponent in self.desired_stack.split("+"):
+            self.client.send_service_command(
+                command_invite(self.table_id, viewer, opponent)
+            )
+
+    def _on_start_preapply(self, line: str) -> None:
+        event = parse_service_line(line)
+        if event.kind != "table_start":
+            return
+        meta = parse_table_start_payload(str(event.fields.get("payload") or ""))
+        players = tuple(meta["players"])
+        viewer = str(event.fields["viewer_name"])
+        seat = player_seat(players, viewer)
+        stack = canonical_opponent_stack(players, skatai_seat=seat)
+        rows = self.evidence.scored_rows()
+        target, gate = current_target(rows)
+        if target is None:
+            assignment = GameAssignment("B0", stack, seat, LOOKS_PER_ARM[-1], False)
+        else:
+            assignment = choose_arm_for_stratum(
+                rows,
+                per_arm=target,
+                stack=stack,
+                seat=seat,
+            )
+        self.switch.set_arm(assignment.arm)
+        key = (str(event.fields["table_id"]), int(meta["game_num"]))
+        self.assignment_by_game[key] = assignment
+
+    def _on_end(self, event, table) -> bool:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+        key = (table.table_id, table.game_sequence)
+        assignment = self.assignment_by_game.pop(key, None)
+        if assignment is None:
+            raise ISSGateWorkerError(f"MISSING_GAME_ASSIGNMENT:{key}")
+        if not table.game_sgf:
+            raise ISSGateWorkerError("TABLE_END_WITHOUT_SGF")
+
+        game_id = f"iss:{table.table_id}:{table.game_sequence}"
+        p50, p95 = self.switch.latency_summary(game_id)
+        self.evidence.append_game(
+            assignment=assignment,
+            viewer_name=table.viewer_name,
+            sgf=table.game_sgf,
+            latency_p50=p50,
+            latency_p95=p95,
+        )
+        status = self.campaign_status()
+        target = status["next_per_arm_target"]
+        if target is None:
+            self.client.send_service_command(
+                command_leave(table.table_id, table.viewer_name)
+            )
+            return False
+
+        # Rotate tables as soon as this complete opponent-stack quota is filled.
+        rows = self.evidence.scored_rows()
+        if stack_complete(rows, per_arm=target, stack=assignment.stack):
+            self.client.send_service_command(
+                command_leave(table.table_id, table.viewer_name)
+            )
+            self.table_id = None
+            self.desired_stack = None
+            self._table_password = None
+            return True
+
+        self.client.send_service_command(
+            command_ready(table.table_id, table.viewer_name)
+        )
+        return True
+
+    def run(self) -> dict[str, Any]:
+        ready = readiness(self.paths)
+        _atomic_json(self.paths.runtime_root / "readiness.json", ready)
+        if not ready["ready"]:
+            raise ISSGateWorkerError(
+                "ISS_GATE_NOT_READY:" + ",".join(ready["blockers"])
+            )
+
+        policy = ISSClientPolicy(
+            accept_invitations=True,
+            ready_when_joined=False,
+            ready_after_game=False,
+        )
+        client, password = client_from_environment(
+            journal_path=self.evidence.protocol_journal,
+            policy=policy,
+            move_provider=self.switch,
+            effect_guard=self.effect_guard,
+        )
+        self.client = client
+        self.password = password
+        try:
+            client.connect_and_login(password)
+            self.password = None
+            password = ""
+            self._create_next_table()
+            while True:
+                line = client.transport.read_line()
+                self._on_start_preapply(line)
+                event = client.handle_line(line)
+                if event.kind == "create":
+                    self._on_create(event)
+                elif event.kind == "table_end":
+                    table = client.state.tables[str(event.fields["table_id"])]
+                    keep_running = self._on_end(event, table)
+                    if not keep_running:
+                        return self.campaign_status()
+                elif event.kind == "destroy":
+                    if self.table_id == str(event.fields["table_id"]):
+                        self.table_id = None
+                    if self.desired_stack is None:
+                        self._create_next_table()
+        finally:
+            self.password = None
+            password = ""
+            client.close()
+
+
+def main() -> None:
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify frozen gate/runtime prerequisites without connecting to ISS.",
+    )
+    args = p.parse_args()
+    paths = GatePaths.defaults()
+    if args.check:
+        payload = {
+            "readiness": readiness(paths),
+            "assets": verify_deployment_assets(paths),
+            "identities": load_identities(paths.repo_root),
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+    result = ExternalGateWorker(paths).run()
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
