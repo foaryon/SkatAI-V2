@@ -41,6 +41,8 @@ class EffectState:
     wire_action: str
     outbound_line_sha256: str
     release_id: str
+    decision_type: str
+    latency_ms: float
     status: str
     attempts: int
 
@@ -130,6 +132,8 @@ class ISSEffectJournal:
                     "wire_action": str(e["wire_action"]),
                     "outbound_line_sha256": str(e["outbound_line_sha256"]),
                     "release_id": str(e["release_id"]),
+                    "decision_type": str(e["decision_type"]),
+                    "latency_ms": float(e["latency_ms"]),
                     "status": "INTENT",
                     "attempts": 0,
                 }
@@ -251,6 +255,8 @@ class ISSEffectJournal:
             wire_action=str(wire_action),
             outbound_line_sha256=outbound_sha,
             release_id=result.release_id,
+            decision_type=result.decision_type.value,
+            latency_ms=float(result.latency_ms),
         )
         return self.states()[effect_id], True
 

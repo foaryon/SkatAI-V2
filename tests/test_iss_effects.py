@@ -310,3 +310,22 @@ def test_reconcile_different_first_move_aborts_stale(tmp_path):
     outcomes = journal.reconcile_table(after)
     assert outcomes[0]["outcome"] == "ABORTED_STALE"
     assert journal.states()[effect.effect_id].status == "ABORTED_STALE"
+
+
+def test_effect_state_binds_decision_phase_release_and_latency(tmp_path):
+    req, result = request_result()
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    effect, created = journal.begin(
+        req,
+        result,
+        external_state_hash="1" * 64,
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=0,
+        wire_action="18",
+        outbound_line="table T SkatAI play 18",
+    )
+    assert created
+    assert effect.release_id == "R1"
+    assert effect.decision_type == "BID"
+    assert effect.latency_ms >= 0.0
