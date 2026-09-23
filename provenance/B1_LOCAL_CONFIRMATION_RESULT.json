@@ -1,0 +1,71 @@
+{
+  "schema": "skatai.v2.local-bidding-confirmation-evidence.v1",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "stage": "LOCAL_CONFIRMATION",
+  "status": "LOCAL_GATE_NOT_REGRESSING",
+  "next_action": "REQUIRE_EXTERNAL_DEPLOYMENT_VALID_EVALUATION",
+  "strength_claim_authorized": false,
+  "accept_authorized": false,
+  "frozen_design": {
+    "deal_set_sha256": "cc5766ba3ccedd3a7f65eedd32fd6aae585d6b236de6091758a3a6217974ef0f",
+    "deals": 100,
+    "seat_pairs": 300,
+    "selection_seed": 20260923,
+    "master_seed": 20260923,
+    "b1_threshold": 0.5,
+    "b0_accuracy": 231,
+    "b0_bid_threshold": -5.0,
+    "primary_statistical_unit": "deal cluster mean of three candidate-seat deltas"
+  },
+  "observed": {
+    "changed_auction_pairs": 71,
+    "elapsed_s": 2325.908143441193,
+    "primary_clustered_stats": {
+      "n": 100,
+      "mean": -2.921666666666667,
+      "sample_std": 31.952471147908316,
+      "standard_error": 3.1952471147908317,
+      "ci95_low": -9.184351011656696,
+      "ci95_high": 3.3410176783233627
+    },
+    "secondary_seat_level_stats": {
+      "n": 300,
+      "mean": -2.921666666666667,
+      "sample_std": 55.42005629150342,
+      "standard_error": 3.199678441840371,
+      "ci95_low": -9.193036412673795,
+      "ci95_high": 3.3497030793404603
+    }
+  },
+  "artifacts": {
+    "result": {
+      "sha256": "836785a374437bc3417d9865a7a9ca22396765d2eb60fd930c72dad4e184d634",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/result.json"
+    },
+    "checkpoint": {
+      "sha256": "f861c4933f4f21224f842097309506de0fd80448b08e36cf2e4c7eab405cefce",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/checkpoint.json"
+    },
+    "decision": {
+      "sha256": "0846ad6962ec2f343cd38f278ca039a1322ec6528f9b3e9a7ceeb92cfcdd5726",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/decision.json"
+    },
+    "clustered_decision": {
+      "sha256": "c2ae9e8edf02e92918e67d9ea3e4503362ee9b770b6732c105bbea1c03c7dcbc",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/decision-clustered.json",
+      "authority": "primary_local_decision"
+    },
+    "run_identity": {
+      "sha256": "15b2f27e8fc0adcaa3dfdd3b013e971b82f47c856b2775d42296304a9a8b9a18",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/run-identity.json"
+    }
+  },
+  "interpretation": [
+    "The clustered interval contains both negative and positive values.",
+    "The local experiment therefore does not establish improvement.",
+    "The local experiment also does not establish clear regression under the frozen stopping rule.",
+    "B1 must not be promoted from this evidence.",
+    "Deployment-valid external ISS evaluation is required for ACCEPT, REJECT, or INCONCLUSIVE final strength disposition."
+  ]
+}

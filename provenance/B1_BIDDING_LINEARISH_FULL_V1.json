@@ -28,6 +28,16 @@
     "External-bot calibration shift is material and requires gameplay evidence.",
     "No ACCEPT/REJECT/INCONCLUSIVE strength decision exists yet."
   ],
+  "local_confirmation": {
+    "clustered_ci95": [
+      -9.184351011656696,
+      3.3410176783233627
+    ],
+    "clustered_mean": -2.921666666666667,
+    "decision": "REQUIRE_EXTERNAL_DEPLOYMENT_VALID_EVALUATION",
+    "provenance": "provenance/B1_LOCAL_CONFIRMATION_RESULT.json",
+    "status": "LOCAL_GATE_NOT_REGRESSING"
+  },
   "offline_diagnostics": {
     "external_bot_holdout": {
       "accuracy_at_0_5": 0.7796192302301981,
@@ -52,9 +62,9 @@
     }
   },
   "parent_baseline": "V2-B0",
-  "promotion_status": "NOT_EVALUATED_BY_GAMEPLAY_GATE",
+  "promotion_status": "NOT_ACCEPTED_EXTERNAL_GAMEPLAY_REQUIRED",
   "schema": "skatai.v2.candidate-model-provenance.v1",
-  "status": "CANDIDATE_OFFLINE_ONLY",
+  "status": "LOCAL_NONREGRESSION_EXTERNAL_EVALUATION_REQUIRED",
   "storage": {
     "object_prefix": "s3://skatai-v2/models/V2-B1-candidates/bidding-linearish-full-v1/",
     "remote_artifacts_verified": true,
