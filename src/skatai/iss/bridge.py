@@ -583,3 +583,8 @@ class ISSBiddingDecisionProvider:
         else:
             raise ISSBridgeError(f"UNKNOWN_BIDDING_DECISION:{result.action}")
         return ISSDecision(request=request, result=result, wire_action=wire_action)
+
+
+def next_action(table: TableSession, engine: SkatAIDecisionEngine) -> str | None:
+    """Stable generic alias for the complete ISS-to-SkatAI move bridge."""
+    return next_skat_action(table, engine)
