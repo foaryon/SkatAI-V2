@@ -23,6 +23,23 @@ def _cards(cards: Sequence[str], *, exact: int | None = None) -> tuple[str, ...]
     return out
 
 
+def _bids(values: Sequence[int] | None) -> tuple[int, int, int] | None:
+    if values is None:
+        return None
+    out = tuple(int(x) for x in values)
+    if len(out) != 3:
+        raise SkatAIInterfaceError(f"BAD_BID_VECTOR_LENGTH:{len(out)}")
+    if any(x < 0 for x in out):
+        raise SkatAIInterfaceError("NEGATIVE_BID")
+    return (out[0], out[1], out[2])
+
+
+def _optional_exact_cards(cards: Sequence[str], exact: int) -> tuple[str, ...]:
+    if not cards:
+        return ()
+    return _cards(cards, exact=exact)
+
+
 def _seat(x: int) -> int:
     x = int(x)
     if x not in (0, 1, 2):
@@ -73,6 +90,7 @@ class DeclarationObservation:
     winning_bid: int
     picked_up_skat: bool
     legal_contracts: tuple[str, ...]
+    max_accepted_bids_by_seat: tuple[int, int, int] | None = None
 
     @classmethod
     def create(
@@ -83,6 +101,7 @@ class DeclarationObservation:
         winning_bid: int,
         picked_up_skat: bool,
         legal_contracts: Sequence[str],
+        max_accepted_bids_by_seat: Sequence[int] | None = None,
     ) -> "DeclarationObservation":
         expected = 12 if picked_up_skat else 10
         legal = tuple(str(x) for x in legal_contracts)
@@ -94,6 +113,7 @@ class DeclarationObservation:
             winning_bid=int(winning_bid),
             picked_up_skat=bool(picked_up_skat),
             legal_contracts=legal,
+            max_accepted_bids_by_seat=_bids(max_accepted_bids_by_seat),
         )
 
 
@@ -102,6 +122,7 @@ class DiscardObservation:
     hand12: tuple[str, ...]
     seat: int
     winning_bid: int
+    max_accepted_bids_by_seat: tuple[int, int, int] | None = None
 
     @classmethod
     def create(
@@ -110,11 +131,13 @@ class DiscardObservation:
         *,
         seat: int,
         winning_bid: int,
+        max_accepted_bids_by_seat: Sequence[int] | None = None,
     ) -> "DiscardObservation":
         return cls(
             hand12=_cards(hand12, exact=12),
             seat=_seat(seat),
             winning_bid=int(winning_bid),
+            max_accepted_bids_by_seat=_bids(max_accepted_bids_by_seat),
         )
 
 
@@ -129,6 +152,12 @@ class CardplayObservation:
     played_cards: tuple[tuple[int, str], ...]
     legal_cards: tuple[str, ...]
     known_private_cards: tuple[str, ...] = ()
+    points_self: int | None = None
+    points_other: int | None = None
+    max_accepted_bids_by_seat: tuple[int, int, int] | None = None
+    skat_cards: tuple[str, ...] = ()
+    blind_hand: bool = False
+    open_hand_cards: tuple[str, ...] = ()
 
     @classmethod
     def create(
@@ -143,6 +172,12 @@ class CardplayObservation:
         played_cards: Sequence[tuple[int, str]],
         legal_cards: Sequence[str],
         known_private_cards: Sequence[str] = (),
+        points_self: int | None = None,
+        points_other: int | None = None,
+        max_accepted_bids_by_seat: Sequence[int] | None = None,
+        skat_cards: Sequence[str] = (),
+        blind_hand: bool = False,
+        open_hand_cards: Sequence[str] = (),
     ) -> "CardplayObservation":
         h = _cards(hand)
         legal = _cards(legal_cards)
@@ -169,6 +204,12 @@ class CardplayObservation:
             played_cards=history(played_cards),
             legal_cards=legal,
             known_private_cards=_cards(known_private_cards),
+            points_self=None if points_self is None else int(points_self),
+            points_other=None if points_other is None else int(points_other),
+            max_accepted_bids_by_seat=_bids(max_accepted_bids_by_seat),
+            skat_cards=_optional_exact_cards(skat_cards, 2),
+            blind_hand=bool(blind_hand),
+            open_hand_cards=_optional_exact_cards(open_hand_cards, 10),
         )
 
 
