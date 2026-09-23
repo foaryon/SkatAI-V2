@@ -1,0 +1,32 @@
+{
+  "first": {
+    "accuracy": 231,
+    "bid_threshold": -5.0,
+    "elapsed_s": 12.12329159793444,
+    "max_bid": 72,
+    "seed": 20260923
+  },
+  "hand": [
+    "CJ",
+    "DJ",
+    "DA",
+    "DK",
+    "DQ",
+    "D7",
+    "C9",
+    "HA",
+    "HT",
+    "HK"
+  ],
+  "same_bid": true,
+  "schema": "skatai.v2.b0-bidding-repeatability.v1",
+  "seat": 0,
+  "second": {
+    "accuracy": 231,
+    "bid_threshold": -5.0,
+    "elapsed_s": 4.364789512008429,
+    "max_bid": 72,
+    "seed": 20260923
+  },
+  "seed": 20260923
+}
