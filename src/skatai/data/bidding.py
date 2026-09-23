@@ -67,6 +67,7 @@ def iter_bidding_decisions(game: Mapping[str, Any]) -> Iterator[dict[str, Any]]:
             "source": game["source"],
             "game_identity": game["semantic_sha256"],
             "split": split,
+            "ordinal": action["ordinal"],
             "actor": actor,
             "seat": actor,
             "hand": list(initial_hands[actor]),
