@@ -1,0 +1,60 @@
+{
+  "schema": "skatai.v2.b1-external-iss-gate-protocol.v1",
+  "status": "FROZEN_BEFORE_LOCAL_CONFIRMATION_RESULT",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "purpose": "Deployment-valid external gameplay gate after local non-regression only.",
+  "authorization_condition": "Run only if clustered LOCAL_CONFIRMATION does not establish local regression.",
+  "treatment": "B1 learned bidding replaces B0 bidding; declaration, discard, cardplay and runtime constraints remain otherwise matched to frozen B0.",
+  "opponent_policy": {
+    "primary_named_opponents": [
+      "kermit",
+      "zoot",
+      "theCount"
+    ],
+    "additional_valid_opponents_allowed": true,
+    "no_single_opponent_defines_acceptance": true
+  },
+  "allocation": {
+    "control_and_candidate": "interleaved/blocked contemporaneously where server logistics permit",
+    "seats": "balanced across forehand, middlehand, rearhand where server/table logistics permit",
+    "opponent_mix": "same planned opponent stack for B0 and B1",
+    "resource_limits": "same decision-time and runtime policy for B0 and B1 except the bidding treatment itself"
+  },
+  "primary_outcome": {
+    "metric": "per-game deployment scoring outcome recorded from ISS",
+    "comparison": "candidate minus control under matched opponent/seat strata",
+    "analysis": "stratified bootstrap or equivalent cluster-aware interval over independent games/series; exact estimator and stopping thresholds must be frozen before first scored external game"
+  },
+  "required_diagnostics": [
+    "game count",
+    "opponent",
+    "seat",
+    "declarer frequency",
+    "contract distribution",
+    "bid distribution",
+    "overbid incidence",
+    "timeouts/disconnects",
+    "legality failures",
+    "runtime latency",
+    "raw ISS game identity",
+    "raw protocol log identity"
+  ],
+  "promotion_policy": {
+    "allowed_final_outcomes": [
+      "ACCEPT",
+      "REJECT",
+      "INCONCLUSIVE"
+    ],
+    "offline_metrics_can_accept": false,
+    "local_pregate_can_accept": false,
+    "external_gameplay_required_for_accept": true,
+    "infrastructure_or_protocol_failures_are_not_scored_as_model-strength_evidence_until_attributed": true
+  },
+  "contamination_policy": {
+    "external_gate_games_are_frozen_evaluation_evidence": true,
+    "do_not_train_on_gate_games_before_gate_decision": true,
+    "post-decision_failure_mining_requires_separate_dataset_membership": true
+  },
+  "pre_result_assertion": "This protocol was created before inspecting any LOCAL_CONFIRMATION reward deltas or final decision."
+}
