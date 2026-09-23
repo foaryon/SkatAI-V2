@@ -31,9 +31,11 @@
     "archive": "https://skatgame.net/iss/clients.tgz",
     "bytes": 3142758,
     "license": "GPLv3",
+    "object": "s3://skatai-v2/legacy-reference/iss-official/clients-14.11033.16.tgz",
     "provider": "International Skat Server",
     "published_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
     "published_version": "14.11033.16",
+    "remote_sha256_verified": true,
     "sha256": "302fe9d4b6a5c590c3f1a3028dae1021f98031c28e66ca6a4eb9f5e827723656",
     "software_page": "https://skatgame.net/iss/software.html",
     "verified_md5": "2e8ee6f1550bf02de70c20d19e1dc64c"
