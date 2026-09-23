@@ -1,0 +1,28 @@
+{
+  "schema": "skatai.v2.local-bidding-pregate-protocol-amendment.v1",
+  "status": "FROZEN_BEFORE_SCREEN_RESULT",
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "amends": "provenance/B1_LOCAL_PREGATE_PROTOCOL.json",
+  "reason": "The three candidate-seat interventions from one common deal share the same underlying deal and are statistically dependent. Treating all seat-level deltas as independent would understate uncertainty.",
+  "primary_statistical_unit": "deal cluster",
+  "primary_observation": "mean of the three candidate-seat reward deltas for each deal",
+  "secondary_diagnostic": "all individual seat-level paired deltas",
+  "screen": {
+    "deals": 30,
+    "primary_n": 30,
+    "secondary_seat_pairs": 90,
+    "rule": "if deal-clustered ci95_high < 0, stop for clear local regression; otherwise continue"
+  },
+  "local_confirmation": {
+    "deals": 100,
+    "primary_n": 100,
+    "secondary_seat_pairs": 300,
+    "rule": "if deal-clustered ci95_high < 0, reject for local regression; otherwise deployment-valid external evaluation remains mandatory"
+  },
+  "promotion_policy": {
+    "local_accept_allowed": false,
+    "deployment_valid_external_gameplay_required_for_accept": true
+  },
+  "timing_assertion": "This amendment was created before inspecting the SCREEN result or any partial reward-delta values. Only checkpoint deal counts/elapsed time had been inspected."
+}
