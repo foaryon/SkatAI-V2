@@ -6,22 +6,96 @@ import pytest
 from skatai.iss.protocol import (
     ActionKind,
     ISSLineConnection,
+    ISSProtocolError,
     ProtocolError,
+    format_move,
     parse_deal,
+    parse_game_declaration,
     parse_move,
+    parse_move_line,
     parse_transcript,
 )
 
 
-def test_public_move_syntax_examples():
-    deal = (
-        "??.??.??.??.??.??.??.??.??.??|"
-        "??.??.??.??.??.??.??.??.??.??|"
-        "HJ.C9.SK.S8.S7.HT.DA.DK.D9.D7|??.??"
+SAMPLE_DEAL = (
+    "w "
+    "??.??.??.??.??.??.??.??.??.??|"
+    "??.??.??.??.??.??.??.??.??.??|"
+    "HJ.C9.SK.S8.S7.HT.DA.DK.D9.D7|??.??"
+)
+
+
+def test_official_sample_deal_view_parses():
+    m = parse_move_line(SAMPLE_DEAL)
+    assert m.actor == "w"
+    assert m.kind == "initial_deal"
+    assert len(m.payload.hands) == 3
+    assert m.payload.hands[2] == (
+        "HJ", "C9", "SK", "S8", "S7", "HT", "DA", "DK", "D9", "D7"
     )
+    assert m.payload.skat == ("??", "??")
+
+
+@pytest.mark.parametrize(
+    ("line", "kind", "payload"),
+    [
+        ("1 18", "bid", 18),
+        ("0 y", "answer_yes", "y"),
+        ("1 p", "pass", "p"),
+        ("2 s", "skat_request", "s"),
+        ("w H9.H8", "skat_delivery", ("H9", "H8")),
+        ("0 S9", "cardplay", "S9"),
+    ],
+)
+def test_official_move_forms(line, kind, payload):
+    m = parse_move_line(line)
+    assert m.kind == kind
+    assert m.payload == payload
+
+
+@pytest.mark.parametrize("action", ["GO", "NOH", "HH", "CHS", "GHZ", "N", "C"])
+def test_official_game_type_examples(action):
+    x = parse_game_declaration(action)
+    assert x["game_type"] == action
+    assert x["cards"] == ()
+
+
+def test_discard_and_declaration_form():
+    m = parse_move_line("2 N.C9.SK")
+    assert m.kind == "declaration"
+    assert m.payload["game_type"] == "N"
+    assert m.payload["cards"] == ("C9", "SK")
+
+
+def test_world_only_actions_are_enforced():
+    with pytest.raises(ISSProtocolError):
+        parse_move_line("0 H9.H8")
+    with pytest.raises(ISSProtocolError):
+        parse_move_line("w S9")
+    with pytest.raises(ISSProtocolError):
+        parse_move_line("w 18")
+
+
+def test_invalid_card_and_non_ladder_bid_rejected():
+    with pytest.raises(ISSProtocolError):
+        parse_move_line("0 C6")
+    with pytest.raises(ISSProtocolError, match="BAD_BID"):
+        parse_move_line("1 19")
+
+
+def test_deal_rejects_duplicate_known_cards():
+    with pytest.raises(ProtocolError, match="DUPLICATE"):
+        parse_deal(
+            "C7.C7.??.??.??.??.??.??.??.??|"
+            "??.??.??.??.??.??.??.??.??.??|"
+            "??.??.??.??.??.??.??.??.??.??|??.??"
+        )
+
+
+def test_modern_typed_transcript_api_maps_compatibility_api():
     moves = parse_transcript(
         [
-            f"w {deal}",
+            SAMPLE_DEAL,
             "1 18",
             "0 y",
             "1 p",
@@ -41,23 +115,12 @@ def test_public_move_syntax_examples():
         ActionKind.DECLARATION,
         ActionKind.CARDPLAY,
     ]
+    assert moves[1].seat == 1
+    assert moves[0].seat is None
+    assert format_move("1", "18") == "1 18"
 
 
-def test_deal_rejects_duplicate_known_cards():
-    with pytest.raises(ProtocolError, match="DUPLICATE"):
-        parse_deal(
-            "C7.C7.??.??.??.??.??.??.??.??|"
-            "??.??.??.??.??.??.??.??.??.??|"
-            "??.??.??.??.??.??.??.??.??.??|??.??"
-        )
-
-
-def test_invalid_bid_is_rejected():
-    with pytest.raises(ProtocolError, match="INVALID_BID"):
-        parse_move("1 19")
-
-
-def test_line_transport_login_without_persisting_password():
+def test_line_transport_login_without_persisting_password(monkeypatch):
     server, client = socket.socketpair()
 
     def fake_server():
@@ -78,20 +141,15 @@ def test_line_transport_login_without_persisting_password():
 
     t = threading.Thread(target=fake_server)
     t.start()
+    monkeypatch.setattr(socket, "create_connection", lambda *a, **k: client)
 
-    original = socket.create_connection
-    socket.create_connection = lambda *a, **k: client
-    try:
-        conn = ISSLineConnection.connect(
-            "unused",
-            80,
-            "SkatAIV2",
-            "secret-test-only",
-            timeout_s=2,
-        )
-    finally:
-        socket.create_connection = original
-
+    conn = ISSLineConnection.connect(
+        "unused",
+        80,
+        "SkatAIV2",
+        "secret-test-only",
+        timeout_s=2,
+    )
     assert conn.client_id == "SkatAIV2"
     assert "secret-test-only" not in repr(conn.__dict__)
     conn.send_line("time")

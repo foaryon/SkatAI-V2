@@ -6,7 +6,16 @@ import re
 import socket
 from typing import Iterable
 
-ISS_PROTOCOL_SCHEMA = "skatai.v2.iss-move-protocol.v1"
+ISS_PROTOCOL_SCHEMA = "skatai.v2.iss-wire-primitives.v2"
+
+PLAYER_ACTORS = frozenset({"0", "1", "2"})
+WORLD_ACTOR = "w"
+VALID_ACTORS = PLAYER_ACTORS | {WORLD_ACTOR}
+SUITS = "CSHD"
+RANKS = "AKQJT987"
+CARD_RE = re.compile(r"^[CSHD][AKQJT987]$")
+GAME_TYPE_RE = re.compile(r"^[GCSHDN](?:O)?(?:H)?(?:S)?(?:Z)?$")
+UNKNOWN_CARD = "??"
 
 BIDS = (
     18, 20, 22, 23, 24, 27, 30, 33, 35, 36, 40, 44, 45, 46, 48, 50, 54,
@@ -17,14 +26,13 @@ BIDS = (
 )
 BID_SET = frozenset(BIDS)
 
-CARD_RE = re.compile(r"^[CSHD][AKQJT987]$")
-UNKNOWN_CARD = "??"
-GAME_TYPE_RE = re.compile(r"^(?:G|C|S|H|D|N)(?:O|H|S|Z)*$")
-PLAYER_TOKENS = frozenset({"w", "0", "1", "2"})
 
-
-class ProtocolError(ValueError):
+class ISSProtocolError(ValueError):
     pass
+
+
+# Newer callers may use the shorter name; keep one exception identity.
+ProtocolError = ISSProtocolError
 
 
 class ActionKind(str, Enum):
@@ -36,7 +44,24 @@ class ActionKind(str, Enum):
     WORLD_SKAT = "WORLD_SKAT"
     DECLARATION = "DECLARATION"
     CARDPLAY = "CARDPLAY"
-    UNKNOWN = "UNKNOWN"
+
+
+@dataclass(frozen=True)
+class DealView:
+    hands: tuple[
+        tuple[str, ...],
+        tuple[str, ...],
+        tuple[str, ...],
+    ]
+    skat: tuple[str, str]
+
+
+@dataclass(frozen=True)
+class WireMove:
+    actor: str
+    action: str
+    kind: str
+    payload: object
 
 
 @dataclass(frozen=True)
@@ -47,98 +72,154 @@ class ISSMove:
 
     @property
     def seat(self) -> int | None:
-        return int(self.player) if self.player in {"0", "1", "2"} else None
+        return int(self.player) if self.player in PLAYER_ACTORS else None
 
 
 def is_card(token: str, *, allow_unknown: bool = False) -> bool:
     return bool(CARD_RE.fullmatch(token)) or (allow_unknown and token == UNKNOWN_CARD)
 
 
+def _card(token: str, *, allow_unknown: bool = False) -> str:
+    if not is_card(token, allow_unknown=allow_unknown):
+        raise ISSProtocolError(f"BAD_CARD:{token}")
+    return token
+
+
 def split_cards(text: str, *, allow_unknown: bool = False) -> tuple[str, ...]:
     cards = tuple(text.split("."))
-    if not cards or any(not is_card(c, allow_unknown=allow_unknown) for c in cards):
-        raise ProtocolError(f"INVALID_CARD_LIST:{text}")
-    return cards
+    if not cards:
+        raise ISSProtocolError("EMPTY_CARD_LIST")
+    return tuple(_card(c, allow_unknown=allow_unknown) for c in cards)
 
 
-def parse_deal(action: str) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
-    groups = action.split("|")
-    if len(groups) != 4:
-        raise ProtocolError(f"BAD_DEAL_GROUP_COUNT:{len(groups)}")
+def parse_deal(action: str) -> DealView:
+    parts = action.split("|")
+    if len(parts) != 4:
+        raise ISSProtocolError(f"BAD_DEAL_SECTION_COUNT:{len(parts)}")
     expected = (10, 10, 10, 2)
-    out = []
-    for group, n in zip(groups, expected, strict=True):
-        cards = split_cards(group, allow_unknown=True)
-        if len(cards) != n:
-            raise ProtocolError(f"BAD_DEAL_CARD_COUNT:{len(cards)}!={n}")
-        out.append(cards)
+    groups: list[tuple[str, ...]] = []
+    for i, (part, n) in enumerate(zip(parts, expected, strict=True)):
+        group = split_cards(part, allow_unknown=True)
+        if len(group) != n:
+            raise ISSProtocolError(f"BAD_DEAL_GROUP_COUNT:{i}:{len(group)}!={n}")
+        groups.append(group)
 
-    known = [c for group in out for c in group if c != UNKNOWN_CARD]
+    known = [c for group in groups for c in group if c != UNKNOWN_CARD]
     if len(known) != len(set(known)):
-        raise ProtocolError("DUPLICATE_KNOWN_CARD_IN_DEAL")
-    return out[0], out[1], out[2], out[3]
+        raise ISSProtocolError("DUPLICATE_KNOWN_CARD_IN_DEAL")
+
+    return DealView(
+        hands=(groups[0], groups[1], groups[2]),
+        skat=(groups[3][0], groups[3][1]),
+    )
 
 
-def _declaration_parts(action: str) -> tuple[str, tuple[str, ...]] | None:
+def parse_game_declaration(action: str) -> dict[str, object]:
     parts = action.split(".")
-    if not parts or not GAME_TYPE_RE.fullmatch(parts[0]):
-        return None
-    cards = tuple(parts[1:])
-    if any(not is_card(c) for c in cards):
-        raise ProtocolError(f"INVALID_DECLARATION_CARDS:{action}")
-    return parts[0], cards
+    game_type = parts[0]
+    if not GAME_TYPE_RE.fullmatch(game_type):
+        raise ISSProtocolError(f"BAD_GAME_TYPE:{game_type}")
+    cards = tuple(_card(x) for x in parts[1:])
+    if cards and len(cards) < 2:
+        raise ISSProtocolError("DECLARATION_WITH_SINGLE_CARD")
+    return {"game_type": game_type, "cards": cards}
 
 
-def classify_action(player: str, action: str) -> ActionKind:
-    if player not in PLAYER_TOKENS:
-        raise ProtocolError(f"INVALID_PLAYER_TOKEN:{player}")
+def classify_action(actor: str, action: str) -> tuple[str, object]:
+    if actor not in VALID_ACTORS:
+        raise ISSProtocolError(f"BAD_ACTOR:{actor}")
     if not action:
-        raise ProtocolError("EMPTY_ACTION")
+        raise ISSProtocolError("EMPTY_ACTION")
 
-    if player == "w":
-        if "|" in action:
-            parse_deal(action)
-            return ActionKind.DEAL
-        cards = split_cards(action)
-        if len(cards) == 2:
-            return ActionKind.WORLD_SKAT
-        return ActionKind.UNKNOWN
+    if "|" in action:
+        if actor != WORLD_ACTOR:
+            raise ISSProtocolError("INITIAL_DEAL_MUST_BE_WORLD")
+        return "initial_deal", parse_deal(action)
 
-    if action == "y":
-        return ActionKind.ANSWER_YES
-    if action == "p":
-        return ActionKind.PASS
-    if action == "s":
-        return ActionKind.PICKUP_SKAT
     if action.isdigit():
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_BID")
         value = int(action)
         if value not in BID_SET:
-            raise ProtocolError(f"INVALID_BID:{value}")
-        return ActionKind.BID
-    if is_card(action):
-        return ActionKind.CARDPLAY
-    if _declaration_parts(action) is not None:
-        return ActionKind.DECLARATION
-    return ActionKind.UNKNOWN
+            raise ISSProtocolError(f"BAD_BID:{value}")
+        return "bid", value
+
+    if action in {"y", "p"}:
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_ANSWER_BID")
+        return ("answer_yes" if action == "y" else "pass"), action
+
+    if action == "s":
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_PICKUP_SKAT")
+        return "skat_request", action
+
+    parts = action.split(".")
+    if len(parts) == 2 and all(CARD_RE.fullmatch(x) for x in parts):
+        if actor != WORLD_ACTOR:
+            raise ISSProtocolError("SKAT_DELIVERY_MUST_BE_WORLD")
+        return "skat_delivery", tuple(parts)
+
+    if GAME_TYPE_RE.fullmatch(parts[0]):
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_DECLARE")
+        return "declaration", parse_game_declaration(action)
+
+    if CARD_RE.fullmatch(action):
+        if actor == WORLD_ACTOR:
+            raise ISSProtocolError("WORLD_CANNOT_PLAY_CARD")
+        return "cardplay", _card(action)
+
+    raise ISSProtocolError(f"UNKNOWN_ACTION:{action}")
+
+
+def parse_move_line(line: str) -> WireMove:
+    stripped = line.strip()
+    if not stripped:
+        raise ISSProtocolError("EMPTY_LINE")
+    try:
+        actor, action = stripped.split(maxsplit=1)
+    except ValueError as exc:
+        raise ISSProtocolError("MOVE_REQUIRES_ACTOR_AND_ACTION") from exc
+    kind, payload = classify_action(actor, action)
+    return WireMove(actor=actor, action=action, kind=kind, payload=payload)
+
+
+def format_move(actor: str, action: str) -> str:
+    classify_action(actor, action)
+    return f"{actor} {action}"
+
+
+_KIND_MAP = {
+    "initial_deal": ActionKind.DEAL,
+    "bid": ActionKind.BID,
+    "answer_yes": ActionKind.ANSWER_YES,
+    "pass": ActionKind.PASS,
+    "skat_request": ActionKind.PICKUP_SKAT,
+    "skat_delivery": ActionKind.WORLD_SKAT,
+    "declaration": ActionKind.DECLARATION,
+    "cardplay": ActionKind.CARDPLAY,
+}
 
 
 def parse_move(line: str) -> ISSMove:
-    line = line.strip()
-    if not line:
-        raise ProtocolError("EMPTY_MOVE_LINE")
-    try:
-        player, action = line.split(maxsplit=1)
-    except ValueError as exc:
-        raise ProtocolError(f"BAD_MOVE_LINE:{line}") from exc
-    return ISSMove(player=player, action=action, kind=classify_action(player, action))
+    wire = parse_move_line(line)
+    return ISSMove(
+        player=wire.actor,
+        action=wire.action,
+        kind=_KIND_MAP[wire.kind],
+    )
+
+
+def parse_transcript(lines: Iterable[str]) -> tuple[ISSMove, ...]:
+    return tuple(parse_move(line) for line in lines if line.strip())
 
 
 class ISSLineConnection:
     """Minimal line-oriented ISS transport.
 
-    This layer deliberately knows nothing about table automation. It only owns
-    the TCP connection, login handshake, UTF-8 line framing, and secret-safe
-    lifecycle. Higher-level service/table parsing belongs in separate code.
+    This owns only TCP/login/framing. It does not automate table lifecycle or
+    game decisions. Passwords are used for the handshake and never retained.
     """
 
     def __init__(self, sock: socket.socket, *, client_id: str) -> None:
@@ -184,7 +265,6 @@ class ISSLineConnection:
             words = welcome.split()
             effective_id = words[1] if len(words) > 1 else client_id
 
-            # Reuse the already-created streams without ever storing password.
             obj = cls.__new__(cls)
             obj._sock = sock
             obj._reader = reader
@@ -227,7 +307,3 @@ class ISSLineConnection:
 
     def __exit__(self, *_: object) -> None:
         self.close()
-
-
-def parse_transcript(lines: Iterable[str]) -> tuple[ISSMove, ...]:
-    return tuple(parse_move(line) for line in lines if line.strip())
