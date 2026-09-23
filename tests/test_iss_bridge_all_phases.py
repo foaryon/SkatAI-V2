@@ -1,4 +1,4 @@
-from skatai.iss.bridge import next_action
+from skatai.iss.bridge import next_skat_action
 from skatai.iss.protocol import parse_move_line
 from skatai.iss.session import TableSession
 
@@ -38,13 +38,13 @@ def table(*lines):
 
 def test_bridge_answerer_continue_maps_to_yes():
     e = Engine()
-    assert next_action(table(DEAL_FH, "1 18"), e) == "y"
+    assert next_skat_action(table(DEAL_FH, "1 18"), e) == "y"
 
 
 def test_bridge_pre_skat_pickup_action():
     e = Engine()
     t = table(DEAL_FH, "1 18", "0 y", "1 p", "2 p")
-    assert next_action(t, e) == "s"
+    assert next_skat_action(t, e) == "s"
 
 
 def test_bridge_pickup_combines_declaration_and_discard():
@@ -55,7 +55,7 @@ def test_bridge_pickup_combines_declaration_and_discard():
         "1 18", "0 y", "1 p", "2 p",
         "0 s", "w S9.ST",
     )
-    assert next_action(t, e) == "G.C7.C8"
+    assert next_skat_action(t, e) == "G.C7.C8"
 
 
 def test_bridge_cardplay_uses_stable_product_surface():
@@ -63,4 +63,4 @@ def test_bridge_cardplay_uses_stable_product_surface():
     e.contract = "GH"
     e.card = "S7"
     t = table(DEAL_FH, "1 18", "0 y", "1 p", "2 p", "0 GH")
-    assert next_action(t, e) == "S7"
+    assert next_skat_action(t, e) == "S7"
