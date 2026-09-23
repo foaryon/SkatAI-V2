@@ -1,0 +1,31 @@
+{
+  "schema": "skatai.v2.iss-offline-causal-stack-smoke.v1",
+  "status": "PASS",
+  "source_commit": "7e1fe2cf02f2010453147ac77ae0d41b2a19f8e2",
+  "b0": {
+    "skatzero_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "bidding_action": "p",
+    "bidding_elapsed_s": 9.732491385191679,
+    "cardplay_action": "DJ",
+    "cardplay_elapsed_s": 1.456438150955364
+  },
+  "b1": {
+    "model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "bidding_action": "p",
+    "bidding_elapsed_s": 0.0011827058624476194,
+    "cardplay_action": "DJ",
+    "cardplay_elapsed_s": 1.4130115727894008
+  },
+  "invariants": {
+    "same_iss_bridge": true,
+    "same_downstream_frozen_b0_backend": true,
+    "downstream_action_equal": true,
+    "b1_differs_only_in_bidding_component": true
+  },
+  "interpretation": [
+    "This is an offline integration smoke, not strength evidence.",
+    "The stable ISS bridge can drive both control and candidate through the same downstream path.",
+    "The observed downstream action was identical for B0 and B1 on this state.",
+    "The smoke does not ACCEPT or REJECT B1."
+  ]
+}
