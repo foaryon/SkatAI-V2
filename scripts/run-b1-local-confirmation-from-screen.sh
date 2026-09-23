@@ -31,16 +31,22 @@ PYTHONPATH=$V2_ROOT/src "$B0_PYTHON" \
   --stage SCREEN \
   --output "$SCREEN_CLUSTERED"
 
-NEXT_ACTION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["next_action"])' "$SCREEN_CLUSTERED")
-if [ "$NEXT_ACTION" != "CONTINUE_LOCAL_CONFIRMATION" ]; then
-  echo "screen clustered decision does not authorize confirmation: $NEXT_ACTION" >&2
-  exit 3
-fi
-
-rclone copyto "$SCREEN_CLUSTERED" \
-  :s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/screen/decision-clustered.json \
+SCREEN_CLUSTER_SHA=$(sha256sum "$SCREEN_CLUSTERED" | cut -d' ' -f1)
+SCREEN_CLUSTER_REMOTE=:s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/screen/decision-clustered.json
+rclone copyto "$SCREEN_CLUSTERED" "$SCREEN_CLUSTER_REMOTE" \
   --s3-provider Other --s3-env-auth \
   --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1
+SCREEN_CLUSTER_REMOTE_SHA=$(rclone cat "$SCREEN_CLUSTER_REMOTE" \
+  --s3-provider Other --s3-env-auth \
+  --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1 \
+  | sha256sum | cut -d' ' -f1)
+test "$SCREEN_CLUSTER_SHA" = "$SCREEN_CLUSTER_REMOTE_SHA"
+
+NEXT_ACTION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["next_action"])' "$SCREEN_CLUSTERED")
+if [ "$NEXT_ACTION" != "CONTINUE_LOCAL_CONFIRMATION" ]; then
+  echo "screen clustered decision does not authorize confirmation: $NEXT_ACTION"
+  exit 0
+fi
 
 PYTHONPATH=$V2_ROOT/src "$B0_PYTHON" \
   -m skatai.evaluation.promote_pregate_checkpoint \
