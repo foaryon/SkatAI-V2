@@ -24,10 +24,15 @@ done
 LAST_SHA=
 sync_once() {
   [ -f "$SOURCE" ] || return 0
-  local sha
-  sha=$(sha256sum "$SOURCE" | cut -d' ' -f1)
-  [ "$sha" != "$LAST_SHA" ] || return 0
-  rclone copyto "$SOURCE" "$REMOTE" \
+  local snapshot sha
+  snapshot=$(mktemp)
+  cp "$SOURCE" "$snapshot"
+  sha=$(sha256sum "$snapshot" | cut -d' ' -f1)
+  if [ "$sha" = "$LAST_SHA" ]; then
+    rm -f "$snapshot"
+    return 0
+  fi
+  rclone copyto "$snapshot" "$REMOTE" \
     --s3-provider Other --s3-env-auth \
     --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1
   local remote_sha
@@ -36,6 +41,7 @@ sync_once() {
     --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1 \
     | sha256sum | cut -d' ' -f1)
   test "$sha" = "$remote_sha"
+  rm -f "$snapshot"
   LAST_SHA=$sha
   printf '%s checkpoint_mirrored sha256=%s\n' "$(date -u +%FT%TZ)" "$sha"
 }
