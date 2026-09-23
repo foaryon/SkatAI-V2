@@ -1,0 +1,67 @@
+{
+  "accept_authorized": false,
+  "artifacts": {
+    "clustered_decision": {
+      "authority": "primary_local_decision",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/screen/decision-clustered.json",
+      "sha256": "bc850fca8810b60051a0b42e704917625478f9b49669fdb666d1876f64bd9837"
+    },
+    "result": {
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/screen/result.json",
+      "sha256": "4cf14571c26a556ca02eb91b9971840be89d0c46fc7038083f1c784f60e97990"
+    },
+    "run_identity": {
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/screen/run-identity.json",
+      "sha256": "8d4793bd05e6cdcd350feff0f015a4fb948ab4cc643b55a08efbea54bacdb635"
+    },
+    "seat_level_decision": {
+      "authority": "secondary_diagnostic_only",
+      "object": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/screen/decision.json",
+      "sha256": "63424b008e3e0008b529dbce61c20c43225c5e8256a2c377fe0b6b9a4f636c38"
+    }
+  },
+  "candidate": "V2-B1-bidding-linearish-full-v1",
+  "control": "V2-B0",
+  "frozen_run_identity": {
+    "b0_accuracy": 231,
+    "b0_bid_threshold": -5.0,
+    "b0_skatzero_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "b1_threshold": 0.5,
+    "deal_set_sha256": "3a31a2bafa6ebb4669a63fa12ce4aa6fb604438fa644cec21672c401241b3889",
+    "v2_commit": "4dd968ac76964d653b7d86cba6f4eed8c82fda29"
+  },
+  "interpretation": [
+    "The clustered 95% interval includes both negative and positive values.",
+    "SCREEN therefore does not establish improvement and does not establish clear local regression.",
+    "Per the frozen rule, the candidate proceeds to LOCAL_CONFIRMATION.",
+    "No local stage can ACCEPT the candidate; deployment-valid external gameplay remains mandatory."
+  ],
+  "next_action": "CONTINUE_LOCAL_CONFIRMATION",
+  "observed": {
+    "changed_auction_pairs": 18,
+    "deals": 30,
+    "elapsed_s": 556.2244269051589,
+    "primary_clustered_stats": {
+      "ci95_high": 9.11030557070449,
+      "ci95_low": -11.254750015148936,
+      "mean": -1.0722222222222222,
+      "n": 30,
+      "sample_std": 28.455102880659457,
+      "standard_error": 5.195167241289139
+    },
+    "seat_pairs": 90,
+    "secondary_seat_level_stats": {
+      "ci95_high": 9.648549924805819,
+      "ci95_low": -11.792994369250264,
+      "mean": -1.0722222222222222,
+      "n": 90,
+      "sample_std": 51.8909055004625,
+      "standard_error": 5.4697817076673685
+    }
+  },
+  "schema": "skatai.v2.local-bidding-screen-evidence.v1",
+  "stage": "SCREEN",
+  "status": "LOCAL_GATE_NOT_REGRESSING",
+  "strength_claim_authorized": false
+}
