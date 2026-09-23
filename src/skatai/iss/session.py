@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from skatai.data.sgf import SGFParseError, parse_properties
 from skatai.iss.protocol import ISSProtocolError, WireMove, parse_move_line
 from skatai.iss.service import ISSServiceError, ServiceEvent, parse_table_start_payload
 
@@ -10,6 +11,39 @@ SESSION_SCHEMA = "skatai.v2.iss-session.v1"
 
 class ISSSessionError(ValueError):
     pass
+
+
+def replay_moves_from_player_sgf(sgf: str) -> list[WireMove]:
+    """Recover only player-visible ISS moves from a reconnect SGF snapshot.
+
+    Unlike the canonical historical parser, this deliberately accepts hidden
+    cards in the initial deal. Every recovered action is still validated by the
+    clean ISS wire parser, so replay cannot inject an unsupported move.
+    """
+    try:
+        tags = parse_properties(str(sgf))
+    except SGFParseError as exc:
+        raise ISSSessionError(f"RECONNECT_SGF_PROPERTIES:{exc}") from exc
+    if tags.get("GM") != "Skat":
+        raise ISSSessionError("RECONNECT_SGF_NOT_SKAT")
+    raw_moves = tags.get("MV")
+    if not raw_moves:
+        raise ISSSessionError("RECONNECT_SGF_MISSING_MV")
+    tokens = raw_moves.split()
+    if len(tokens) % 2:
+        raise ISSSessionError(f"RECONNECT_SGF_ODD_MOVE_TOKENS:{len(tokens)}")
+    moves: list[WireMove] = []
+    for i in range(0, len(tokens), 2):
+        actor, action = tokens[i], tokens[i + 1]
+        try:
+            moves.append(parse_move_line(f"{actor} {action}"))
+        except ISSProtocolError as exc:
+            raise ISSSessionError(
+                f"RECONNECT_SGF_BAD_MOVE:{i // 2}:{exc}"
+            ) from exc
+    if not moves or moves[0].kind != "initial_deal":
+        raise ISSSessionError("RECONNECT_SGF_MISSING_INITIAL_DEAL")
+    return moves
 
 
 @dataclass
@@ -58,7 +92,16 @@ class TableSession:
             self.in_progress = True
             self.stopped = False
             self.game_sgf = None
-            self.moves.clear()
+            replay_sgf = None
+            if self.server_game_num is not None:
+                try:
+                    replay_sgf = start.get("replay_sgf")
+                except UnboundLocalError:
+                    replay_sgf = None
+            if replay_sgf:
+                self.moves = replay_moves_from_player_sgf(str(replay_sgf))
+            else:
+                self.moves.clear()
             return
 
         if event.kind == "table_play":

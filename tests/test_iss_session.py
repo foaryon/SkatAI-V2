@@ -79,3 +79,46 @@ def test_synthetic_start_payload_keeps_local_sequence_fallback():
     s.apply(parse_service_line("table T1 skatai start fixture"))
     assert table.game_sequence == 1
     assert table.server_game_num is None
+
+
+def test_reconnect_start_replays_player_visible_sgf_without_hidden_leakage():
+    from skatai.iss.session import replay_moves_from_player_sgf
+
+    deal = (
+        "C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8|"
+        "??.??.??.??.??.??.??.??.??.??|"
+        "??.??.??.??.??.??.??.??.??.??|??.??"
+    )
+    sgf = (
+        "(;GM[Skat]"
+        "P0[SkatAI]P1[kermit]P2[zoot]"
+        f"MV[w {deal} 1 18 0 p 2 20 1 p 2 GH 0 S7]"
+        "R[] ;)"
+    )
+    moves = replay_moves_from_player_sgf(sgf)
+    assert [m.kind for m in moves] == [
+        "initial_deal", "bid", "pass", "bid", "pass", "declaration", "cardplay"
+    ]
+    assert moves[0].payload.hands[0][0] == "C7"
+    assert moves[0].payload.hands[1][0] == "??"
+
+
+def test_table_start_reconnect_restores_move_transcript():
+    s = ISSSessionState()
+    table = s.apply(parse_service_line("create T1 SkatAI 3"))
+    deal = (
+        "C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8|"
+        "??.??.??.??.??.??.??.??.??.??|"
+        "??.??.??.??.??.??.??.??.??.??|??.??"
+    )
+    sgf = f"(;GM[Skat]MV[w {deal} 1 18 0 p 2 p]R[] ;)"
+    s.apply(
+        parse_service_line(
+            "table T1 SkatAI start "
+            "42 SkatAI 60 kermit 59 zoot 58 ! " + sgf
+        )
+    )
+    assert table.game_sequence == 42
+    assert [m.kind for m in table.moves] == [
+        "initial_deal", "bid", "pass", "pass"
+    ]
