@@ -29,7 +29,7 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-23T23:06:37Z",
+  "captured_at": "2026-09-23T23:12:20Z",
   "external_blockers": [
     {
       "action": "Create brand-new V2 GitHub repository and attach/push this clean history without V1 ancestry.",
@@ -39,7 +39,7 @@
   "first_unfinished_dependency_for_b1_strength": "deployment-valid ISS external gate campaign execution",
   "git": {
     "branch": "main",
-    "code_head": "22559602327c1f408ec82572d86e9deb1fab60ec",
+    "code_head": "3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa",
     "new_v2_github_repository_attached": false,
     "remote_present": false,
     "workspace": "/workspace/skatai-v2"
@@ -47,7 +47,7 @@
   "iss": {
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
-    "adapter_status": "AUTHENTICATED_GATE_READY",
+    "adapter_status": "AUTHENTICATED_GATE_READY_AFTER_LIVE_PROTOCOL_FIX",
     "all_phase_single_adapter": true,
     "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
@@ -55,6 +55,11 @@
     "frozen_external_gate_ready_except_credentials": false,
     "hetzner_per_game_evidence_mirror": true,
     "host": "skatgame.net",
+    "latest_live_protocol_failure": {
+      "classification": "NON_SCORING_INFRASTRUCTURE_PROTOCOL_FAILURE",
+      "provenance": "provenance/ISS_GATE_LIVE_PROTOCOL_FAILURE_20260923T230903Z.json",
+      "resolved_by_commit": "3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa"
+    },
     "port": 7000,
     "scored_live_games": 0,
     "secret_present_on_worker": true,
@@ -63,10 +68,10 @@
     "worker_transport_reconnect": true
   },
   "next_safe_actions": [
-    "Start the frozen external ISS gate worker without altering quotas, deployment identities, or decision rule.",
+    "Retry the frozen external ISS gate worker at code commit 3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa without changing quotas, deployment identities, or decision rule.",
     "Persist and mirror each deployment-valid game before advancing the campaign.",
-    "Continue independent non-contaminating Skat research while the external gate runs.",
-    "Do not use external-bot holdout or ISS gate games for training/hyperparameter fitting before authorized disposition."
+    "Do not mutate Git while an active ISS game is bound to this source commit.",
+    "Continue independent non-contaminating Skat research only in ways that do not alter the running gate source tree."
   ],
   "schema": "skatai.v2.continuation-state.v1",
   "science": {
@@ -124,6 +129,6 @@
   "tests": {
     "environment": "/tmp/skatai-v2-dev",
     "pytest_failed": 0,
-    "pytest_passed": 255
+    "pytest_passed": 256
   }
 }
