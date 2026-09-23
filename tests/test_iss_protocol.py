@@ -157,3 +157,39 @@ def test_line_transport_login_without_persisting_password(monkeypatch):
     conn.close()
     t.join(timeout=2)
     assert not t.is_alive()
+
+
+@pytest.mark.parametrize(
+    "action",
+    ["GHO", "GHS", "GHZ", "CHO", "CHS", "CHZ", "NO", "NH", "NHO"],
+)
+def test_official_declaration_modifier_vocabulary(action):
+    assert parse_game_declaration(action)["game_type"] == action
+
+
+@pytest.mark.parametrize("action", ["GSS", "NHS", "NZ", "GS"])
+def test_invalid_declaration_modifier_semantics_fail_closed(action):
+    with pytest.raises(ISSProtocolError):
+        parse_game_declaration(action)
+
+
+def test_hidden_skat_delivery_for_defender_view_parses():
+    m = parse_move_line("w ??.??")
+    assert m.kind == "skat_delivery"
+    assert m.payload == ("??", "??")
+
+
+def test_hidden_discards_for_defender_view_parse():
+    m = parse_move_line("2 G.??.??")
+    assert m.kind == "declaration"
+    assert m.payload["game_type"] == "G"
+    assert m.payload["cards"] == ("??", "??")
+
+
+def test_ouvert_defender_view_can_include_hidden_discards_and_open_hand():
+    hand = "C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8"
+    m = parse_move_line("2 GHO.??.??." + hand)
+    assert m.kind == "declaration"
+    assert m.payload["game_type"] == "GHO"
+    assert m.payload["cards"][:2] == ("??", "??")
+    assert len(m.payload["cards"]) == 12

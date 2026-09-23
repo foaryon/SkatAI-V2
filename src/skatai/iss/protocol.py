@@ -14,7 +14,7 @@ VALID_ACTORS = PLAYER_ACTORS | {WORLD_ACTOR}
 SUITS = "CSHD"
 RANKS = "AKQJT987"
 CARD_RE = re.compile(r"^[CSHD][AKQJT987]$")
-GAME_TYPE_RE = re.compile(r"^[GCSHDN](?:O)?(?:H)?(?:S)?(?:Z)?$")
+GAME_TYPE_RE = re.compile(r"^[GCSHDN][OHSZ]*$")
 UNKNOWN_CARD = "??"
 
 BIDS = (
@@ -119,9 +119,25 @@ def parse_game_declaration(action: str) -> dict[str, object]:
     game_type = parts[0]
     if not GAME_TYPE_RE.fullmatch(game_type):
         raise ISSProtocolError(f"BAD_GAME_TYPE:{game_type}")
-    cards = tuple(_card(x) for x in parts[1:])
+
+    base = game_type[0]
+    modifiers = game_type[1:]
+    if len(set(modifiers)) != len(modifiers):
+        raise ISSProtocolError(f"DUPLICATE_GAME_MODIFIER:{game_type}")
+    if base == "N" and any(x in modifiers for x in ("S", "Z")):
+        raise ISSProtocolError(f"NULL_WITH_SCHNEIDER_OR_SCHWARZ:{game_type}")
+    if base != "N" and "O" in modifiers:
+        # ISS semantics: non-null ouvert implies Hand + Schneider + Schwarz,
+        # regardless of whether those implied modifiers are written.
+        pass
+    if any(x in modifiers for x in ("S", "Z")) and "H" not in modifiers and "O" not in modifiers:
+        raise ISSProtocolError(f"ANNOUNCEMENT_REQUIRES_HAND:{game_type}")
+
+    cards = tuple(_card(x, allow_unknown=True) for x in parts[1:])
     if cards and len(cards) < 2:
         raise ISSProtocolError("DECLARATION_WITH_SINGLE_CARD")
+    if cards and len(cards) not in (2, 10, 12):
+        raise ISSProtocolError(f"BAD_DECLARATION_CARD_COUNT:{len(cards)}")
     return {"game_type": game_type, "cards": cards}
 
 
@@ -155,7 +171,7 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
         return "skat_request", action
 
     parts = action.split(".")
-    if len(parts) == 2 and all(CARD_RE.fullmatch(x) for x in parts):
+    if len(parts) == 2 and all(is_card(x, allow_unknown=True) for x in parts):
         if actor != WORLD_ACTOR:
             raise ISSProtocolError("SKAT_DELIVERY_MUST_BE_WORLD")
         return "skat_delivery", tuple(parts)
