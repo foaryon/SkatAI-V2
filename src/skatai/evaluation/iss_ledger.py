@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import math
@@ -141,6 +142,7 @@ class ISSGateLedger:
     def __init__(self, path: Path) -> None:
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
+        self.lock_path = path.with_suffix(path.suffix + ".lock")
 
     def records(self) -> list[ISSGateLedgerRecord]:
         out = []
@@ -162,16 +164,27 @@ class ISSGateLedger:
         return out
 
     def append(self, record: ISSGateLedgerRecord) -> None:
-        existing = {x.game_id for x in self.records()}
-        if record.game_id in existing:
-            raise ValueError(f"DUPLICATE_GAME_ID:{record.game_id}")
-        encoded = json.dumps(asdict(record), sort_keys=True, separators=(",", ":")) + "\n"
-        fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        lock_fd = os.open(self.lock_path, os.O_WRONLY | os.O_CREAT, 0o600)
         try:
-            os.write(fd, encoded.encode("utf-8"))
-            os.fsync(fd)
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            existing = {x.game_id for x in self.records()}
+            if record.game_id in existing:
+                raise ValueError(f"DUPLICATE_GAME_ID:{record.game_id}")
+            encoded = (
+                json.dumps(asdict(record), sort_keys=True, separators=(",", ":"))
+                + "\n"
+            )
+            fd = os.open(
+                self.path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600
+            )
+            try:
+                os.write(fd, encoded.encode("utf-8"))
+                os.fsync(fd)
+            finally:
+                os.close(fd)
         finally:
-            os.close(fd)
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
 
     def scored_for_gate(self) -> list[dict[str, Any]]:
         return [
