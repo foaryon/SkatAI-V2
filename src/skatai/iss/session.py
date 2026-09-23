@@ -26,6 +26,7 @@ class TableSession:
     moves: list[WireMove] = field(default_factory=list)
     tells: list[tuple[str, str]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    game_sequence: int = 0
 
     def apply(self, event: ServiceEvent) -> None:
         table_id = event.fields.get("table_id")
@@ -35,6 +36,7 @@ class TableSession:
             )
 
         if event.kind == "table_start":
+            self.game_sequence += 1
             self.in_progress = True
             self.stopped = False
             self.start_payload = str(event.fields.get("payload") or "")

@@ -19,6 +19,10 @@ from skatai.iss.transport import ISSConnectionConfig, ISSLineTransport
 CLIENT_RUNTIME_SCHEMA = "skatai.v2.iss-client-runtime.v1"
 
 
+class TableMoveProvider(Protocol):
+    def next_action(self, table) -> str | None: ...
+
+
 class LineTransport(Protocol):
     authenticated_client_id: str | None
 
@@ -70,16 +74,32 @@ class ISSClientCore:
         *,
         policy: ISSClientPolicy = ISSClientPolicy(),
         journal: ISSJournal | None = None,
+        move_provider: TableMoveProvider | None = None,
     ) -> None:
         self.transport = transport
         self.policy = policy
         self.journal = journal
+        self.move_provider = move_provider
         self.state = ISSSessionState()
+        self._sent_decision_keys: set[tuple[str, int, int, str]] = set()
 
     def _send(self, line: str) -> None:
         self.transport.send_line(line)
         if self.journal is not None:
             self.journal.write("out", line)
+
+    def _maybe_send_move(self, table) -> None:
+        if self.move_provider is None or not table.is_player or not table.in_progress:
+            return
+        action = self.move_provider.next_action(table)
+        if action is None:
+            return
+        key = (table.table_id, table.game_sequence, len(table.moves), str(action))
+        if key in self._sent_decision_keys:
+            return
+        from skatai.iss.service import command_play
+        self._send(command_play(table.table_id, table.viewer_name, str(action)))
+        self._sent_decision_keys.add(key)
 
     def connect_and_login(self, password: str) -> str:
         self.transport.connect()
@@ -115,8 +135,8 @@ class ISSClientCore:
         ):
             self._send(command_ready(table.table_id, table.viewer_name))
 
-        # table_start/table_play update session state only. A separate SkatAI
-        # state/decision adapter decides if and what to play.
+        if event.kind in {"table_start", "table_play", "table_state", "table_go"} and table is not None:
+            self._maybe_send_move(table)
         return event
 
     def step(self) -> ServiceEvent:
