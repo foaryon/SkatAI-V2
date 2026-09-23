@@ -1,0 +1,43 @@
+{
+  "agent_bootstrap": {
+    "agent_version": "0.20.0",
+    "path": "/workspace/sentinelx-host/start-sentinelx.sh",
+    "recreates_ephemeral_service_account": true,
+    "rehydrates_etcsentinelx_from_persistent_copy": true,
+    "restores_nopasswd_sudo": true,
+    "runpod_general_secret_input_name": "skatai_iss_password",
+    "runtime_mapping": "skatai_iss_password -> ISS_PASSWORD in process memory",
+    "sha256": "0778ddc0bf3c9c205e7b8a2a4b0c293ee4e8e7e1a0f2899aff12515cce57e695",
+    "source_secret_name_removed_from_agent_environment": true,
+    "source_secret_value_logged": false,
+    "source_secret_value_persisted": false
+  },
+  "captured_at": "2026-09-23T23:07:31Z",
+  "code_head": "22559602327c1f408ec82572d86e9deb1fab60ec",
+  "host_id": "host_c8c6a6b0a7123805",
+  "hostname": "623783ac54a3",
+  "neutral_root": "/workspace/sentinelx-host",
+  "resources": {
+    "effective_cpus": 4,
+    "memory_cgroup_limit_bytes": 8000000000,
+    "planned_main_template": "8C/32G not yet applied"
+  },
+  "runtime": {
+    "authenticated_non_scoring_preflight": "PASS",
+    "full_test_suite_passed": 255,
+    "iss_client_id_present": true,
+    "iss_host_present": true,
+    "iss_password_present": true,
+    "iss_port_present": true,
+    "root_equivalent_nopasswd_sudo_verified": true
+  },
+  "schema": "skatai.v2.runpod-main-bootstrap.v1",
+  "storage_note": "/workspace is the RunPod network volume; secret confidentiality does not rely on its POSIX mode bits. General secrets remain authoritative and are injected only at runtime.",
+  "supervisor": {
+    "parent_pid": 1,
+    "path": "/workspace/sentinelx-host/supervisor.sh",
+    "runs_as": "root",
+    "sha256": "d7becda828250cd35b4c9d88601c6896a9bb2a506c92ca0c08ed6bc0504578b8",
+    "singleton_lock": true
+  }
+}

@@ -29,21 +29,17 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-23T21:58:21Z",
+  "captured_at": "2026-09-23T23:06:37Z",
   "external_blockers": [
-    {
-      "action": "Inject ISS_HOST, ISS_PORT, ISS_CLIENT_ID and password via ISS_PASSWORD or mode-0600 ISS_PASSWORD_FILE; then run non-scoring login preflight.",
-      "id": "iss-v2-credentials"
-    },
     {
       "action": "Create brand-new V2 GitHub repository and attach/push this clean history without V1 ancestry.",
       "id": "github-v2-repository-creation"
     }
   ],
-  "first_unfinished_dependency_for_b1_strength": "authenticated deployment-valid ISS external gate",
+  "first_unfinished_dependency_for_b1_strength": "deployment-valid ISS external gate campaign execution",
   "git": {
     "branch": "main",
-    "code_head": "cd7107f1115f8ad90b3228753cea78d0d75b02ac",
+    "code_head": "22559602327c1f408ec82572d86e9deb1fab60ec",
     "new_v2_github_repository_attached": false,
     "remote_present": false,
     "workspace": "/workspace/skatai-v2"
@@ -51,24 +47,26 @@
   "iss": {
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
-    "adapter_status": "IMPLEMENTED_TESTED_NOT_YET_LIVE_AUTHENTICATED",
+    "adapter_status": "AUTHENTICATED_GATE_READY",
     "all_phase_single_adapter": true,
-    "authenticated_preflight_complete": false,
+    "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
-    "frozen_external_gate_ready_except_credentials": true,
+    "frozen_external_gate_ready": true,
+    "frozen_external_gate_ready_except_credentials": false,
     "hetzner_per_game_evidence_mirror": true,
     "host": "skatgame.net",
     "port": 7000,
     "scored_live_games": 0,
-    "secret_present_on_worker": false,
+    "secret_present_on_worker": true,
+    "secret_source": "RunPod General Secret -> ISS_PASSWORD in process memory",
     "stable_decision_boundary": true,
     "worker_transport_reconnect": true
   },
   "next_safe_actions": [
-    "When ISS secret appears, run non-scoring authentication preflight and persist evidence before any game.",
-    "Then start the frozen external ISS gate worker without altering quotas or decision rule.",
-    "Continue independent non-contaminating Skat research while credentials remain blocked.",
-    "Do not use external-bot holdout or future ISS gate games for training/hyperparameter fitting before authorized disposition."
+    "Start the frozen external ISS gate worker without altering quotas, deployment identities, or decision rule.",
+    "Persist and mirror each deployment-valid game before advancing the campaign.",
+    "Continue independent non-contaminating Skat research while the external gate runs.",
+    "Do not use external-bot holdout or ISS gate games for training/hyperparameter fitting before authorized disposition."
   ],
   "schema": "skatai.v2.continuation-state.v1",
   "science": {
@@ -106,10 +104,13 @@
     }
   },
   "sentinelx": {
+    "container_recreation_self_healing_bootstrap": true,
     "host_id": "host_c8c6a6b0a7123805",
+    "hostname": "623783ac54a3",
     "legacy_v1_supervisor_dependency_observed": false,
     "neutral_root": "/workspace/sentinelx-host",
-    "pre_start_launches_neutral_supervisor": true,
+    "pre_start_launches_neutral_supervisor": false,
+    "runtime_general_secret_mapping": true,
     "supervisor_parent_pid": 1
   },
   "storage": {

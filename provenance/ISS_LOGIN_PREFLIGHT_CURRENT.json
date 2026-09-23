@@ -1,0 +1,17 @@
+{
+  "authenticated_client_id": "SkatAI",
+  "captured_at": "2026-09-23T23:06:37Z",
+  "code_head": "22559602327c1f408ec82572d86e9deb1fab60ec",
+  "elapsed_ms": 448.8,
+  "host": "skatgame.net",
+  "joined_table": false,
+  "port": 7000,
+  "requested_client_id": "SkatAI",
+  "result_sha256": "6a59eaece82af12a7f7cf4ee13260f100eba8ec45d8cbb602d4055a73f1fc165",
+  "schema": "skatai.v2.iss-login-preflight-snapshot.v1",
+  "scored_game": false,
+  "secret_runtime_source": "runpod_general_secret_mapped_in_memory_to_ISS_PASSWORD",
+  "secret_value_logged": false,
+  "secret_value_persisted": false,
+  "status": "AUTHENTICATED"
+}

@@ -1,25 +1,29 @@
 {
-  "captured_at": "2026-09-23T21:58:21Z",
-  "code_head": "cd7107f1115f8ad90b3228753cea78d0d75b02ac",
+  "authenticated_preflight": {
+    "joined_table": false,
+    "result_sha256": "6a59eaece82af12a7f7cf4ee13260f100eba8ec45d8cbb602d4055a73f1fc165",
+    "scored_game": false,
+    "status": "AUTHENTICATED"
+  },
+  "captured_at": "2026-09-23T23:06:37Z",
+  "code_head": "22559602327c1f408ec82572d86e9deb1fab60ec",
   "deployment_identity_arms": [
     "B0",
     "B1"
   ],
   "interpretation": {
     "no_scored_iss_game_started": true,
-    "only_reported_readiness_blocker": "iss_credentials",
-    "ready_for_authenticated_live_gate": false
+    "only_reported_readiness_blocker": null,
+    "ready_for_authenticated_live_gate": true
   },
-  "live_network_action_performed": false,
+  "live_network_action_performed": true,
   "object_storage": {
     "ok": true,
     "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
     "returncode": 0
   },
   "readiness": {
-    "blockers": [
-      "iss_credentials"
-    ],
+    "blockers": [],
     "checks": {
       "b1_model": {
         "actual_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
@@ -67,11 +71,11 @@
           "ISS_PASSWORD",
           "ISS_PASSWORD_FILE"
         ],
-        "ok": false,
+        "ok": true,
         "present": {
-          "ISS_CLIENT_ID": false,
-          "ISS_HOST": false,
-          "ISS_PASSWORD": false,
+          "ISS_CLIENT_ID": true,
+          "ISS_HOST": true,
+          "ISS_PASSWORD": true,
           "ISS_PASSWORD_FILE": false
         },
         "secret_values_exposed": false
@@ -82,7 +86,7 @@
         "status": "LOCAL_GATE_NOT_REGRESSING"
       }
     },
-    "ready": false,
+    "ready": true,
     "schema": "skatai.v2.external-iss-readiness.v1"
   },
   "schema": "skatai.v2.external-iss-readiness-snapshot.v1"
