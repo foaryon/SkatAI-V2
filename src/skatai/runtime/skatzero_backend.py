@@ -1,46 +1,20 @@
 from __future__ import annotations
 
-import contextlib
-import hashlib
-import io
-import random
-import sys
+import subprocess
 from pathlib import Path
-from typing import Sequence
 
-from skatai.evaluation.skatzero_bidding_baseline import (
-    frozen_b0_discard_and_decl,
-    frozen_b0_skat_or_hand,
-)
+from skatai.game.bidding import BID_VALUES
+from skatai.runtime.bidding_adapter import LearnedBiddingAdapter
 from skatai.runtime.interface import (
+    BiddingObservation,
     CardplayObservation,
     DeclarationObservation,
     DiscardObservation,
+    SkatAI,
     SkatAIInterfaceError,
 )
 
-BACKEND_SCHEMA = "skatai.v2.frozen-skatzero-backend.v1"
-
-
-def _install(root: Path) -> None:
-    value = str(root.resolve())
-    if value not in sys.path:
-        sys.path.insert(0, value)
-
-
-def _seed(*parts: object) -> int:
-    h = hashlib.sha256(":".join(str(x) for x in parts).encode()).digest()
-    return int.from_bytes(h[:4], "big")
-
-
-def _seed_runtime(seed: int) -> None:
-    import numpy as np
-    import torch
-
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.use_deterministic_algorithms(True)
+BACKEND_SCHEMA = "skatai.v2.frozen-skatzero-cli-backend.v2"
 
 
 def _require_bid_vector(
@@ -69,40 +43,101 @@ def _contract_base(contract: str) -> str:
     raise SkatAIInterfaceError(f"UNSUPPORTED_B0_CONTRACT:{contract}")
 
 
-class FrozenB0DeclarationDiscardPolicy:
-    """Frozen upstream SkatZero declaration/discard behind the V2 interface."""
+def _run_cli(
+    skatzero_root: Path,
+    python_executable: Path,
+    args: list[str],
+    *,
+    timeout_s: float = 120.0,
+) -> list[str]:
+    api = skatzero_root / "api.py"
+    if not api.is_file():
+        raise SkatAIInterfaceError(f"B0_API_MISSING:{api}")
+    if not python_executable.is_file():
+        raise SkatAIInterfaceError(f"B0_PYTHON_MISSING:{python_executable}")
+    try:
+        proc = subprocess.run(
+            [str(python_executable), str(api), *args],
+            cwd=str(skatzero_root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SkatAIInterfaceError(f"B0_CLI_TIMEOUT:{args[0]}") from exc
+    if proc.returncode != 0:
+        tail = proc.stderr.strip().splitlines()[-1:] or ["no stderr"]
+        raise SkatAIInterfaceError(
+            f"B0_CLI_FAILED:{args[0]}:rc={proc.returncode}:{tail[0]}"
+        )
+    lines = [x.strip() for x in proc.stdout.splitlines() if x.strip()]
+    if not lines:
+        raise SkatAIInterfaceError(f"EMPTY_B0_CLI_OUTPUT:{args[0]}")
+    return lines
+
+
+class FrozenB0BiddingPolicy:
+    """Original SkatZero BID CLI mapped to the stable V2 bidding interface."""
 
     def __init__(
         self,
         skatzero_root: Path,
+        python_executable: Path,
         *,
-        master_seed: int = 20260923,
-        accuracy: int = 231,
-        bid_threshold: float = -5.0,
+        timeout_s: float = 120.0,
     ) -> None:
         self.skatzero_root = skatzero_root
-        self.master_seed = int(master_seed)
-        self.accuracy = int(accuracy)
-        self.bid_threshold = float(bid_threshold)
+        self.python_executable = python_executable
+        self.timeout_s = float(timeout_s)
+        self._max_bid_cache: dict[tuple[tuple[str, ...], int], int] = {}
 
-    def _seed_for(
+    def max_bid(self, hand: tuple[str, ...], seat: int) -> int:
+        key = (hand, seat)
+        if key not in self._max_bid_cache:
+            lines = _run_cli(
+                self.skatzero_root,
+                self.python_executable,
+                ["BID", ",".join(hand), str(seat)],
+                timeout_s=self.timeout_s,
+            )
+            try:
+                value = int(lines[-1])
+            except ValueError as exc:
+                raise SkatAIInterfaceError(
+                    f"B0_BAD_MAX_BID_LINE:{lines[-1]!r}"
+                ) from exc
+            if value < 0:
+                raise SkatAIInterfaceError(f"B0_NEGATIVE_MAX_BID:{value}")
+            self._max_bid_cache[key] = value
+        return self._max_bid_cache[key]
+
+    def probability_continue(self, observation: BiddingObservation) -> float:
+        max_bid = self.max_bid(observation.hand, observation.actor)
+        return 1.0 if max_bid >= BID_VALUES[observation.bid_index] else 0.0
+
+
+class FrozenB0DeclarationDiscardPolicy:
+    """Original SkatZero declaration/discard CLI behind the V2 interface."""
+
+    def __init__(
         self,
-        cards: Sequence[str],
-        seat: int,
-        bids: Sequence[int],
-        winning_bid: int,
-        phase: str,
-    ) -> int:
-        return _seed(
-            self.master_seed,
-            phase,
-            seat,
-            winning_bid,
-            ",".join(cards),
-            ",".join(str(x) for x in bids),
-        )
+        skatzero_root: Path,
+        python_executable: Path,
+        *,
+        timeout_s: float = 120.0,
+    ) -> None:
+        self.skatzero_root = skatzero_root
+        self.python_executable = python_executable
+        self.timeout_s = float(timeout_s)
+        self._pickup_cache: dict[
+            tuple[tuple[str, ...], int, int, tuple[int, int, int]], str
+        ] = {}
 
-    def _pickup_result(self, observation: DeclarationObservation | DiscardObservation):
+    def _pickup_line(
+        self, observation: DeclarationObservation | DiscardObservation
+    ) -> str:
         bids = _require_bid_vector(observation.max_accepted_bids_by_seat)
         opp1, opp2 = _relative_opponent_bids(observation.seat, bids)
         cards = (
@@ -112,52 +147,48 @@ class FrozenB0DeclarationDiscardPolicy:
         )
         if len(cards) != 12:
             raise SkatAIInterfaceError("B0_PICKUP_REQUIRES_12_CARDS")
-        return frozen_b0_discard_and_decl(
-            self.skatzero_root,
-            cards,
-            observation.seat,
-            opp1,
-            opp2,
-            observation.winning_bid,
-            seed=self._seed_for(
-                cards,
-                observation.seat,
-                bids,
-                observation.winning_bid,
-                "pickup-declaration",
-            ),
-        )
+        key = (tuple(cards), observation.seat, observation.winning_bid, bids)
+        if key not in self._pickup_cache:
+            lines = _run_cli(
+                self.skatzero_root,
+                self.python_executable,
+                [
+                    "DISCARD_AND_DECL",
+                    ",".join(cards),
+                    str(observation.seat),
+                    str(opp1),
+                    str(opp2),
+                    str(observation.winning_bid),
+                ],
+                timeout_s=self.timeout_s,
+            )
+            self._pickup_cache[key] = lines[-1]
+        return self._pickup_cache[key]
 
     def choose_contract(self, observation: DeclarationObservation) -> str:
         bids = _require_bid_vector(observation.max_accepted_bids_by_seat)
         opp1, opp2 = _relative_opponent_bids(observation.seat, bids)
         if observation.picked_up_skat:
-            result = self._pickup_result(observation)
-            contract = result.declaration.split(".", 1)[0]
+            final = self._pickup_line(observation)
+            contract = final.split(".", 1)[0]
         else:
             if len(observation.cards) != 10:
                 raise SkatAIInterfaceError("B0_HAND_DECLARATION_REQUIRES_10_CARDS")
-            result = frozen_b0_skat_or_hand(
+            lines = _run_cli(
                 self.skatzero_root,
-                observation.cards,
-                observation.seat,
-                opp1,
-                opp2,
-                observation.winning_bid,
-                seed=self._seed_for(
-                    observation.cards,
-                    observation.seat,
-                    bids,
-                    observation.winning_bid,
-                    "skat-or-hand",
-                ),
-                accuracy=self.accuracy,
-                bid_threshold=self.bid_threshold,
+                self.python_executable,
+                [
+                    "SKAT_OR_HAND_DECL",
+                    ",".join(observation.cards),
+                    str(observation.seat),
+                    str(opp1),
+                    str(opp2),
+                    str(observation.winning_bid),
+                ],
+                timeout_s=self.timeout_s,
             )
-            if result.declaration == "s":
-                contract = "PICKUP"
-            else:
-                contract = result.declaration.split(".", 1)[0]
+            final = lines[-1]
+            contract = "PICKUP" if final == "s" else final.split(".", 1)[0]
 
         if contract not in observation.legal_contracts:
             raise SkatAIInterfaceError(
@@ -166,8 +197,8 @@ class FrozenB0DeclarationDiscardPolicy:
         return contract
 
     def choose_discard(self, observation: DiscardObservation) -> tuple[str, str]:
-        result = self._pickup_result(observation)
-        parts = result.declaration.split(".")
+        final = self._pickup_line(observation)
+        parts = final.split(".")
         if len(parts) < 3:
             raise SkatAIInterfaceError("B0_DISCARD_OUTPUT_MALFORMED")
         cards = (parts[1], parts[2])
@@ -191,7 +222,12 @@ def _cardplay_args(observation: CardplayObservation) -> list[str]:
     else:
         raise SkatAIInterfaceError("B0_CARDPLAY_SKAT_MUST_BE_ZERO_OR_TWO_CARDS")
 
-    history = ",".join(f"{seat}{card}" for seat, card in observation.played_cards)
+    # ISS/V2 seats are absolute FH/MH/RH (0/1/2). Frozen SkatZero cardplay
+    # uses player ids relative to the declarer: 0=declarer, then 1/2 clockwise.
+    history = ",".join(
+        f"{(seat - observation.declarer) % 3}{card}"
+        for seat, card in observation.played_cards
+    )
     open_cards = (
         ",".join(observation.open_hand_cards)
         if observation.open_hand_cards
@@ -201,7 +237,8 @@ def _cardplay_args(observation: CardplayObservation) -> list[str]:
         "CARDPLAY",
         _contract_base(observation.contract),
         ",".join(observation.hand),
-        str(observation.seat),
+        # Upstream api.py converts the declarer seat to starting_player.
+        str(observation.declarer),
         str(observation.points_self),
         str(observation.points_other),
         str(opp1),
@@ -216,33 +253,63 @@ def _cardplay_args(observation: CardplayObservation) -> list[str]:
 
 
 class FrozenB0CardplayPolicy:
-    def __init__(self, skatzero_root: Path, *, master_seed: int = 20260923) -> None:
+    """Original SkatZero CARDPLAY CLI behind the V2 interface."""
+
+    def __init__(
+        self,
+        skatzero_root: Path,
+        python_executable: Path,
+        *,
+        timeout_s: float = 120.0,
+    ) -> None:
         self.skatzero_root = skatzero_root
-        self.master_seed = int(master_seed)
+        self.python_executable = python_executable
+        self.timeout_s = float(timeout_s)
 
     def play_card(self, observation: CardplayObservation) -> str:
-        _install(self.skatzero_root)
-        seed = _seed(
-            self.master_seed,
-            "cardplay",
-            observation.seat,
-            observation.declarer,
-            observation.contract,
-            observation.winning_bid,
-            ",".join(observation.hand),
-            ",".join(f"{s}{c}" for s, c in observation.played_cards),
+        lines = _run_cli(
+            self.skatzero_root,
+            self.python_executable,
+            _cardplay_args(observation),
+            timeout_s=self.timeout_s,
         )
-        _seed_runtime(seed)
-        import api as skatzero_api  # type: ignore
-
-        args = _cardplay_args(observation)
-        capture = io.StringIO()
-        with contextlib.redirect_stdout(capture):
-            skatzero_api.cardplay(args)
-        lines = [x.strip() for x in capture.getvalue().splitlines() if x.strip()]
-        if not lines:
-            raise SkatAIInterfaceError("EMPTY_B0_CARDPLAY_OUTPUT")
         card = lines[-1]
         if card not in observation.legal_cards:
             raise SkatAIInterfaceError(f"B0_RETURNED_ILLEGAL_CARD:{card}")
         return card
+
+
+def build_b0_skat_ai(
+    skatzero_root: Path,
+    python_executable: Path,
+) -> SkatAI:
+    bidding = FrozenB0BiddingPolicy(skatzero_root, python_executable)
+    downstream = FrozenB0DeclarationDiscardPolicy(skatzero_root, python_executable)
+    cardplay = FrozenB0CardplayPolicy(skatzero_root, python_executable)
+    return SkatAI(
+        bidding=bidding,
+        declaration=downstream,
+        discard=downstream,
+        cardplay=cardplay,
+        bidding_threshold=0.5,
+    )
+
+
+def build_b1_skat_ai(
+    b1_model: Path,
+    skatzero_root: Path,
+    python_executable: Path,
+    *,
+    device: str = "cpu",
+    threshold: float = 0.5,
+) -> SkatAI:
+    bidding = LearnedBiddingAdapter.load(b1_model, device=device)
+    downstream = FrozenB0DeclarationDiscardPolicy(skatzero_root, python_executable)
+    cardplay = FrozenB0CardplayPolicy(skatzero_root, python_executable)
+    return SkatAI(
+        bidding=bidding,
+        declaration=downstream,
+        discard=downstream,
+        cardplay=cardplay,
+        bidding_threshold=threshold,
+    )

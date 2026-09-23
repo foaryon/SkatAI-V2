@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 import skatai.runtime.skatzero_backend as backend
-from skatai.evaluation.skatzero_bidding_baseline import B0DeclarationResult
 from skatai.runtime.interface import (
+    BiddingObservation,
     CardplayObservation,
     DeclarationObservation,
     DiscardObservation,
@@ -16,12 +16,27 @@ HAND10 = ("CJ","DJ","DA","DK","DQ","D7","C9","HA","HT","HK")
 HAND12 = HAND10 + ("CT","ST")
 
 
-def test_hand_declaration_maps_pickup_without_fabricating_bid_state(monkeypatch):
-    def fake(*args, **kwargs):
-        return B0DeclarationResult("s", 0.1, 1, "SKAT_OR_HAND_DECL")
-    monkeypatch.setattr(backend, "frozen_b0_skat_or_hand", fake)
+def test_b0_bidding_policy_maps_cli_max_bid_to_public_auction(monkeypatch):
+    calls = []
+    def fake(root, py, args, timeout_s=120.0):
+        calls.append(args)
+        return ["diagnostic", "72"]
+    monkeypatch.setattr(backend, "_run_cli", fake)
+    p = backend.FrozenB0BiddingPolicy(Path("/r"), Path("/p"))
+    low = BiddingObservation.create(
+        HAND10, actor=0, bidder=0, answerer=0, bid_index=0, decision_role="BIDDER"
+    )
+    high = BiddingObservation.create(
+        HAND10, actor=0, bidder=0, answerer=0, bid_index=24, decision_role="BIDDER"
+    )
+    assert p.probability_continue(low) == 1.0
+    assert p.probability_continue(high) == 0.0
+    assert len(calls) == 1
 
-    policy = backend.FrozenB0DeclarationDiscardPolicy(Path("/tmp/frozen"))
+
+def test_hand_declaration_maps_pickup_without_fabricating_bid_state(monkeypatch):
+    monkeypatch.setattr(backend, "_run_cli", lambda *a, **k: ["s"])
+    policy = backend.FrozenB0DeclarationDiscardPolicy(Path("/r"), Path("/p"))
     obs = DeclarationObservation.create(
         HAND10,
         seat=0,
@@ -33,12 +48,14 @@ def test_hand_declaration_maps_pickup_without_fabricating_bid_state(monkeypatch)
     assert policy.choose_contract(obs) == "PICKUP"
 
 
-def test_pickup_declaration_and_discard_share_upstream_semantics(monkeypatch):
+def test_pickup_declaration_and_discard_share_cli_result(monkeypatch):
+    calls = []
     def fake(*args, **kwargs):
-        return B0DeclarationResult("G.CT.ST", 0.1, 1, "DISCARD_AND_DECL")
-    monkeypatch.setattr(backend, "frozen_b0_discard_and_decl", fake)
+        calls.append(1)
+        return ["G 100.0", "G.CT.ST"]
+    monkeypatch.setattr(backend, "_run_cli", fake)
 
-    policy = backend.FrozenB0DeclarationDiscardPolicy(Path("/tmp/frozen"))
+    policy = backend.FrozenB0DeclarationDiscardPolicy(Path("/r"), Path("/p"))
     d = DeclarationObservation.create(
         HAND12,
         seat=0,
@@ -48,7 +65,6 @@ def test_pickup_declaration_and_discard_share_upstream_semantics(monkeypatch):
         max_accepted_bids_by_seat=[18,0,0],
     )
     assert policy.choose_contract(d) == "G"
-
     x = DiscardObservation.create(
         HAND12,
         seat=0,
@@ -56,10 +72,11 @@ def test_pickup_declaration_and_discard_share_upstream_semantics(monkeypatch):
         max_accepted_bids_by_seat=[18,0,0],
     )
     assert policy.choose_discard(x) == ("CT","ST")
+    assert len(calls) == 1
 
 
 def test_downstream_policy_refuses_missing_public_bid_state():
-    p = backend.FrozenB0DeclarationDiscardPolicy(Path("/tmp/frozen"))
+    p = backend.FrozenB0DeclarationDiscardPolicy(Path("/r"), Path("/p"))
     obs = DeclarationObservation.create(
         HAND10,
         seat=0,
@@ -71,8 +88,8 @@ def test_downstream_policy_refuses_missing_public_bid_state():
         p.choose_contract(obs)
 
 
-def test_cardplay_args_match_frozen_api_contract():
-    obs = CardplayObservation.create(
+def smoke_observation():
+    return CardplayObservation.create(
         ["CJ","DJ","DA","DT","DQ","D8","C7","SA","S9"],
         seat=0,
         declarer=0,
@@ -80,20 +97,33 @@ def test_cardplay_args_match_frozen_api_contract():
         winning_bid=30,
         current_trick=[(1,"HT"),(2,"HA")],
         played_cards=[(1,"HT"),(2,"HA")],
-        legal_cards=["D8"],
+        legal_cards=["CJ","DJ","DA","DT","DQ","D8","C7","SA","S9"],
         points_self=25,
         points_other=0,
         max_accepted_bids_by_seat=[0,0,30],
         skat_cards=["DK","D7"],
         blind_hand=False,
     )
-    args = backend._cardplay_args(obs)
+
+
+def test_cardplay_args_match_frozen_api_contract():
+    args = backend._cardplay_args(smoke_observation())
     assert args == [
         "CARDPLAY",
         "D",
         "CJ,DJ,DA,DT,DQ,D8,C7,SA,S9",
         "0","25","0","0","30","DK","D7","0","0","??","1HT,2HA",
     ]
+
+
+def test_cardplay_uses_final_cli_decision(monkeypatch):
+    monkeypatch.setattr(
+        backend,
+        "_run_cli",
+        lambda *a, **k: ["D8 81.29", "After recursion:", "D8"],
+    )
+    p = backend.FrozenB0CardplayPolicy(Path("/r"), Path("/p"))
+    assert p.play_card(smoke_observation()) == "D8"
 
 
 def test_cardplay_refuses_missing_points():
@@ -110,3 +140,24 @@ def test_cardplay_refuses_missing_points():
     )
     with pytest.raises(SkatAIInterfaceError, match="POINT_STATE"):
         backend._cardplay_args(obs)
+
+
+def test_cardplay_maps_absolute_iss_seats_to_relative_skatzero_roles():
+    obs = CardplayObservation.create(
+        ["C7","C8","C9"],
+        seat=2,
+        declarer=1,
+        contract="G",
+        winning_bid=24,
+        current_trick=[(0,"H7")],
+        played_cards=[(1,"DA"),(2,"D7"),(0,"DT"),(0,"H7")],
+        legal_cards=["C7","C8","C9"],
+        points_self=21,
+        points_other=0,
+        max_accepted_bids_by_seat=[18,24,20],
+        blind_hand=True,
+    )
+    args = backend._cardplay_args(obs)
+    assert args[3] == "1"
+    assert args[11] == "1"
+    assert args[13] == "0DA,1D7,2DT,2H7"
