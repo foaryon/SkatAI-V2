@@ -1,12 +1,11 @@
 {
   "schema": "skatai.v2.git-recovery-bundle.v1",
-  "status": "VERIFIED_RECOVERY_ARTIFACT",
-  "authoritative_git_remote": false,
-  "github_repository_creation_still_required": true,
-  "head": "712df8f8be1525d9429d8c110f6293e37424abc5",
+  "status": "REMOTE_VERIFIED",
   "branch": "main",
-  "sha256": "b2814befd047652f6081527568065b943366af2c0886cd93bb4cca1f7d2797e2",
-  "bytes": 64772,
-  "object": "s3://skatai-v2/provenance/git-bundles/skatai-v2-main-${HEAD}.bundle",
-  "remote_sha256_verified": true
+  "head": "aad5589696825177a7a32d013f354a2d7017131c",
+  "sha256": "7d279ab06def901690e441e9ec0ff67aa27266c05a09d5757e5680fbd8ba1708",
+  "bytes": 81985,
+  "object": "s3://skatai-v2/provenance/git-recovery/skatai-v2-main-aad5589696825177a7a32d013f354a2d7017131c.bundle",
+  "remote_sha256_verified": true,
+  "reason": "Temporary authoritative code recovery while brand-new V2 GitHub repository creation remains externally blocked."
 }
