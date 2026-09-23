@@ -1,0 +1,68 @@
+{
+  "dataset_id": "bidding-historical-v1",
+  "information_boundary": {
+    "analysis_columns": [
+      "game_identity",
+      "source",
+      "date",
+      "ordinal",
+      "current_offer",
+      "declarer",
+      "bid_level",
+      "game_type",
+      "actor_rating",
+      "game_won",
+      "game_value",
+      "card_points"
+    ],
+    "analysis_columns_are_forbidden_model_inputs": true,
+    "feature_columns": [
+      "hand_mask",
+      "actor",
+      "bidder",
+      "answerer",
+      "bid_index",
+      "decision_role"
+    ],
+    "target_columns": [
+      "target_continue"
+    ]
+  },
+  "limitations": [
+    "Built from the verified historical played-game corpus only.",
+    "Does not yet include independently qualified public-refresh all-pass or newly parsed played records.",
+    "D4 usefulness is not established until controlled B0-vs-B1 gameplay evidence exists."
+  ],
+  "membership": {
+    "eligible_games": 10838619,
+    "games_scanned": 10845022,
+    "rows": {
+      "external_bot_holdout": 44781076,
+      "test": 1088286,
+      "train": 21435764,
+      "validation": 2390888
+    }
+  },
+  "schema": "skatai.v2.dataset-provenance.v1",
+  "source": {
+    "asset_id": "legacy-v1-canonical-corpus",
+    "authoritative_object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+    "records": 10845022,
+    "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a"
+  },
+  "storage": {
+    "differences": 0,
+    "matching_files": 74,
+    "object_prefix": "s3://skatai-v2/datasets/bidding/historical-v1/",
+    "remote_integrity_check": "PASS"
+  },
+  "transformation": {
+    "aggregate_shard_identity_sha256": "dd363283429ddbcd18bf7a7d230411c70e26ec94874d3c42deffaac81c22c963",
+    "dataset_schema": "skatai.v2.bidding-parquet.v1",
+    "feature_schema": "skatai.v2.bidding-features.v1",
+    "manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+    "rows_per_shard": 1000000,
+    "v2_git_commit": "7c39557e6795c62ad03ead2221239c6290abbcb3"
+  },
+  "trust_level": "D3_CANDIDATE"
+}

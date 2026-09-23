@@ -10,3 +10,5 @@ checkpoints/
 artifacts-local/
 .env
 *.secret
+
+*.egg-info/
