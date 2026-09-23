@@ -1,0 +1,55 @@
+{
+  "schema": "skatai.v2.bootstrap-state.v1",
+  "captured_at": "2026-09-23T17:27:00Z",
+  "runpod_host_id": "host_c8c6a6b0a7123805",
+  "v2_git_head": "e3db4eb0badb64fdc135b414251ddbf43291cbbb",
+  "v2_git_clean": true,
+  "v2_github_remote_present": false,
+  "hetzner": {
+    "bucket": "skatai-v2",
+    "region": "fsn1",
+    "endpoint": "https://fsn1.your-objectstorage.com",
+    "reachable": true,
+    "private_probe_previously_passed": true
+  },
+  "canonical_legacy_corpus": {
+    "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+    "bytes": 13077428492,
+    "records": 10845022,
+    "iss_records": 8692393,
+    "skatgame_records": 2152629,
+    "hetzner_copy_verified": true
+  },
+  "public_archives": {
+    "iss_2024_07_present": true,
+    "skatgame_2024_07_present": true,
+    "raw_overlap_audit_complete": true,
+    "additional_raw_lines_pending_semantic_parse": 487374
+  },
+  "bidding_reconstruction": {
+    "clean_v2_replay_complete": true,
+    "candidate_decisions": 69762716,
+    "eligible_decisions": 69696014,
+    "quarantined_decisions": 66702,
+    "quarantined_games": 6403
+  },
+  "b0": {
+    "source_frozen": true,
+    "pretrained_models_published": 9,
+    "clean_runtime_reproduced": true,
+    "full_gameplay_strength_reproduction_complete": false
+  },
+  "tests": {
+    "environment": "/tmp/skatai-v2-dev",
+    "pytest": "8.3.5",
+    "result": "5 passed"
+  },
+  "compute": {
+    "cpu_threads_visible": 4,
+    "gpu_visible": false
+  },
+  "known_blockers": [
+    "brand-new V2 GitHub repository does not yet exist or is not connected",
+    "SentinelX current live process still descends from legacy V1 supervisor until next neutral bootstrap restart is proven"
+  ]
+}
