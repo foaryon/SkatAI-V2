@@ -81,3 +81,24 @@ def test_semantic_identity_ignores_pickup_marker_representation():
     equivalent = dict(g)
     equivalent["bidding_history"] = list(g["bidding_history"]) + ["2", "s", "w", "SJ.D8"]
     assert semantic_identity(g) == semantic_identity(equivalent)
+
+
+def test_contract_vocabulary_preserves_modifiers_without_guessing():
+    from skatai.data.sgf import parse_contract_token
+
+    assert parse_contract_token("G") == ("G", "", [])
+    assert parse_contract_token("GH") == ("G", "H", [])
+    assert parse_contract_token("GHS") == ("G", "HS", [])
+    assert parse_contract_token("GHOSZ") == ("G", "HOSZ", [])
+    assert parse_contract_token("NHO") == ("N", "HO", [])
+    assert parse_contract_token("NOH") == ("NO", "H", [])
+    assert parse_contract_token("C.D7.D8") == ("C", "", ["D7", "D8"])
+    assert parse_contract_token("C7") is None
+
+
+def test_hand_and_modifier_fields_are_preserved():
+    g = parse_sgf_line("iss", PLAYED)
+    assert g["contract_base"] == "C"
+    assert g["contract_modifiers"] == "H"
+    assert g["is_hand"] is True
+    assert g["is_ouvert"] is False

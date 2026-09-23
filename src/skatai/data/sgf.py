@@ -13,12 +13,27 @@ SUITS = "CSHD"
 RANKS = "789TJQKA"
 VALID_CARDS = frozenset(s + r for s in SUITS for r in RANKS)
 CONTRACT_RE = re.compile(
-    r"^(C|S|H|D|G|N|NO|CH|SH|HH|DH|GH|NH|NOH)(?:\.(.*))?$"
+    r"^(NO|[CSHDGN])([HOSZ]*)(?:\.(.*))?$"
 )
 
 
 class SGFParseError(ValueError):
     pass
+
+
+def parse_contract_token(token: str) -> tuple[str, str, list[str]] | None:
+    """Return (base, modifiers, dot-separated extras) for a declaration token.
+
+    Modifier letters are intentionally preserved as protocol data. Their full
+    scoring semantics are validated separately rather than guessed here.
+    """
+    m = CONTRACT_RE.fullmatch(token)
+    if not m:
+        return None
+    base = m.group(1)
+    modifiers = m.group(2) or ""
+    extras = m.group(3).split(".") if m.group(3) else []
+    return base, modifiers, extras
 
 
 def parse_properties(line: str) -> dict[str, str]:
@@ -255,12 +270,12 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
     tail = tokens[2:]
 
     decl_i = None
-    decl_match = None
+    declaration = None
     for i, token in enumerate(tail):
-        m = CONTRACT_RE.fullmatch(token)
-        if m:
+        parsed = parse_contract_token(token)
+        if parsed is not None:
             decl_i = i
-            decl_match = m
+            declaration = parsed
             break
 
     common = {
@@ -305,10 +320,9 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         )
         return common
 
-    assert decl_match is not None
+    assert declaration is not None
     announcement = tail[decl_i]
-    contract = decl_match.group(1)
-    extras = decl_match.group(2).split(".") if decl_match.group(2) else []
+    contract_base, contract_modifiers, extras = declaration
 
     pre = tail[:decl_i]
     if not pre or pre[-1] not in {"0", "1", "2"}:
@@ -339,7 +353,7 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         bidding_history = pre[:-1]
         bidding_for_replay = pre[:-1]
         discards = None
-        is_hand = contract.endswith("H")
+        is_hand = True
 
     br = replay(bidding_for_replay)
     if not br.ok:
@@ -355,8 +369,8 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         "G": "GRAND",
         "N": "NULL",
         "NO": "NULL",
-    }[contract[:2] if contract.startswith("NO") else contract[0]]
-    is_ouvert = "O" in contract
+    }[contract_base]
+    is_ouvert = contract_base == "NO" or "O" in contract_modifiers
 
     suffix = tail[decl_i + 1 :]
     plays: list[list[Any]] = []
@@ -380,6 +394,9 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         "declarer": declarer,
         "bid_level": br.winning_bid,
         "announcement": announcement,
+        "contract_base": contract_base,
+        "contract_modifiers": contract_modifiers,
+        "announcement_extras": extras,
         "game_type": game_type,
         "is_hand": is_hand,
         "is_ouvert": is_ouvert,
