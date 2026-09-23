@@ -11,3 +11,11 @@ def test_parse_b0_final_bid():
 def test_parse_b0_final_bid_rejects_bad_tail():
     with pytest.raises(ValueError):
         _parse_max_bid("not-a-bid\n")
+
+
+def test_parse_declaration_helpers_are_strict():
+    from skatai.evaluation.skatzero_bidding_baseline import _capture_final_line
+
+    final, elapsed = _capture_final_line(lambda: print("noise\nCH"))
+    assert final == "CH"
+    assert elapsed >= 0.0

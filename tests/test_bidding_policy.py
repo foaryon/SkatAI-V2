@@ -41,3 +41,20 @@ def test_threshold_validation():
         assert "BAD_THRESHOLD" in str(exc)
     else:
         raise AssertionError("invalid threshold must fail")
+
+
+def test_simulate_max_bid_auction():
+    from skatai.gameplay.bidding import simulate_max_bid_auction
+
+    result = simulate_max_bid_auction(HANDS, [0, 18, 20])
+    assert result.winner == 2
+    assert result.winning_bid == 20
+    assert result.all_pass is False
+
+
+def test_simulate_max_bid_all_pass():
+    from skatai.gameplay.bidding import simulate_max_bid_auction
+
+    result = simulate_max_bid_auction(HANDS, [0, 0, 0])
+    assert result.winner is None
+    assert result.all_pass is True

@@ -103,6 +103,42 @@ def simulate_auction(
     )
 
 
+def simulate_max_bid_auction(
+    hands: Sequence[Sequence[str]],
+    max_bids: Sequence[int],
+    *,
+    max_actions: int = 256,
+) -> AuctionResult:
+    """Run the legal V2 auction from per-seat maximum bidding values.
+
+    This is the deployment bridge for SkatZero B0, whose frozen BID interface
+    returns a maximum bid value rather than a native action probability.
+    Values below 18 mean pass at the first offer.
+    """
+    if len(max_bids) != 3:
+        raise ValueError(f"EXPECTED_3_MAX_BIDS:{len(max_bids)}")
+    checked = tuple(int(x) for x in max_bids)
+    if any(x < 0 for x in checked):
+        raise ValueError(f"NEGATIVE_MAX_BID:{checked}")
+
+    from skatai.game.bidding import BID_VALUES
+
+    def probability(
+        hand: Sequence[str],
+        actor: int,
+        bidder: int,
+        answerer: int,
+        bid_index: int,
+        decision_role: str,
+    ) -> float:
+        del hand, bidder, answerer, decision_role
+        return 1.0 if checked[actor] >= BID_VALUES[bid_index] else 0.0
+
+    return simulate_auction(
+        hands, probability, threshold=0.5, max_actions=max_actions
+    )
+
+
 class NeuralBiddingPolicy:
     def __init__(self, model: BiddingMLP, *, device: str = "cpu") -> None:
         self.device = torch.device(device)
