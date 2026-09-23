@@ -14,7 +14,7 @@ TEXT_SUFFIXES = {".py", ".toml", ".yaml", ".yml", ".json", ".sh"}
 
 
 def _runtime_files():
-    for base in (ROOT / "src", ROOT / "configs"):
+    for base in (ROOT / "src", ROOT / "configs", ROOT / "scripts"):
         if not base.exists():
             continue
         for path in base.rglob("*"):
