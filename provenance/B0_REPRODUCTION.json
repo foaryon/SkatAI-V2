@@ -1,20 +1,27 @@
 {
   "baseline_id": "V2-B0",
-  "runtime": {
-    "python": "3.11.13",
-    "torch": "2.1.2+cpu",
-    "numpy": "1.26.4",
-    "cuda_available": false
+  "cardplay_benchmark": {
+    "artifact_sha256": "d809a842f4f2838a80e0139a1984a507b2a199d17f301e8bd7b03a548682c4ed",
+    "determinism_recheck": "PASS",
+    "result_identity_sha256": "80507e580ea7be47034c22254d29dba7678ce195ffb80e6a2ca9d8e548c87b5b",
+    "selection_identity_sha256": "7a44d3e7e2eed9f9578e300f0a739940218fac2816b7e2181a0b9b720b4aca15",
+    "status": "PASS"
   },
   "checks": {
-    "pretrained_agents_loaded": 9,
     "agent_class": "DMCAgent",
     "original_api_cardplay_smoke": {
       "gametype": "D",
       "selected_card": "D8",
       "selected_value": 81.29,
       "status": "PASS"
-    }
+    },
+    "pretrained_agents_loaded": 9
   },
-  "status": "B0_RUNTIME_REPRODUCED"
+  "runtime": {
+    "cuda_available": false,
+    "numpy": "1.26.4",
+    "python": "3.11.13",
+    "torch": "2.1.2+cpu"
+  },
+  "status": "B0_RUNTIME_AND_DETERMINISTIC_CARDPLAY_BENCHMARK_REPRODUCED"
 }

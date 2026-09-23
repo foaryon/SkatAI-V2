@@ -1,0 +1,61 @@
+{
+  "baseline_id": "V2-B0",
+  "interpretation": {
+    "baseline_identity_evidence": true,
+    "promotion_evidence": false,
+    "strength_claim_authorized": false
+  },
+  "purpose": "Deterministic local B0 gameplay identity/smoke benchmark; not a statistical strength estimate.",
+  "result": {
+    "determinism_recheck": "PASS",
+    "gametypes": {
+      "D": {
+        "elapsed_s": 55.169068078976125,
+        "games": 12,
+        "mean_rewards": [
+          -29.166666666666668,
+          7.291666666666667,
+          7.291666666666667
+        ]
+      },
+      "G": {
+        "elapsed_s": 37.2537485670764,
+        "games": 12,
+        "mean_rewards": [
+          88.33333333333333,
+          -22.083333333333332,
+          -22.083333333333332
+        ]
+      },
+      "N": {
+        "elapsed_s": 18.96044156793505,
+        "games": 12,
+        "mean_rewards": [
+          -47.916666666666664,
+          47.916666666666664,
+          47.916666666666664
+        ]
+      }
+    },
+    "identity_sha256": "80507e580ea7be47034c22254d29dba7678ce195ffb80e6a2ca9d8e548c87b5b",
+    "object": "s3://skatai-v2/evidence/V2-B0/cardplay-benchmark-v1.json",
+    "raw_artifact_bytes": 47354,
+    "raw_artifact_sha256": "d809a842f4f2838a80e0139a1984a507b2a199d17f301e8bd7b03a548682c4ed",
+    "remote_sha256_verified": true
+  },
+  "schema": "skatai.v2.b0-cardplay-benchmark-provenance.v1",
+  "selection": {
+    "identity_sha256": "7a44d3e7e2eed9f9578e300f0a739940218fac2816b7e2181a0b9b720b4aca15",
+    "per_gametype": 12,
+    "total_games": 36
+  },
+  "source": {
+    "b0_manifest": "provenance/B0_SKATZERO_BASELINE.json",
+    "canonical_corpus_sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+    "deal_split": "test (2024 non-benchmark-bot games)",
+    "run_seed": 20260923,
+    "selection_seed": 20260923,
+    "skatzero_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
+  },
+  "status": "VERIFIED_DETERMINISTIC_BASELINE_BENCHMARK"
+}
