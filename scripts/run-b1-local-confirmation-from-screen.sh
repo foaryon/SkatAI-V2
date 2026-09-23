@@ -24,6 +24,18 @@ test -f "$SCREEN_SET"
 test -f "$CONFIRM_SET"
 mkdir -p "$CONFIRM_DIR"
 
+CONFIRM_STATUS=$CONFIRM_DIR/stage.status
+printf 'STARTING\n' >"$CONFIRM_STATUS"
+finalize_status() {
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
+    printf 'SUCCEEDED\n' >"$CONFIRM_STATUS"
+  else
+    printf 'FAILED\n' >"$CONFIRM_STATUS"
+  fi
+}
+trap finalize_status EXIT
+
 SCREEN_CLUSTERED=$SCREEN_DIR/decision-clustered.json
 PYTHONPATH=$V2_ROOT/src "$B0_PYTHON" \
   -m skatai.evaluation.bidding_gate_clustered_decision \
@@ -57,6 +69,15 @@ PYTHONPATH=$V2_ROOT/src "$B0_PYTHON" \
   --model-root "$B0_MODELS" \
   --b1-model "$B1_MODEL" \
   --output-checkpoint "$CONFIRM_DIR/checkpoint.json"
+
+printf 'RUNNING\n' >"$CONFIRM_STATUS"
+MIRROR_JOB=$(/workspace/sentinelx-host/run-long.sh b1-confirm-checkpoint-mirror \
+  "$V2_ROOT/scripts/mirror-active-checkpoint.sh" \
+  --source "$CONFIRM_DIR/checkpoint.json" \
+  --remote :s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/local-pregate/local-confirmation/checkpoint-live.json \
+  --status-file "$CONFIRM_STATUS" \
+  --interval 60)
+echo "confirmation_checkpoint_mirror=$MIRROR_JOB"
 
 "$V2_ROOT/scripts/run-b1-local-stage.sh" \
   --stage LOCAL_CONFIRMATION \
