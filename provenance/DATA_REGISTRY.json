@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "active_training_use": "source_only_via_registered_transformations",
+      "asset_id": "legacy-v1-canonical-corpus",
+      "kind": "canonical_source",
+      "object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+      "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+      "status": "VERIFIED_CANONICAL",
+      "trust": "D3_SOURCE"
+    },
+    {
+      "active_training_use": false,
+      "asset_id": "public-iss-skatgame-2024-07",
+      "kind": "raw_external_source",
+      "manifest": "provenance/PUBLIC_CORPUS_2024_07.json",
+      "note": "Final semantic refresh/dedup classification still pending completion.",
+      "status": "STAGED_AND_PARTIALLY_QUALIFIED",
+      "trust": "D1_AUTHENTIC_RAW"
+    },
+    {
+      "active_training_use": "bounded_exploratory_B1_allowed",
+      "asset_id": "bidding-historical-v1",
+      "d4_proven_use": false,
+      "kind": "derived_training_dataset",
+      "manifest": "provenance/BIDDING_DATASET_HISTORICAL_V1.json",
+      "object_prefix": "s3://skatai-v2/datasets/bidding/historical-v1/",
+      "status": "D3_SEMANTICALLY_VALID",
+      "trust": "D3"
+    }
+  ],
+  "schema": "skatai.v2.data-registry.v1"
+}

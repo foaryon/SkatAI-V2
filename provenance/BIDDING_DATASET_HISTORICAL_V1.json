@@ -1,4 +1,16 @@
 {
+  "d3_validation": {
+    "decision_time_information_legality_verified": true,
+    "external_bot_holdout_excluded_from_training": true,
+    "gameplay_usefulness_d4_established": false,
+    "quarantine_semantics_verified": true,
+    "remote_integrity_verified": true,
+    "reproducible_transform_identity_verified": true,
+    "source_identity_verified": true,
+    "split_membership_explicit": true,
+    "status": "PASS",
+    "validated_at_v2_commit": "dcc87c2"
+  },
   "dataset_id": "bidding-historical-v1",
   "information_boundary": {
     "analysis_columns": [
@@ -64,5 +76,5 @@
     "rows_per_shard": 1000000,
     "v2_git_commit": "7c39557e6795c62ad03ead2221239c6290abbcb3"
   },
-  "trust_level": "D3_CANDIDATE"
+  "trust_level": "D3_SEMANTICALLY_VALID"
 }
