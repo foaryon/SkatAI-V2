@@ -79,3 +79,15 @@ def test_next_stack_follows_global_frozen_priority_not_first_incomplete_only():
         for seat in (0, 1, 2):
             rows.append(row(f"kz-{arm}-{seat}", arm, "kermit+zoot", seat))
     assert next_underfilled_stack(rows, per_arm=300) == "kermit+theCount"
+
+
+def test_evidence_manifest_binding_requires_both_protocol_and_effect_artifacts():
+    import inspect
+    from skatai.iss.gate_worker import GateEvidence
+
+    source = inspect.getsource(GateEvidence.append_game)
+    assert '"service_slice"' in source
+    assert '"effect_slice"' in source
+    assert "sha256_file(evidence_manifest)" in source
+    assert "UNRESOLVED_EXTERNAL_EFFECTS_AT_TERMINAL" in source
+    assert "STALE_EXTERNAL_EFFECTS_AT_TERMINAL" in source

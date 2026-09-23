@@ -460,6 +460,8 @@ class GateEvidence:
         latency_p95: float | None,
         protocol_offset: int,
         effect_offset: int,
+        table_id: str,
+        game_sequence: int,
     ) -> dict[str, Any]:
         result = live_game_result(sgf, viewer_name=viewer_name)
         actual_stack = canonical_opponent_stack(
@@ -485,22 +487,108 @@ class GateEvidence:
 
         protocol_slice = self.games_dir / f"{result['game_id']}.service.jsonl"
         effect_slice = self.games_dir / f"{result['game_id']}.effects.jsonl"
+        evidence_manifest = self.games_dir / f"{result['game_id']}.evidence.json"
         self._write_slice(self.protocol_journal, protocol_offset, protocol_slice)
         self._write_slice(self.effect_journal, effect_offset, effect_slice)
-        journal_sha = sha256_file(protocol_slice)
+
+        effect_states = [
+            state
+            for state in ISSEffectJournal(self.effect_journal).states().values()
+            if state.table_id == str(table_id)
+            and state.game_sequence == int(game_sequence)
+        ]
+        effect_states.sort(key=lambda x: (x.protocol_sequence, x.effect_id))
+        unresolved = [x for x in effect_states if not x.terminal]
+        stale = [x for x in effect_states if x.status == "ABORTED_STALE"]
+
+        effect_latencies = sorted(float(x.latency_ms) for x in effect_states)
+        if effect_latencies:
+            latency_p50 = float(statistics.median(effect_latencies))
+            p95_index = max(
+                0,
+                min(
+                    len(effect_latencies) - 1,
+                    int((0.95 * len(effect_latencies) + 0.999999999) // 1) - 1,
+                ),
+            )
+            latency_p95 = float(effect_latencies[p95_index])
+
         ident = self.identities[assignment.arm]
-        if result["failure_reason"] is not None:
-            status = "INFRA_FAILURE"
+        failure_reason = result["failure_reason"]
+        if unresolved:
+            status = "PROTOCOL_FAILURE"
+            score = None
+            failure_reason = f"UNRESOLVED_EXTERNAL_EFFECTS_AT_TERMINAL:{len(unresolved)}"
+        elif stale:
+            status = "PROTOCOL_FAILURE"
+            score = None
+            failure_reason = f"STALE_EXTERNAL_EFFECTS_AT_TERMINAL:{len(stale)}"
+        elif failure_reason is not None:
+            status = (
+                "PROTOCOL_FAILURE"
+                if str(failure_reason).startswith("ISS_PENALTY:")
+                else "INFRA_FAILURE"
+            )
             score = None
         else:
             status = "SCORED"
             score = result["score"]
+
+        evidence_payload = {
+            "schema": "skatai.v2.external-iss-game-evidence.v1",
+            "game_id": result["game_id"],
+            "table_id": str(table_id),
+            "server_game_num": int(game_sequence),
+            "source_commit": self.source_commit,
+            "assignment": assignment.__dict__,
+            "actual_stack": actual_stack,
+            "deployment_identity_sha256": ident["deployment_identity_sha256"],
+            "release_id": ident["release_id"],
+            "status": status,
+            "failure_reason": failure_reason,
+            "result": result,
+            "artifacts": {
+                "terminal_sgf": {
+                    "sha256": sha256_file(sgf_path),
+                    "bytes": sgf_path.stat().st_size,
+                },
+                "service_slice": {
+                    "sha256": sha256_file(protocol_slice),
+                    "bytes": protocol_slice.stat().st_size,
+                },
+                "effect_slice": {
+                    "sha256": sha256_file(effect_slice),
+                    "bytes": effect_slice.stat().st_size,
+                },
+            },
+            "effects": [
+                {
+                    "effect_id": x.effect_id,
+                    "request_id": x.request_id,
+                    "decision_id": x.decision_id,
+                    "position_hash": x.position_hash,
+                    "protocol_sequence": x.protocol_sequence,
+                    "wire_action": x.wire_action,
+                    "release_id": x.release_id,
+                    "decision_type": x.decision_type,
+                    "latency_ms": x.latency_ms,
+                    "status": x.status,
+                    "attempts": x.attempts,
+                }
+                for x in effect_states
+            ],
+            "latency_ms_p50": latency_p50,
+            "latency_ms_p95": latency_p95,
+        }
+        _atomic_json(evidence_manifest, evidence_payload)
+        journal_sha = sha256_file(evidence_manifest)
 
         payload = {
             "schema": SCHEMA,
             "assignment": assignment.__dict__,
             "actual_stack": actual_stack,
             "result": result,
+            "evidence_manifest_sha256": journal_sha,
         }
         if not assignment.primary:
             self.append_diagnostic(payload)
@@ -527,7 +615,7 @@ class GateEvidence:
             journal_sha256=journal_sha,
             model_sha256=ident["deployment_identity_sha256"],
             source_commit=self.source_commit,
-            failure_reason=result["failure_reason"],
+            failure_reason=failure_reason,
         )
         existing = {x.game_id: x for x in self.ledger.records()}
         if record.game_id in existing:
@@ -568,6 +656,10 @@ class GateEvidence:
             (
                 self.games_dir / f"{game_id}.effects.jsonl",
                 f"games/{game_id}.effects.jsonl",
+            ),
+            (
+                self.games_dir / f"{game_id}.evidence.json",
+                f"games/{game_id}.evidence.json",
             ),
         ]
         for local, remote in (
@@ -743,6 +835,8 @@ class ExternalGateWorker:
             latency_p95=p95,
             protocol_offset=active.protocol_offset,
             effect_offset=active.effect_offset,
+            table_id=table.table_id,
+            game_sequence=table.game_sequence,
         )
         status = self.campaign_status()
         self.evidence.mirror_game(stored["result"]["game_id"])
