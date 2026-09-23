@@ -61,3 +61,21 @@ def test_disconnect_marks_tables_not_in_progress():
     s.set_disconnected()
     assert s.connected is False
     assert table.in_progress is False
+
+
+def test_official_start_payload_binds_server_game_identity():
+    s = ISSSessionState()
+    table = s.apply(parse_service_line("create T1 skatai skat"))
+    s.apply(parse_service_line("table T1 skatai start 42 skatai 60 kermit 59 zoot 58"))
+    assert table.game_sequence == 42
+    assert table.server_game_num == 42
+    assert table.players == ("skatai", "kermit", "zoot")
+    assert table.remaining_time_s == (60.0, 59.0, 58.0)
+
+
+def test_synthetic_start_payload_keeps_local_sequence_fallback():
+    s = ISSSessionState()
+    table = s.apply(parse_service_line("create T1 skatai skat"))
+    s.apply(parse_service_line("table T1 skatai start fixture"))
+    assert table.game_sequence == 1
+    assert table.server_game_num is None

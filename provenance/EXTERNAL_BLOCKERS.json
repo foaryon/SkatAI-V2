@@ -26,15 +26,27 @@
         "external-gate protocol design",
         "historical ISS data analysis"
       ],
-      "effect": "No ISS_HOST/ISS_CLIENT_ID/ISS_PASSWORD environment variables are currently configured on the V2 RunPod worker, so the clean V2 ISS transport cannot perform an authenticated live session yet.",
+      "effect": "An ISS account has been supplied and skatgame.net:7000 is reachable, but no ISS secret is safely injected into the RunPod worker. The platform blocks placing the password into ordinary tool/shell payloads, so live authentication has not been attempted.",
       "id": "iss-v2-credentials",
-      "required_resolution": "Provide/register a dedicated ISS account and inject ISS_HOST, ISS_CLIENT_ID and ISS_PASSWORD through an approved secret mechanism. Do not commit the password.",
+      "required_resolution": "Inject the ISS password through a RunPod/mounted secret and expose it as ISS_PASSWORD or a mode-0600 ISS_PASSWORD_FILE. Configure ISS_HOST=skatgame.net, ISS_PORT=7000 and ISS_CLIENT_ID=SkatAI. Never commit or journal the password.",
       "scope": "Phase 13 ISS live deployment",
       "status": "OPEN_EXTERNAL_ACTION",
       "verified_state": {
+        "account_identity_known": true,
+        "all_phase_single_adapter_implemented": true,
+        "authenticated_live_preflight_complete": false,
         "clean_service_session_runtime_implemented": true,
-        "clean_transport_implemented": true,
-        "iss_environment_variable_names_present": []
+        "durable_external_effect_guard_implemented": true,
+        "host": "skatgame.net",
+        "non_scoring_login_preflight_implemented": true,
+        "preferred_port": 7000,
+        "secret_present_on_worker": false,
+        "secure_secret_inputs_supported": [
+          "ISS_PASSWORD",
+          "ISS_PASSWORD_FILE"
+        ],
+        "stable_decision_boundary_implemented": true,
+        "tcp_7000_reachable": true
       }
     }
   ],

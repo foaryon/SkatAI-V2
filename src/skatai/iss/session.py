@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from skatai.iss.protocol import ISSProtocolError, WireMove, parse_move_line
-from skatai.iss.service import ServiceEvent
+from skatai.iss.service import ISSServiceError, ServiceEvent, parse_table_start_payload
 
 SESSION_SCHEMA = "skatai.v2.iss-session.v1"
 
@@ -27,6 +27,9 @@ class TableSession:
     tells: list[tuple[str, str]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     game_sequence: int = 0
+    server_game_num: int | None = None
+    players: tuple[str, str, str] | None = None
+    remaining_time_s: tuple[float, float, float] | None = None
 
     def apply(self, event: ServiceEvent) -> None:
         table_id = event.fields.get("table_id")
@@ -36,10 +39,24 @@ class TableSession:
             )
 
         if event.kind == "table_start":
-            self.game_sequence += 1
+            self.start_payload = str(event.fields.get("payload") or "")
+            try:
+                start = parse_table_start_payload(self.start_payload)
+            except ISSServiceError:
+                # Synthetic/older fixtures may not carry the documented start
+                # metadata. Keep a local monotonic fallback, but live ISS start
+                # payloads bind effect identity to the server game number.
+                self.game_sequence += 1
+                self.server_game_num = None
+                self.players = None
+                self.remaining_time_s = None
+            else:
+                self.server_game_num = int(start["game_num"])
+                self.game_sequence = self.server_game_num
+                self.players = tuple(start["players"])
+                self.remaining_time_s = tuple(start["remaining_time_s"])
             self.in_progress = True
             self.stopped = False
-            self.start_payload = str(event.fields.get("payload") or "")
             self.game_sgf = None
             self.moves.clear()
             return

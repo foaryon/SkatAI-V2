@@ -1,0 +1,56 @@
+{
+  "schema": "skatai.v2.iss-adapter-architecture.v1",
+  "status": "IMPLEMENTED_TESTED_NOT_YET_LIVE_AUTHENTICATED",
+  "product_rule": "ISS is a thin external runtime/effect adapter around the single SkatAI V2 decision system; ISS contains no independent AI policy.",
+  "stable_boundary": {
+    "request_result": "DecisionRequest -> DecisionResult",
+    "implementation": "src/skatai/runtime/decision.py",
+    "request_identity": ["game_id", "position_hash", "sequence_no", "decision_type", "legal_actions", "source_context"],
+    "result_identity": ["request_id", "position_hash", "decision_id", "release_id", "action", "latency_ms"]
+  },
+  "all_phase_adapter": {
+    "implementation": "src/skatai/iss/bridge.py::ISSSkatAIDecisionProvider",
+    "phases": ["bidding", "hand_or_pickup", "post_pickup_declaration", "discard", "cardplay"],
+    "official_split_pickup_flow": "declaration and discard are separate ISS half-moves, so each material network effect binds to one DecisionResult",
+    "canonical_product_api": "src/skatai/runtime/interface.py",
+    "b0_b1_backend": "src/skatai/runtime/skatzero_backend.py"
+  },
+  "external_effect_authority": {
+    "implementation": "src/skatai/iss/effects.py",
+    "journal": "append-only fsynced JSONL with tamper-evident hash chain",
+    "events": ["INTENT", "SEND_RETURNED", "RETRY_AUTHORIZED", "CONFIRMED", "ABORTED_STALE"],
+    "rules": [
+      "Persist INTENT before any external send.",
+      "Unresolved persisted effects are never blindly replayed after restart.",
+      "Retry requires explicit proof that the same protocol state/request remains pending.",
+      "First post-intent server move confirms the effect only when semantically equivalent.",
+      "A different first post-intent move aborts the intent as stale.",
+      "Connection/lifecycle flags do not alter protocol-state identity.",
+      "ISS-normalized ouvert discard echoes may append ten open-hand cards and still confirm the same two-card discard."
+    ]
+  },
+  "scientific_authority": {
+    "live_iss_games_initial_role": "EVALUATION_ONLY",
+    "training_authority": false,
+    "external_gate": "B1 vs B0 frozen external ISS gate",
+    "promotion_decisions": ["ACCEPT", "REJECT", "INCONCLUSIVE"],
+    "local_evidence_can_accept": false
+  },
+  "key_commits": {
+    "stable_decision_boundary": "675adb2164d7a33116b5cb3a8bfd89e2340fe189",
+    "durable_effect_journal": "e2373cd1e69a3338194ace70d77c5c7b0a810b81",
+    "decision_effect_client_routing": "d4754c32c1eb920e5ff3d8ae8551d3bb851dfe94",
+    "reconnect_reconciliation": "d4c0daf358e8617d3c38792e254b4f16b8159e1b",
+    "official_table_lifecycle": "a4defad2c7b4fa543112d8994ff3c3cfe38687c2",
+    "single_adapter_consolidation": "2e383a72807f1352648bfb8bce0263311e53f113"
+  },
+  "live_readiness": {
+    "iss_host_reference": "skatgame.net",
+    "preferred_port": 7000,
+    "tcp_reachable": true,
+    "credential_account_known": true,
+    "credential_secret_present_on_worker": false,
+    "authenticated_live_preflight_complete": false,
+    "scored_live_game_started": false
+  }
+}
