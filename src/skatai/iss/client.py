@@ -170,14 +170,10 @@ class ISSClientCore:
 
         if (
             self.effect_guard is not None
-            and event.kind == "table_play"
+            and event.kind in {"table_start", "table_play", "table_state", "table_go"}
             and table is not None
         ):
-            self.effect_guard.journal.confirm_observed_action(
-                table_id=table.table_id,
-                game_sequence=table.game_sequence,
-                wire_action=str(event.fields["move"]),
-            )
+            self.effect_guard.journal.reconcile_table(table)
 
         if event.kind == "invite" and self.policy.accept_invitations:
             self._send(

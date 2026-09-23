@@ -50,13 +50,14 @@ class EffectState:
 
 
 def table_state_hash(table: Any) -> str:
+    """Hash only protocol-relevant game state.
+
+    Connection/lifecycle flags are intentionally excluded so reconnecting the
+    same replayed move prefix yields the same external-state identity.
+    """
     payload = {
         "table_id": str(table.table_id),
         "game_sequence": int(table.game_sequence),
-        "in_progress": bool(table.in_progress),
-        "stopped": bool(table.stopped),
-        "start_payload": table.start_payload,
-        "state_payload": table.state_payload,
         "moves": [
             {
                 "actor": str(m.actor),
@@ -310,6 +311,26 @@ class ISSEffectJournal:
             if s.table_id == str(table_id) and s.game_sequence == int(game_sequence)
         ]
 
+    @staticmethod
+    def wire_actions_equivalent(expected: str, observed: str) -> bool:
+        """Semantic equality for server-normalized echoes.
+
+        ISS split discard mode may append ten ouvert cards to the declarer's
+        two-card discard in an echoed private/public view. The material action
+        is still the same discard. All other action forms remain exact-match.
+        """
+        expected = str(expected)
+        observed = str(observed)
+        if expected == observed:
+            return True
+        ep = expected.split(".")
+        op = observed.split(".")
+        if len(ep) == 2 and len(op) == 12 and op[:2] == ep:
+            from skatai.iss.protocol import is_card
+
+            return all(is_card(x) for x in ep) and all(is_card(x) for x in op[2:])
+        return False
+
     def confirm_observed_action(
         self,
         *,
@@ -318,15 +339,89 @@ class ISSEffectJournal:
         wire_action: str,
     ) -> EffectState | None:
         matches = [
-            s
-            for s in self.pending_for_game(table_id, game_sequence)
-            if s.wire_action == str(wire_action)
+            state
+            for state in self.pending_for_game(table_id, game_sequence)
+            if self.wire_actions_equivalent(state.wire_action, str(wire_action))
         ]
         if not matches:
             return None
         if len(matches) > 1:
             raise ISSEffectError("AMBIGUOUS_PENDING_EFFECT_FOR_OBSERVED_ACTION")
         return self.confirm(matches[0].effect_id, reason="server_echo_observed")
+
+    def reconcile_table(self, table: Any) -> list[dict[str, Any]]:
+        """Reconcile durable pending effects against reconstructed server state.
+
+        This never authorizes or performs a resend. Same-state intents remain
+        pending until the caller separately proves that ISS still requests that
+        exact decision.
+        """
+        outcomes: list[dict[str, Any]] = []
+        moves = list(table.moves)
+        for state in self.pending_for_game(table.table_id, table.game_sequence):
+            seq = state.protocol_sequence
+            if len(moves) > seq:
+                observed = str(moves[seq].action)
+                if self.wire_actions_equivalent(state.wire_action, observed):
+                    final = self.confirm(
+                        state.effect_id,
+                        reason="reconcile_first_post_intent_move_matches",
+                    )
+                    outcomes.append(
+                        {
+                            "effect_id": state.effect_id,
+                            "outcome": "CONFIRMED",
+                            "observed_action": observed,
+                            "status": final.status,
+                        }
+                    )
+                else:
+                    final = self.abort_stale(
+                        state.effect_id,
+                        reason=f"first_post_intent_move_differs:{observed}",
+                    )
+                    outcomes.append(
+                        {
+                            "effect_id": state.effect_id,
+                            "outcome": "ABORTED_STALE",
+                            "observed_action": observed,
+                            "status": final.status,
+                        }
+                    )
+                continue
+
+            if len(moves) == seq:
+                current_hash = table_state_hash(table)
+                if current_hash == state.external_state_hash:
+                    outcomes.append(
+                        {
+                            "effect_id": state.effect_id,
+                            "outcome": "PENDING_SAME_STATE",
+                            "status": state.status,
+                        }
+                    )
+                else:
+                    final = self.abort_stale(
+                        state.effect_id,
+                        reason="same_move_count_but_protocol_hash_changed",
+                    )
+                    outcomes.append(
+                        {
+                            "effect_id": state.effect_id,
+                            "outcome": "ABORTED_STALE",
+                            "status": final.status,
+                        }
+                    )
+                continue
+
+            outcomes.append(
+                {
+                    "effect_id": state.effect_id,
+                    "outcome": "PENDING_REPLAY_INCOMPLETE",
+                    "status": state.status,
+                }
+            )
+        return outcomes
 
 
 class ISSAuthorityGuard:

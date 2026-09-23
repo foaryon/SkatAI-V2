@@ -174,3 +174,139 @@ def test_journal_hash_chain_detects_tampering(tmp_path):
     path.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
     with pytest.raises(ISSEffectError, match="EVENT_HASH_MISMATCH"):
         journal.events()
+
+
+def test_semantic_echo_accepts_ouvert_augmented_discard_only():
+    expected = "C7.D8"
+    observed = "C7.D8.C8.C9.CT.CJ.CQ.CK.CA.S7.S8.S9"
+    assert ISSEffectJournal.wire_actions_equivalent(expected, observed)
+    assert not ISSEffectJournal.wire_actions_equivalent("18", "18.C7")
+
+
+def test_protocol_state_hash_ignores_connection_flags():
+    from types import SimpleNamespace
+    from skatai.iss.effects import table_state_hash
+    from skatai.iss.protocol import parse_move_line
+
+    moves = [parse_move_line("1 18"), parse_move_line("0 y")]
+    a = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=moves,
+        in_progress=True,
+        stopped=False,
+        start_payload="old",
+        state_payload=None,
+    )
+    b = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=moves,
+        in_progress=False,
+        stopped=True,
+        start_payload="different",
+        state_payload="reconnect state",
+    )
+    assert table_state_hash(a) == table_state_hash(b)
+
+
+def test_reconcile_confirms_first_post_intent_move(tmp_path):
+    from skatai.iss.protocol import parse_move_line
+    from skatai.iss.effects import table_state_hash
+    from types import SimpleNamespace
+
+    req, result = request_result()
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    before = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[parse_move_line("1 18"), parse_move_line("0 y")],
+    )
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash=table_state_hash(before),
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=2,
+        wire_action="20",
+        outbound_line="table T SkatAI play 20",
+    )
+    journal.mark_send_returned(effect.effect_id)
+
+    after = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[
+            parse_move_line("1 18"),
+            parse_move_line("0 y"),
+            parse_move_line("2 20"),
+        ],
+    )
+    outcomes = journal.reconcile_table(after)
+    assert outcomes[0]["outcome"] == "CONFIRMED"
+    assert journal.pending() == []
+
+
+def test_reconcile_same_replayed_prefix_stays_pending_without_retry(tmp_path):
+    from skatai.iss.protocol import parse_move_line
+    from skatai.iss.effects import table_state_hash
+    from types import SimpleNamespace
+
+    req, result = request_result()
+    table = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[parse_move_line("1 18"), parse_move_line("0 y")],
+    )
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash=table_state_hash(table),
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=2,
+        wire_action="20",
+        outbound_line="table T SkatAI play 20",
+    )
+    journal.mark_send_returned(effect.effect_id)
+    outcomes = journal.reconcile_table(table)
+    assert outcomes[0]["outcome"] == "PENDING_SAME_STATE"
+    assert journal.states()[effect.effect_id].status == "SEND_RETURNED"
+
+
+def test_reconcile_different_first_move_aborts_stale(tmp_path):
+    from skatai.iss.protocol import parse_move_line
+    from skatai.iss.effects import table_state_hash
+    from types import SimpleNamespace
+
+    req, result = request_result()
+    before = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[parse_move_line("1 18"), parse_move_line("0 y")],
+    )
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash=table_state_hash(before),
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=2,
+        wire_action="20",
+        outbound_line="table T SkatAI play 20",
+    )
+    after = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[
+            parse_move_line("1 18"),
+            parse_move_line("0 y"),
+            parse_move_line("2 p"),
+        ],
+    )
+    outcomes = journal.reconcile_table(after)
+    assert outcomes[0]["outcome"] == "ABORTED_STALE"
+    assert journal.states()[effect.effect_id].status == "ABORTED_STALE"
