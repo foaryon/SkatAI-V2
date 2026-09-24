@@ -86,6 +86,20 @@ def test_pickup_contract_and_discard_are_two_guardable_half_moves():
     assert d2.wire_action == "C7.C8"
 
 
+def test_pickup_null_ouvert_split_discard_sends_only_two_cards():
+    ai = AI()
+    ai.contract = "NO"
+    d = provider(ai).next_decision(
+        table(
+            deal0(), "1 18", "0 y", "1 p", "2 p",
+            "0 s", "w S9.ST", "0 NO",
+        )
+    )
+    assert d.request.decision_type is DecisionType.DISCARD
+    assert d.result.action == "C7.C8"
+    assert d.wire_action == "C7.C8"
+
+
 def test_decision_provider_cardplay_is_guardable():
     ai = AI()
     ai.contract = "GH"
