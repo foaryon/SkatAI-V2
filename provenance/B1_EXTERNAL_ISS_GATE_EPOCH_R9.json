@@ -1,0 +1,98 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-split-ouvert-discard-wire-recovery-v1",
+  "captured_at": "2026-09-24T05:55:42Z",
+  "status": "PRIMARY_GATE_REFROZEN_AFTER_OUVERT_SPLIT_DISCARD_WIRE_FIX",
+  "rationale": "R8 completed 67 scored deployment-valid games, then encountered its first pickup Null Ouvert declaration. The split-discard adapter incorrectly transmitted the two discarded cards plus the ten-card open hand. ISS then appended the open hand to its echo, producing a 22-card action that V2 correctly rejected as UNKNOWN_ACTION. The raw server echo proves the outbound effect was delivered; recovery confirmed that effect without replay, recorded the interrupted game as PROTOCOL_FAILURE, cleared active-game authority, and stopped the stale in-memory worker fail-closed. R9 changes only common ISS wire encoding: split discard transmits exactly two cards and leaves Ouvert reveal expansion to ISS.",
+  "executable_code_commit": "decd6ffa13ef50c055424e326bc22745f7ceb968",
+  "closed_r8": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
+    "worker_source_commit": "b176a0b43f4d0c118700362c450cfa1369db25f3",
+    "records": 68,
+    "scored_records": 67,
+    "protocol_failures": 1,
+    "scored_by_arm": {
+      "B0": 34,
+      "B1": 33
+    },
+    "scored_by_arm_and_stack": {
+      "B0:kermit+zoot": 12,
+      "B1:kermit+zoot": 12,
+      "B0:kermit+theCount": 12,
+      "B1:kermit+theCount": 12,
+      "B0:zoot+theCount": 10,
+      "B1:zoot+theCount": 9
+    },
+    "active_games": 0,
+    "pending_effects": 0,
+    "primary_strength_use": false,
+    "disposition": "DIAGNOSTIC_DEPLOYMENT_EVIDENCE_ONLY_DUE_COMMON_OUVERT_SPLIT_DISCARD_WIRE_DEFECT",
+    "failure_game_id": "a6fbc2091482b2780fcebb110c98bbe5aaf4158764128881c984c215a5743582",
+    "failure_effect_id": "a16697a8c9d4927d391c7b827e51646f1037c41bae2eacd3965ce869d1aa2c9e",
+    "failure_reason": "R8_OUVERT_DISCARD_OUTBOUND_ALREADY_INCLUDED_OPEN_HAND_SERVER_APPENDED_OPEN_HAND_PARSE_FAILURE",
+    "external_action_replayed_during_recovery": false,
+    "durable_current_hashes": {
+      "active-games.json": "e9f92bf246d76feb1abf1b00a3d0d6bca31b389c92fa0161e010418fca5a57a2",
+      "connection-events.jsonl": "fb1ce2968414a91883b9d2f0961b96e5302dbf0933c904aa85a5ac5e92269095",
+      "effects.jsonl": "69c28bf0caf3021a3646e1d423b72c038a15c491710d90883512e913fb55a123",
+      "gate-ledger.jsonl": "3c44396a4dd1b5c1ffd67bd5ce5e4da5997c6f2f478633ab1a5bb4982212b42f",
+      "service.jsonl": "9bf03a476c95562c95ecbe7d74d58f89f6e34e3fdb116fcd279111b7579b016d",
+      "status.json": "a357bdb1e75036183bc4f684a727625fa86ce0c6b0827f9589f1172bafee89aa"
+    },
+    "remote_current_hashes_verified": true
+  },
+  "root_cause": {
+    "classification": "CLIENT_SENT_OUVERT_REVEAL_IN_SPLIT_DISCARD_AND_SERVER_APPENDED_REVEAL_AGAIN",
+    "mechanism": [
+      "After pickup and a contract-only NO half-move, V2 entered the separate DISCARD decision.",
+      "The adapter constructed the outbound DISCARD action as two discarded cards followed by the ten-card open hand.",
+      "ISS owns Ouvert reveal expansion and echoed the submitted payload with the ten-card open hand appended.",
+      "The resulting 22-card action was outside the canonical two-card or twelve-card discard forms and raised UNKNOWN_ACTION.",
+      "The process exited after persisting SEND_RETURNED, leaving one unresolved effect and one active-game authority.",
+      "Recovery used the already-persisted raw server echo as delivery proof, confirmed the effect without replay, recorded PROTOCOL_FAILURE, and cleared authority."
+    ],
+    "first_observed_in_r8_game_sequence": 2,
+    "first_observed_table_id": "AIecf873",
+    "stale_in_memory_worker_stopped_fail_closed": true
+  },
+  "fixes": {
+    "canonical_product_provider_split_discard_sends_exactly_two_cards": true,
+    "legacy_helper_split_discard_sends_exactly_two_cards": true,
+    "server_ouvert_echo_expansion_remains_server_owned": true,
+    "existing_two_to_twelve_semantic_effect_confirmation_preserved": true,
+    "new_twenty_two_card_protocol_shape_accepted_as_normal": false,
+    "gameplay_policy_models_changed": false,
+    "scoring_changed": false,
+    "bidding_changed": false
+  },
+  "verification": {
+    "targeted_regressions_after_fix": "12 passed",
+    "full_tests_after_fix": "273 passed",
+    "diff_check_clean": true,
+    "r8_active_games": 0,
+    "r8_pending_effects": 0,
+    "r8_worker_processes_after_containment": 0,
+    "r8_final_service_and_connection_journals_remote_hash_verified": true
+  },
+  "science_boundary": {
+    "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256_unchanged": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "treatment_difference_remains": "bidding only",
+    "common_adapter_fix_applies_equally_to_b0_and_b1": true,
+    "reuse_r8_primary_strength_records": false,
+    "r8_records_remain_durable_diagnostic_evidence": true
+  },
+  "new_epoch": {
+    "epoch": "R9",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r9",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r9",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R9"
+  }
+}
