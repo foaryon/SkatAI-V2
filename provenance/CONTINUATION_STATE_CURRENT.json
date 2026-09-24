@@ -1,211 +1,44 @@
 {
-  "authority_note": "Verified current physical/system state snapshot; supersedes stale bootstrap state for continuation, without modifying founding specification authority.",
-  "canonical_data": {
-    "bidding_dataset": {
-      "dataset_id": "bidding-historical-v1",
-      "manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
-      "rows": {
-        "external_bot_holdout": 44781076,
-        "test": 1088286,
-        "train": 21435764,
-        "validation": 2390888
-      },
-      "trust": "D3_SEMANTICALLY_VALID"
-    },
-    "legacy_corpus": {
-      "bytes": 13077428492,
-      "hetzner_copy_verified": true,
-      "iss_records": 8692393,
-      "records": 10845022,
-      "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
-      "skatgame_records": 2152629
-    },
-    "public_refresh_2024_07": {
-      "accepted_extras": 405946,
-      "manifest": "provenance/PUBLIC_CORPUS_REFRESH_FINAL_V1.json",
-      "parse_errors": 1,
-      "quarantined_no_contract": 81427,
-      "raw_extra_lines": 487374,
-      "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
-    }
-  },
-  "captured_at": "2026-09-24T03:31:01Z",
-  "external_blockers": [
-    {
-      "action": "Authenticate normal Git transport on the RunPod control host and push the existing clean V2 main history to https://github.com/foaryon/SkatAI-V2.git without reconstructing history.",
-      "id": "github-v2-normal-git-auth"
-    }
+  "schema": "skatai.v2.continuation-pointer.v1",
+  "captured_at": "2026-09-24T16:21:00Z",
+  "authority_note": "This Git-tracked file is a material-checkpoint pointer, not the live runtime ledger. Live state may advance without a Git commit.",
+  "governing_documents": [
+    "SKATAI_V2_FOUNDING_SPECIFICATION.md",
+    "SKATAI_V2_WORK_PROMPT.md"
   ],
-  "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R8 execution",
-  "git": {
-    "branch": "main",
-    "campaign_epoch_commit": "decebe68c99c53d4bfe905dd95a4e6df0a4f1f16",
-    "code_head": "a7da2a2ea0d251b289591d940e2827dc1ef84d92",
-    "new_v2_github_repository_attached": true,
-    "normal_https_auth_present_on_runpod": false,
-    "normal_ssh_auth_present_on_runpod": false,
-    "remote_empty": true,
-    "remote_present": true,
-    "remote_push_authenticated": false,
-    "remote_url": "https://github.com/foaryon/SkatAI-V2.git",
-    "remote_visibility": "public",
-    "workspace": "/workspace/skatai-v2"
+  "live_state": {
+    "local": "/workspace/skatai-v2-runtime/continuation/CONTINUATION_STATE_CURRENT.json",
+    "persistent": "s3://skatai-v2/provenance/CONTINUATION_STATE_CURRENT.json",
+    "rule": "Reconcile live runtime and persistent evidence before acting; update Git only for material source/science/product milestones."
   },
-  "iss": {
-    "account_identity_known": true,
-    "active_game_crash_safe_authority": true,
-    "active_table_error_fail_closed": true,
-    "adapter_status": "R8_GATE_READY_POST_STACK_ROTATION_LIVENESS_RECOVERY",
-    "all_phase_single_adapter": true,
-    "authenticated_preflight_complete": true,
-    "durable_effect_guard": true,
-    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R8.json",
-    "frozen_external_gate_ready": true,
-    "frozen_external_gate_ready_except_credentials": false,
-    "gate_epoch": "post-stack-rotation-liveness-recovery-v1",
-    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
-    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
-    "hetzner_per_game_evidence_mirror": true,
-    "host": "skatgame.net",
-    "latest_live_infrastructure_failure": {
-      "classification": "DEPARTING_TABLE_DESTROY_FILTERED_AS_FOREIGN",
-      "next_stack_at_stall": "kermit+theCount",
-      "observed_after_scored_games": 6,
-      "r7_primary_strength_use": false,
-      "recovery": "R7 stopped with empty active-game authority after all six games were remote-hash verified; departing table remains admitted through destroy in R8",
-      "resolved_by_commit": "a7da2a2ea0d251b289591d940e2827dc1ef84d92"
+  "source_authority": {
+    "repository": "foaryon/SkatAI-V2",
+    "default_branch": "main",
+    "normal_git_transport": "SSH_DEPLOY_KEY",
+    "remote_sync_verified_through": "94f4f2e1806fdc1f2710b159a544057cdb4fffa2",
+    "ci_verified": {
+      "workflow": "CI",
+      "run": 3,
+      "sha": "94f4f2e1806fdc1f2710b159a544057cdb4fffa2",
+      "conclusion": "success"
     },
-    "latest_live_protocol_failure": {
-      "affected_r6_games": [
-        "e7e98b0a558b3281d4b3411fcc92434338d438f3d57ea92272f3f3668b5c9a79",
-        "1d4826db6efb4c6f64e2e16ae4f86701e5bb74c7856de0be3434f25d43c8fffc"
-      ],
-      "classification": "OUT_OF_ORDER_RE_CREATED_OVERLAPPING_MATERIAL_EFFECT",
-      "observed_duplicate_actions": [
-        "HT",
-        "HK"
-      ],
-      "provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R7.json",
-      "r6_primary_strength_use": false,
-      "resolved_by_commits": [
-        "e031643",
-        "ab72f44"
-      ],
-      "server_rejections": 2
-    },
-    "parser_erratum": "provenance/B1_EXTERNAL_ISS_TERMINAL_SGF_PARSER_ERRATUM.json",
-    "port": 7000,
-    "pre_erratum_segment_primary_strength_use": false,
-    "pre_erratum_segment_records": 3,
-    "primary_epoch_scored_live_games": 0,
-    "r1_primary_strength_use": false,
-    "r2_primary_strength_use": false,
-    "r3_primary_strength_use": false,
-    "r4_primary_strength_use": false,
-    "r5_primary_strength_use": false,
-    "r6_primary_strength_use": false,
-    "r7_primary_strength_use": false,
-    "scored_live_games": 20,
-    "secret_present_on_worker": true,
-    "secret_source": "RunPod General Secret -> ISS_PASSWORD in process memory",
-    "single_pending_material_effect_per_game": true,
-    "skip_inference_while_game_effect_pending": true,
-    "stable_decision_boundary": true,
-    "stranded_authority_recovery": "provenance/B1_EXTERNAL_ISS_STRANDED_AUTHORITY_RECOVERY.json",
-    "table_authority_isolation": true,
-    "terminal_less_failure_recovery": true,
-    "worker_transport_reconnect": true
+    "repository_policy": "configs/github_repository_policy_v1.json"
   },
-  "next_safe_actions": [
-    "Launch the clean isolated R8 external ISS gate epoch from a clean Git tree and dedicated R8 runtime/S3 namespace.",
-    "Do not reuse R1/R2/R3/R4/R5/R6/R7 scored records in the R8 primary strength estimator.",
-    "Verify the first R8 stack rotation actually destroys the departing table and creates the next frozen-priority opponent stack.",
-    "Treat any active-game ISS table_error as PROTOCOL_FAILURE and stop fail-closed.",
-    "Preserve and mirror every R8 deployment-valid game before advancing the campaign.",
-    "Do not mutate main while an R8 active game is bound to the running source commit.",
-    "Continue independent non-contaminating cardplay weakness research on the separate lab worktree.",
-    "Resolve GitHub normal-transport authentication independently; do not reconstruct commits through GitHub API/file-by-file writes."
-  ],
-  "schema": "skatai.v2.continuation-state.v1",
-  "science": {
-    "B0": {
-      "id": "V2-B0",
-      "immutable": true,
-      "runtime_reproduced": true,
-      "skatzero_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
-    },
-    "B1": {
-      "id": "V2-B1-bidding-linearish-full-v1",
-      "local_confirmation": {
-        "accept_authorized": false,
-        "ci95_high": 3.3410176783233627,
-        "ci95_low": -9.184351011656696,
-        "clustered_mean": -2.921666666666667,
-        "deals": 100,
-        "next_action": "REQUIRE_EXTERNAL_DEPLOYMENT_VALID_EVALUATION",
-        "paired_seat_observations": 300,
-        "status": "LOCAL_GATE_NOT_REGRESSING"
-      },
-      "model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
-      "promotion_status": "NOT_ACCEPTED_EXTERNAL_GAMEPLAY_REQUIRED",
-      "strength_claim_authorized": false
-    },
-    "diagnostics": {
-      "cardplay_reconstruction_lab": {
-        "actor_metadata_is_model_input": false,
-        "agreement_is_strength_metric": false,
-        "b0_agreement_smoke_events": 18,
-        "branch": "lab/cardplay-reconstruction-v1",
-        "head": "fe104fd40a1b7e438fcf8de7894962583205cc95",
-        "latest_dimensions": [
-          "contract_family",
-          "declarer_defender",
-          "phase",
-          "seat",
-          "lead_follow",
-          "forced_choice",
-          "actor_class_metadata"
-        ],
-        "latest_full_suite": "272 passed",
-        "reconstruction_smoke_events": 141259,
-        "reconstruction_smoke_games": 5000,
-        "training_authority": false
-      },
-      "local_weakness": {
-        "artifact_sha256": "432472cba0f54bbe7d68677e8b24b1cd7f1bcc74da6891a5d679f3220c8e24ee",
-        "manifest": "provenance/B1_LOCAL_WEAKNESS_DIAGNOSTIC_V1.json"
-      },
-      "stratified_calibration": {
-        "artifact_sha256": "3def12ab78dbf430f8443fcce1b4b461ab451bac1d555ae7bc7a99d9fed4acc9",
-        "manifest": "provenance/B1_BIDDING_STRATA_DIAGNOSTIC_V1.json"
-      }
-    }
+  "active_science": {
+    "task_id": "B1_EXTERNAL_ISS_R9",
+    "classification": "CONTINUE",
+    "source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r9",
+    "first_strength_look_per_arm": 300,
+    "strength_look_opened": false,
+    "rule": "Do not hot-switch R9 to newer main; do not perform unplanned strength analysis."
   },
-  "sentinelx": {
-    "automatic_container_start_invocation_present": false,
-    "bootstrap_self_heal_logic_present": true,
-    "container_recreation_self_healing_bootstrap": false,
-    "host_id": "host_c8c6a6b0a7123805",
-    "hostname": "623783ac54a3",
-    "legacy_v1_supervisor_dependency_observed": false,
-    "manual_recovery_required_for_latest_recreation": true,
-    "neutral_root": "/workspace/sentinelx-host",
-    "pre_start_launches_neutral_supervisor": false,
-    "runtime_general_secret_mapping": true,
-    "supervisor_parent_pid": 1
+  "infrastructure": {
+    "sentinelx_host_id": "host_c8c6a6b0a7123805",
+    "sentinelx_bootstrap": "/workspace/sentinelx-host/runpod-entrypoint.sh",
+    "github_key_helper": "/workspace/sentinelx-host/start-github-git-agent.sh",
+    "object_store": "s3://skatai-v2"
   },
-  "storage": {
-    "authoritative_store": "s3://skatai-v2",
-    "endpoint": "https://fsn1.your-objectstorage.com",
-    "evidence_mirror_probe_passed": true,
-    "provider": "Hetzner Object Storage",
-    "region": "fsn1",
-    "runpod_role": "compute/cache/runtime only"
-  },
-  "tests": {
-    "environment": "/tmp/skatai-v2-dev",
-    "pytest_failed": 0,
-    "pytest_passed": 271,
-    "required_pythonpath": "/workspace/skatai-v2/src"
-  }
+  "current_highest_value_action": "Preserve healthy frozen R9 execution to its preregistered gate while completing only independent reliability/source-authority work.",
+  "commit_churn_rule": "Runtime counters, game progress, health samples, and transient recovery state do not justify Git commits by themselves."
 }

@@ -1,0 +1,55 @@
+{
+  "schema": "skatai.v2.github-repository-policy.v1",
+  "purpose": "Keep V2 source history scientifically meaningful, low-churn, recoverable, and automation-friendly.",
+  "commit_policy": {
+    "default": "One commit per coherent verified change or material milestone, not per shell command, tiny edit, health sample, game, or transient runtime event.",
+    "before_push": "Use fixup/amend/autosquash for local micro-corrections when the commit has not been externally referenced.",
+    "after_push_or_scientific_binding": "Do not rewrite commits whose SHA is already pushed as shared authority or bound into experiment/provenance identities.",
+    "runtime_state": "Do not commit per-game counters, heartbeats, transient health state, temporary checkpoints, or operational log churn. Persist those in runtime/object-storage state.",
+    "negative_results": "Preserve scientifically meaningful negative/inconclusive results in provenance without creating gratuitous commits."
+  },
+  "branch_policy": {
+    "main": "Stable authoritative integration branch.",
+    "feature_or_fix_branches": "Use only for genuinely isolated work, risky fixes, or parallel experiments; do not create a branch for trivial edits.",
+    "scientific_epoch_branches": "A commit already used as an experiment identity is immutable. Preserve that SHA when integrating or retain it through an explicit tag/reference.",
+    "cleanup": "Delete obsolete short-lived branches after integration/rejection once no unique evidence or referenced commit would be lost."
+  },
+  "merge_policy": {
+    "ordinary_changes": "Prefer squash integration after local fixups so one logical change becomes one mainline commit.",
+    "scientifically_referenced_commits": "Preserve referenced SHAs; use an integration method that does not rewrite them.",
+    "rebase_merges": "Avoid for commits already referenced by provenance because rebasing changes commit identity.",
+    "merge_commits": "Use only when preserving meaningful branch/experiment lineage justifies the extra commit."
+  },
+  "push_policy": {
+    "default": "Push verified material checkpoints, not every local edit.",
+    "force_push_main": false,
+    "delete_main": false,
+    "normal_transport_only": true,
+    "api_history_reconstruction": false
+  },
+  "ci_policy": {
+    "workflow": ".github/workflows/ci.yml",
+    "main_should_be_green": true,
+    "fix_ci_failures_by_root_cause": true,
+    "avoid_commit_per_retry": true
+  },
+  "desired_github_settings": {
+    "visibility": "public",
+    "default_branch": "main",
+    "issues": true,
+    "wiki": false,
+    "projects": false,
+    "discussions": false,
+    "merge_methods": {
+      "squash": true,
+      "merge_commit": true,
+      "rebase": false
+    },
+    "delete_head_branches_on_merge": true,
+    "main_rules": {
+      "block_force_push": true,
+      "block_deletion": true,
+      "note": "Do not require PR-only writes until the autonomous GitHub App/PR path is proven; direct fast-forward deploy-key pushes remain required for FULL-AFK continuity. Once that path is proven, require CI on PRs."
+    }
+  }
+}
