@@ -12,3 +12,6 @@ artifacts-local/
 *.secret
 
 *.egg-info/
+
+# Local safe-edit / recovery backups
+*.bak.*
