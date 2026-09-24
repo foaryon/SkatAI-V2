@@ -363,3 +363,103 @@ def test_table_event_admission_is_epoch_scoped():
     assert not w._event_is_admitted(
         parse_service_line("table FOREIGN SkatAI start 1 SkatAI 100 kermit 100 zoot 100")
     )
+
+
+def test_terminal_less_failure_is_append_only_and_idempotent(tmp_path):
+    import json
+    from pathlib import Path
+    from skatai.iss.gate_worker import GateEvidence, GatePaths, GameAssignment
+
+    paths = GatePaths(
+        repo_root=tmp_path,
+        runtime_root=tmp_path / "runtime",
+        skatzero_root=tmp_path / "b0",
+        skatzero_python=tmp_path / "python",
+        b1_model=tmp_path / "b1.pt",
+    )
+    identities = {
+        "B0": {
+            "deployment_identity_sha256": "a" * 64,
+            "release_id": "B0-test",
+        },
+        "B1": {
+            "deployment_identity_sha256": "b" * 64,
+            "release_id": "B1-test",
+        },
+    }
+    ev = GateEvidence(paths=paths, identities=identities, source_commit="abc1234")
+    ev.protocol_journal.parent.mkdir(parents=True, exist_ok=True)
+    ev.protocol_journal.write_text('{"direction":"in","line":"table T SkatAI start 1"}\n')
+    ev.effect_journal.write_text("")
+    assignment = GameAssignment("B0", "kermit+zoot", 1, 300, True)
+
+    first = ev.append_failure_without_terminal(
+        assignment=assignment,
+        table_id="T",
+        game_sequence=1,
+        protocol_offset=0,
+        effect_offset=0,
+        status="PROTOCOL_FAILURE",
+        failure_reason="RECOVERY_NO_TERMINAL",
+    )
+    second = ev.append_failure_without_terminal(
+        assignment=assignment,
+        table_id="T",
+        game_sequence=1,
+        protocol_offset=0,
+        effect_offset=0,
+        status="PROTOCOL_FAILURE",
+        failure_reason="RECOVERY_NO_TERMINAL",
+    )
+
+    assert first["game_id"] == second["game_id"]
+    assert first["duplicate_reused"] is False
+    assert second["duplicate_reused"] is True
+    rows = ev.ledger.records()
+    assert len(rows) == 1
+    assert rows[0].status == "PROTOCOL_FAILURE"
+    assert rows[0].score is None
+    assert rows[0].raw_sgf_sha256 is None
+    evidence = json.loads(
+        (ev.games_dir / f"{first['game_id']}.evidence.json").read_text()
+    )
+    assert evidence["terminal_sgf_present"] is False
+    assert evidence["artifacts"]["service_slice"]["bytes"] > 0
+    assert not (ev.games_dir / f"{first['game_id']}.sgf").exists()
+
+
+def test_terminal_less_failure_mirror_does_not_require_sgf(tmp_path):
+    from skatai.iss.gate_worker import GateEvidence, GatePaths, GameAssignment
+
+    paths = GatePaths(
+        repo_root=tmp_path,
+        runtime_root=tmp_path / "runtime",
+        skatzero_root=tmp_path / "b0",
+        skatzero_python=tmp_path / "python",
+        b1_model=tmp_path / "b1.pt",
+    )
+    identities = {
+        "B0": {"deployment_identity_sha256": "a" * 64, "release_id": "B0-test"},
+        "B1": {"deployment_identity_sha256": "b" * 64, "release_id": "B1-test"},
+    }
+    ev = GateEvidence(paths=paths, identities=identities, source_commit="abc1234")
+    ev.protocol_journal.parent.mkdir(parents=True, exist_ok=True)
+    ev.protocol_journal.write_text("{}\n")
+    ev.effect_journal.write_text("")
+    result = ev.append_failure_without_terminal(
+        assignment=GameAssignment("B0", "kermit+zoot", 1, 300, True),
+        table_id="T",
+        game_sequence=1,
+        protocol_offset=0,
+        effect_offset=0,
+        status="PROTOCOL_FAILURE",
+        failure_reason="RECOVERY_NO_TERMINAL",
+    )
+    uploads = []
+    ev.mirror.upload_verified = lambda local, remote: uploads.append((local, remote)) or {
+        "local": str(local), "remote": remote, "sha256": "0" * 64, "bytes": local.stat().st_size
+    }
+    ev.mirror_game(result["game_id"])
+    assert uploads
+    assert all(local.exists() for local, _ in uploads)
+    assert not any(remote.endswith(".sgf") for _, remote in uploads)

@@ -866,22 +866,186 @@ class GateEvidence:
         self.ledger.append(record)
         return {"primary": True, "duplicate_reused": False, **payload}
 
-    def mirror_game(self, game_id: str) -> dict[str, Any]:
-        files: list[tuple[Path, str]] = [
-            (self.games_dir / f"{game_id}.sgf", f"games/{game_id}.sgf"),
-            (
-                self.games_dir / f"{game_id}.service.jsonl",
-                f"games/{game_id}.service.jsonl",
-            ),
-            (
-                self.games_dir / f"{game_id}.effects.jsonl",
-                f"games/{game_id}.effects.jsonl",
-            ),
-            (
-                self.games_dir / f"{game_id}.evidence.json",
-                f"games/{game_id}.evidence.json",
-            ),
+    def append_failure_without_terminal(
+        self,
+        *,
+        assignment: GameAssignment,
+        table_id: str,
+        game_sequence: int,
+        protocol_offset: int,
+        effect_offset: int,
+        status: str,
+        failure_reason: str,
+    ) -> dict[str, Any]:
+        if status not in {"INFRA_FAILURE", "PROTOCOL_FAILURE", "MODEL_FAILURE"}:
+            raise ValueError(f"BAD_TERMINALLESS_FAILURE_STATUS:{status}")
+        if not failure_reason:
+            raise ValueError("TERMINALLESS_FAILURE_REQUIRES_REASON")
+
+        identity_payload = {
+            "schema": "skatai.v2.external-iss-terminal-less-failure-id.v1",
+            "source_commit": self.source_commit,
+            "table_id": str(table_id),
+            "game_sequence": int(game_sequence),
+            "assignment": assignment.__dict__,
+        }
+        game_id = hashlib.sha256(
+            json.dumps(identity_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+        protocol_slice = self.games_dir / f"{game_id}.service.jsonl"
+        effect_slice = self.games_dir / f"{game_id}.effects.jsonl"
+        evidence_manifest = self.games_dir / f"{game_id}.evidence.json"
+        self._write_slice(self.protocol_journal, protocol_offset, protocol_slice)
+        self._write_slice(self.effect_journal, effect_offset, effect_slice)
+
+        effect_states = [
+            state
+            for state in ISSEffectJournal(self.effect_journal).states().values()
+            if state.table_id == str(table_id)
+            and state.game_sequence == int(game_sequence)
         ]
+        effect_states.sort(key=lambda x: (x.protocol_sequence, x.effect_id))
+        effect_latencies = sorted(float(x.latency_ms) for x in effect_states)
+        latency_p50 = None
+        latency_p95 = None
+        if effect_latencies:
+            latency_p50 = float(statistics.median(effect_latencies))
+            p95_index = max(
+                0,
+                min(
+                    len(effect_latencies) - 1,
+                    int((0.95 * len(effect_latencies) + 0.999999999) // 1) - 1,
+                ),
+            )
+            latency_p95 = float(effect_latencies[p95_index])
+
+        ident = self.identities[assignment.arm]
+        evidence_payload = {
+            "schema": "skatai.v2.external-iss-terminal-less-failure-evidence.v1",
+            "game_id": game_id,
+            "table_id": str(table_id),
+            "server_game_num": int(game_sequence),
+            "source_commit": self.source_commit,
+            "assignment": assignment.__dict__,
+            "deployment_identity_sha256": ident["deployment_identity_sha256"],
+            "release_id": ident["release_id"],
+            "status": status,
+            "failure_reason": str(failure_reason),
+            "terminal_sgf_present": False,
+            "artifacts": {
+                "service_slice": {
+                    "sha256": sha256_file(protocol_slice),
+                    "bytes": protocol_slice.stat().st_size,
+                },
+                "effect_slice": {
+                    "sha256": sha256_file(effect_slice),
+                    "bytes": effect_slice.stat().st_size,
+                },
+            },
+            "effects": [
+                {
+                    "effect_id": x.effect_id,
+                    "request_id": x.request_id,
+                    "decision_id": x.decision_id,
+                    "position_hash": x.position_hash,
+                    "protocol_sequence": x.protocol_sequence,
+                    "wire_action": x.wire_action,
+                    "release_id": x.release_id,
+                    "decision_type": x.decision_type,
+                    "latency_ms": x.latency_ms,
+                    "status": x.status,
+                    "attempts": x.attempts,
+                }
+                for x in effect_states
+            ],
+            "latency_ms_p50": latency_p50,
+            "latency_ms_p95": latency_p95,
+        }
+        _atomic_json(evidence_manifest, evidence_payload)
+        journal_sha = sha256_file(evidence_manifest)
+
+        payload = {
+            "schema": SCHEMA,
+            "assignment": assignment.__dict__,
+            "game_id": game_id,
+            "status": status,
+            "failure_reason": str(failure_reason),
+            "evidence_manifest_sha256": journal_sha,
+        }
+        if not assignment.primary:
+            self.append_diagnostic(payload)
+            return {"primary": False, **payload}
+
+        record = ISSGateLedgerRecord.create(
+            game_id=game_id,
+            arm=assignment.arm,
+            opponent=assignment.stack,
+            seat=assignment.seat,
+            status=status,
+            score=None,
+            declarer=None,
+            contract=None,
+            winning_bid=None,
+            overbid=None,
+            latency_ms_p50=latency_p50,
+            latency_ms_p95=latency_p95,
+            raw_sgf_sha256=None,
+            journal_sha256=journal_sha,
+            model_sha256=ident["deployment_identity_sha256"],
+            source_commit=self.source_commit,
+            failure_reason=str(failure_reason),
+        )
+        existing = {x.game_id: x for x in self.ledger.records()}
+        if record.game_id in existing:
+            old = existing[record.game_id]
+            comparable = (
+                old.arm,
+                old.opponent,
+                old.seat,
+                old.status,
+                old.score,
+                old.model_sha256,
+                old.source_commit,
+                old.failure_reason,
+            )
+            new = (
+                record.arm,
+                record.opponent,
+                record.seat,
+                record.status,
+                record.score,
+                record.model_sha256,
+                record.source_commit,
+                record.failure_reason,
+            )
+            if comparable != new:
+                raise ISSGateWorkerError("CONFLICTING_DUPLICATE_FAILURE_RESULT")
+            return {"primary": True, "duplicate_reused": True, **payload}
+        self.ledger.append(record)
+        return {"primary": True, "duplicate_reused": False, **payload}
+
+    def mirror_game(self, game_id: str) -> dict[str, Any]:
+        files: list[tuple[Path, str]] = []
+        sgf_path = self.games_dir / f"{game_id}.sgf"
+        if sgf_path.exists():
+            files.append((sgf_path, f"games/{game_id}.sgf"))
+        files.extend(
+            [
+                (
+                    self.games_dir / f"{game_id}.service.jsonl",
+                    f"games/{game_id}.service.jsonl",
+                ),
+                (
+                    self.games_dir / f"{game_id}.effects.jsonl",
+                    f"games/{game_id}.effects.jsonl",
+                ),
+                (
+                    self.games_dir / f"{game_id}.evidence.json",
+                    f"games/{game_id}.evidence.json",
+                ),
+            ]
+        )
         for local, remote in (
             (self.ledger.path, "current/gate-ledger.jsonl"),
             (self.diagnostic_path, "current/diagnostic-games.jsonl"),
