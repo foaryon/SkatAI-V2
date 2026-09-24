@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import subprocess
+import tarfile
 from tempfile import TemporaryDirectory
 
 from skatai.artifacts.release import (
@@ -26,12 +28,10 @@ def build_b0_release(
     *,
     repo: Path,
     upstream_source: Path,
-    pretrained_dir: Path,
     output: Path,
 ) -> dict:
     repo = Path(repo)
     upstream_source = Path(upstream_source)
-    pretrained_dir = Path(pretrained_dir)
     output = Path(output)
     provenance = repo / "provenance"
     baseline_path = provenance / "B0_SKATZERO_BASELINE.json"
@@ -55,9 +55,20 @@ def build_b0_release(
     if sha256_file(upstream_source) != baseline["git_archive_sha256"]:
         raise ReleasePackageError("B0_SOURCE_HASH_MISMATCH")
     models = baseline["pretrained_models"]
-    for name, expected in models.items():
-        if sha256_file(pretrained_dir / name) != expected:
-            raise ReleasePackageError(f"B0_MODEL_HASH_MISMATCH:{name}")
+    with tarfile.open(upstream_source, "r:") as archive:
+        for name, expected in sorted(models.items()):
+            try:
+                member = archive.getmember(f"models/latest/{name}")
+            except KeyError as exc:
+                raise ReleasePackageError(f"B0_EMBEDDED_MODEL_MISSING:{name}") from exc
+            content = archive.extractfile(member) if member.isfile() else None
+            if content is None:
+                raise ReleasePackageError(f"B0_EMBEDDED_MODEL_NOT_FILE:{name}")
+            digest = hashlib.sha256()
+            while chunk := content.read(1024 * 1024):
+                digest.update(chunk)
+            if digest.hexdigest() != expected:
+                raise ReleasePackageError(f"B0_EMBEDDED_MODEL_HASH_MISMATCH:{name}")
 
     commit = _git(repo, "rev-parse", "HEAD")
     if len(commit) != 40:
@@ -71,7 +82,7 @@ def build_b0_release(
             check=True,
         )
         metadata = {
-            "release_id": "V2-B0-package-v1",
+            "release_id": "V2-B0-package-v2",
             "release_status": "BASELINE_PACKAGE_STAGED",
             "source_commit": commit,
             "parent_lineage": {
@@ -117,10 +128,6 @@ def build_b0_release(
             ReleaseComponent(upstream_source, "source/skatzero-source.tar", "source"),
         ]
         components.extend(
-            ReleaseComponent(pretrained_dir / name, f"models/{name}", "model")
-            for name in sorted(models)
-        )
-        components.extend(
             ReleaseComponent(path, f"provenance/{path.name}", "provenance")
             for path in (
                 baseline_path,
@@ -137,13 +144,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--upstream-source", type=Path, required=True)
-    parser.add_argument("--pretrained-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     result = build_b0_release(
         repo=args.repo,
         upstream_source=args.upstream_source,
-        pretrained_dir=args.pretrained_dir,
         output=args.output,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
