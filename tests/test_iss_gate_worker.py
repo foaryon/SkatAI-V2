@@ -8,6 +8,20 @@ from skatai.iss.gate_worker import (
 )
 
 
+def test_evidence_mirror_recovers_persisted_remote_root(tmp_path, monkeypatch):
+    import json
+    from skatai.iss.gate_worker import HetznerEvidenceMirror
+
+    monkeypatch.delenv("ISS_GATE_S3_PREFIX", raising=False)
+    expected = ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3"
+    (tmp_path / "object-storage-readiness.json").write_text(
+        json.dumps({"ok": True, "remote_root": expected, "returncode": 0}),
+        encoding="utf-8",
+    )
+
+    assert HetznerEvidenceMirror(local_root=tmp_path).remote_root == expected
+
+
 def row(game_id, arm, stack, seat, score=0.0):
     return {
         "game_id": game_id,

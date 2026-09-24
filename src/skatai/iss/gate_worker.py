@@ -379,9 +379,21 @@ RCLONE_S3_ARGS = (
 class HetznerEvidenceMirror:
     def __init__(self, *, local_root: Path) -> None:
         self.local_root = local_root
-        self.remote_root = os.environ.get(
-            "ISS_GATE_S3_PREFIX",
-            ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
+        remote_root = os.environ.get("ISS_GATE_S3_PREFIX")
+        if not remote_root:
+            persisted = local_root / "object-storage-readiness.json"
+            if persisted.is_file():
+                try:
+                    remote_root = str(
+                        json.loads(persisted.read_text(encoding="utf-8"))["remote_root"]
+                    )
+                except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                    raise ISSGateWorkerError(
+                        "MIRROR_PERSISTED_REMOTE_ROOT_INVALID"
+                    ) from exc
+        self.remote_root = (
+            remote_root
+            or ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate"
         ).rstrip("/")
 
     def probe(self) -> dict[str, Any]:
