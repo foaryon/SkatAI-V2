@@ -1,0 +1,66 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-declaration-legality-mirror-recovery-v1",
+  "captured_at": "2026-09-24T01:35:30Z",
+  "status": "PRIMARY_GATE_REFROZEN_AFTER_DEPLOYMENT_LEGALITY_FIX",
+  "rationale": "R3 produced five deployment-valid scored games before a sixth game exposed a deterministic B0 pickup-declaration adapter failure at winning bid 77: frozen SkatZero ranked Null highest and returned N.DT.DJ, while the V2 deployment adapter correctly excluded a non-performable Null contract from its allowed set and raised B0_DECLARATION_NOT_IN_LEGAL_SET:N. The adapter now preserves frozen SkatZero output when legal and, only when the top contract is outside the allowed deployment set, selects the highest-ranked allowed contract from the same frozen SkatZero evaluation while preserving its selected discard cards. Recovery also exposed that a process without ISS_GATE_S3_PREFIX could silently mirror into the base R1 namespace; the mirror now recovers the persisted remote_root from object-storage-readiness.json.",
+  "executable_code_commit": "d8e2d4b",
+  "declaration_legality_fix_commit": "86596a6e6e2039216511aa7799b813f7510d11c1",
+  "mirror_namespace_recovery_fix_commit": "d8e2d4b",
+  "closed_r3": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r3",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3",
+    "ledger_sha256": "201a615b50f9e55027cef2651aa3aacb4612b22b227375ab48db670cbd129380",
+    "records": 6,
+    "scored_records": 5,
+    "infrastructure_failures": 1,
+    "active_games": 0,
+    "primary_strength_use": false,
+    "disposition": "VALID_DIAGNOSTIC_DEPLOYMENT_EVIDENCE_ONLY_AFTER_COMMON_ADAPTER_CHANGE",
+    "failure_game_id": "168e9052916d98028e4e5730fb7148656d93f7e6be62564665a8bfbbb770bbea",
+    "failure_evidence_sha256": "fb9b870dece458cd0e6a888b5e521d31e72c62f4370888e3e3b4971b541160d4",
+    "failure_evidence_remote_hash_verified": true
+  },
+  "object_storage_repair": {
+    "r1_current_ledger_restored_sha256": "fe08d169701dd87d2991b5c60530ba6025c788588f2885f3b7ce242430cbc0fc",
+    "r1_remote_hash_verified": true,
+    "r3_current_ledger_sha256": "201a615b50f9e55027cef2651aa3aacb4612b22b227375ab48db670cbd129380",
+    "r3_remote_hash_verified": true,
+    "r3_failure_evidence_remote_hash_verified": true,
+    "score_rewrites": false,
+    "historical_ledger_rewrites": false
+  },
+  "live_failure_reproduction": {
+    "winning_bid": 77,
+    "seat": 1,
+    "hand12": ["CT","S7","HK","S9","C7","HJ","HT","DT","C8","DJ","H8","C9"],
+    "max_accepted_bids_by_seat": [72,77,0],
+    "frozen_skatzero_ranked_contracts": ["N","C","S","H","D","NO","G"],
+    "frozen_skatzero_raw_final": "N.DT.DJ",
+    "deployment_legal_contracts": ["C","S","H","D","G"],
+    "corrected_adapter_contract": "C",
+    "preserved_discard": ["DT","DJ"]
+  },
+  "verification": {
+    "regression_test_red_before_fix": "B0_DECLARATION_NOT_IN_LEGAL_SET:N",
+    "exact_live_state_after_fix": {"contract": "C", "discard": ["DT","DJ"]},
+    "mirror_prefix_regression_test": "passed",
+    "full_tests": "264 passed"
+  },
+  "science_boundary": {
+    "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256_unchanged": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "treatment_difference_remains": "bidding only",
+    "common_downstream_adapter_changed_equally_for_b0_and_b1": true,
+    "reuse_r3_primary_strength_records": false
+  },
+  "new_epoch": {
+    "epoch": "R4",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r4",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r4",
+    "initial_scored_games": {"B0": 0, "B1": 0},
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R4"
+  }
+}
