@@ -450,37 +450,54 @@ class HetznerEvidenceMirror:
     def upload_verified(self, local: Path, remote_rel: str) -> dict[str, Any]:
         if not local.is_file():
             raise ISSGateWorkerError(f"MIRROR_LOCAL_FILE_MISSING:{local}")
-        expected = sha256_file(local)
+
+        # Current journals continue to grow while a game is being finalized.
+        # Bind verification to immutable bytes, never to a live source path
+        # whose contents can change between hashing and rclone reading it.
+        data = local.read_bytes()
+        expected = hashlib.sha256(data).hexdigest()
+        snapshot = local.with_name(
+            f".{local.name}.upload-snapshot-{secrets.token_hex(8)}"
+        )
+        snapshot.write_bytes(data)
+        os.chmod(snapshot, 0o600)
+
         remote = self.remote_root + "/" + remote_rel.lstrip("/")
-        subprocess.run(
-            ["rclone", "copyto", str(local), remote, *RCLONE_S3_ARGS],
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        proc = subprocess.Popen(
-            ["rclone", "cat", remote, *RCLONE_S3_ARGS],
-            stdout=subprocess.PIPE,
-        )
-        h = hashlib.sha256()
-        assert proc.stdout is not None
-        while True:
-            chunk = proc.stdout.read(1024 * 1024)
-            if not chunk:
-                break
-            h.update(chunk)
-        rc = proc.wait()
-        if rc != 0:
-            raise ISSGateWorkerError(f"MIRROR_REMOTE_READ_FAILED:{remote_rel}:{rc}")
-        actual = h.hexdigest()
-        if actual != expected:
-            raise ISSGateWorkerError(
-                f"MIRROR_HASH_MISMATCH:{remote_rel}:{actual}!={expected}"
+        try:
+            subprocess.run(
+                ["rclone", "copyto", str(snapshot), remote, *RCLONE_S3_ARGS],
+                check=True,
+                stdout=subprocess.DEVNULL,
             )
+            proc = subprocess.Popen(
+                ["rclone", "cat", remote, *RCLONE_S3_ARGS],
+                stdout=subprocess.PIPE,
+            )
+            h = hashlib.sha256()
+            assert proc.stdout is not None
+            while True:
+                chunk = proc.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                h.update(chunk)
+            rc = proc.wait()
+            if rc != 0:
+                raise ISSGateWorkerError(
+                    f"MIRROR_REMOTE_READ_FAILED:{remote_rel}:{rc}"
+                )
+            actual = h.hexdigest()
+            if actual != expected:
+                raise ISSGateWorkerError(
+                    f"MIRROR_HASH_MISMATCH:{remote_rel}:{actual}!={expected}"
+                )
+        finally:
+            snapshot.unlink(missing_ok=True)
+
         return {
             "local": str(local),
             "remote": remote.replace(":s3:", "s3://", 1),
             "sha256": expected,
-            "bytes": local.stat().st_size,
+            "bytes": len(data),
         }
 
 

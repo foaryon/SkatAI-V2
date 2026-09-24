@@ -477,3 +477,46 @@ def test_terminal_less_failure_mirror_does_not_require_sgf(tmp_path):
     assert uploads
     assert all(local.exists() for local, _ in uploads)
     assert not any(remote.endswith(".sgf") for _, remote in uploads)
+
+
+
+def test_upload_verified_uses_immutable_snapshot_for_mutable_source(tmp_path, monkeypatch):
+    import hashlib
+    import io
+    import subprocess
+    from pathlib import Path
+
+    import skatai.iss.gate_worker as worker
+
+    source = tmp_path / "service.jsonl"
+    original = b'{"n":1}\n'
+    source.write_bytes(original)
+    copied = {}
+
+    def fake_run(args, **kwargs):
+        if args[0:2] == ["rclone", "copyto"]:
+            copied["path"] = Path(args[2])
+            copied["bytes"] = copied["path"].read_bytes()
+            source.write_bytes(original + b'{"n":2}\n')
+            return subprocess.CompletedProcess(args, 0)
+        raise AssertionError(args)
+
+    class FakePopen:
+        def __init__(self, args, **kwargs):
+            assert args[0:2] == ["rclone", "cat"]
+            self.stdout = io.BytesIO(copied["bytes"])
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setattr(worker.subprocess, "run", fake_run)
+    monkeypatch.setattr(worker.subprocess, "Popen", FakePopen)
+
+    mirror = worker.HetznerEvidenceMirror(local_root=tmp_path)
+    result = mirror.upload_verified(source, "current/service.jsonl")
+
+    assert copied["path"] != source
+    assert copied["bytes"] == original
+    assert source.read_bytes() != original
+    assert result["sha256"] == hashlib.sha256(original).hexdigest()
+    assert result["bytes"] == len(original)
