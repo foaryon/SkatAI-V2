@@ -373,6 +373,18 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
     is_ouvert = contract_base == "NO" or "O" in contract_modifiers
 
     suffix = tail[decl_i + 1 :]
+    # Live ISS may record our pickup declaration/discard as two distinct
+    # actions: <declarer> <contract> <declarer> <card.card>. Historical
+    # archives commonly fold the two discards into the contract token itself
+    # (for example G.H8.D8). Normalize both wire representations before
+    # legality validation. This is terminal-evidence parsing only; it does not
+    # participate in decision generation.
+    if pickup and discards is None and len(suffix) >= 2 and suffix[0] == str(declarer):
+        split_discards = suffix[1].split(".")
+        if len(split_discards) == 2 and all(card in VALID_CARDS for card in split_discards):
+            discards = split_discards
+            suffix = suffix[2:]
+
     plays: list[list[Any]] = []
     i = 0
     while i + 1 < len(suffix) and suffix[i] in {"0", "1", "2"}:

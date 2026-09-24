@@ -40,3 +40,15 @@ def test_player_group_suffix_can_resolve_when_unique():
     sgf = PLAYED.decode().replace("P0[jeff]", "P0[SkatAI:2]")
     r = live_game_result(sgf, viewer_name="SkatAI")
     assert r["seat"] == 0
+
+
+def test_live_result_scores_split_pickup_terminal_sgf():
+    from tests.test_sgf import LIVE_SPLIT_PICKUP
+
+    r = live_game_result(LIVE_SPLIT_PICKUP.decode(), viewer_name="SkatAI")
+    assert r["seat"] == 0
+    assert r["declarer"] == 0
+    assert r["winning_bid"] == 48
+    assert r["contract"] == "G"
+    assert r["score"] == -194.0
+    assert r["failure_reason"] is None

@@ -102,3 +102,28 @@ def test_hand_and_modifier_fields_are_preserved():
     assert g["contract_modifiers"] == "H"
     assert g["is_hand"] is True
     assert g["is_ouvert"] is False
+
+
+LIVE_SPLIT_PICKUP = (
+    b"(;GM[Skat]PC[International Skat Server]CO[]SE[469759]ID[10327743]"
+    b"DT[2026-09-23/23:18:34/UTC]P0[SkatAI]P1[zoot]P2[kermit]R0[0.0]R1[]R2[]"
+    b"MV[w CJ.H8.SK.H9.DJ.C9.S7.H7.CA.CQ.S8.DT.CK.SQ.ST.HQ.S9.D8.D9.HK.DQ.DK."
+    b"D7.HA.SJ.DA.C8.HT.HJ.SA.C7.CT 1 p 2 18 0 y 2 20 0 y 2 22 0 y 2 23 0 y "
+    b"2 24 0 y 2 27 0 y 2 30 0 y 2 33 0 y 2 35 0 y 2 36 0 y 2 40 0 y 2 44 "
+    b"0 y 2 45 0 y 2 46 0 y 2 48 0 y 2 p 0 s w C7.CT 0 G 0 SK.S7 0 CJ 1 CK "
+    b"2 HJ 0 C7 1 HK 2 C8 2 SJ 0 DJ 1 HQ 2 HT 0 H7 1 SQ 2 DQ 0 CT 1 D9 2 SA 0 C9 "
+    b"1 S9 2 D7 0 CQ 1 DT 1 ST 2 DA 0 H8 1 S8 2 HA 0 CA 1 D8 2 DK 0 H9 ]"
+    b"R[d:0 loss v:-144 m:1 bidok p:12 t:1 s:1 z:0 p0:0 p1:0 p2:0 l:-1 to:-1 r:0] ;)"
+)
+
+
+def test_live_iss_split_pickup_discard_representation_is_normalized():
+    g = parse_sgf_line("iss-live", LIVE_SPLIT_PICKUP)
+    assert g["classification"] == "PARSED_PLAYED_GAME"
+    assert g["declarer"] == 0
+    assert g["bid_level"] == 48
+    assert g["game_type"] == "GRAND"
+    assert g["is_hand"] is False
+    assert g["discards"] == ["SK", "S7"]
+    assert g["play_count"] == 30
+    assert g["game_value"] == -144

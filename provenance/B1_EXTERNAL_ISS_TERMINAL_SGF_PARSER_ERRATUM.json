@@ -1,0 +1,66 @@
+{
+  "schema": "skatai.v2.external-iss-terminal-sgf-parser-erratum.v1",
+  "captured_at": "2026-09-24T00:04:33Z",
+  "status": "REFROZEN_BEFORE_CAMPAIGN_RESUME_AFTER_ATTRIBUTED_INFRASTRUCTURE_FAILURE",
+  "campaign": "V2-B1-bidding-linearish-full-v1 external ISS gate",
+  "prior_source_commit": "07bcc5f8a29e765867687463533d4036fd883fd3",
+  "trigger": {
+    "table_id": "AIe47b59",
+    "server_game_num": 2,
+    "arm": "B1",
+    "opponent_stack": "kermit+zoot",
+    "seat": 0,
+    "terminal_sgf_sha256": "f23a832122e38ec07422630b987679e0a38a795ee784b4b079484c96c4b4cbd4",
+    "recorded_failure_status": "PROTOCOL_FAILURE",
+    "recorded_failure_reason": "SGF_PARSE_FAILED:PICKUP_GAME_REQUIRES_TWO_DISCARDS",
+    "disposition": "RETAIN_NONSCORING_FAILURE; DO_NOT_RETROACTIVELY_SCORE"
+  },
+  "attribution": {
+    "root_cause": "Live ISS recorded SkatAI pickup declaration and discard as separate moves (<declarer> <contract> <declarer> <card.card>), while the V2 terminal SGF scorer only normalized the historical combined contract/discard form.",
+    "systematic_risk": "Without repair, pickup-declarer games for SkatAI would be selectively unscorable; because B0/B1 bidding can change declarer frequency, that censoring can be treatment-dependent.",
+    "effect_journal": "28/28 external effects CONFIRMED; zero unresolved; zero ABORTED_STALE.",
+    "external_action_replay": false
+  },
+  "change_scope": {
+    "implementation": "src/skatai/data/sgf.py",
+    "behavior": "Normalize the separate live-ISS two-card discard action only after pickup and only when the actor is the established declarer and the token contains exactly two valid cards.",
+    "terminal_evidence_only": true,
+    "decision_generation_changed": false,
+    "bidding_policy_changed": false,
+    "declaration_policy_changed": false,
+    "discard_policy_changed": false,
+    "cardplay_policy_changed": false
+  },
+  "static_scope_evidence": {
+    "parse_sgf_line_callers_in_active_v2": [
+      "src/skatai/evaluation/iss_result.py"
+    ],
+    "note": "The parser is invoked for terminal ISS result extraction; the ISS decision adapter does not call parse_sgf_line."
+  },
+  "frozen_science_unchanged": {
+    "b0_release_id": "ISS-GATE-B0-7dd67922902692fd",
+    "b1_release_id": "ISS-GATE-B1-120239116da78bb2",
+    "b0_deployment_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+    "b1_deployment_identity_sha256": "120239116da78bb2e82b632d3470d0c7cf5d62261889e96f1442abeb3514a103",
+    "gate_protocol_sha256": "abe30687b0bacd6be9fc59497572c39dfb5f09a37cda063369b5eac6be2b8738",
+    "decision_rule_sha256": "35369e4a2ff054a5efaf80d658c24dd8321da91f8f909049c458a2d2cfab057e",
+    "campaign_quotas_sha256": "1d043caa3275aa60f22e134fd31c1041bba32a15588cd9889f13ee6a5bb20cb9",
+    "ledger_contract_sha256": "896d77b753b4e92323593b888ac40b93ff5ca3f3171afd5cd83c061f40ec6f3b"
+  },
+  "verification": {
+    "targeted_tests": "15 passed",
+    "full_tests": "258 passed",
+    "live_regression_expected": {
+      "declarer": 0,
+      "winning_bid": 48,
+      "contract": "G",
+      "discards": [
+        "SK",
+        "S7"
+      ],
+      "game_value": -144,
+      "deployment_score": -194
+    }
+  },
+  "continuation_rule": "Resume the existing frozen B0/B1 campaign with unchanged treatment/deployment identities and stopping rule. Preserve the triggering B1 game as a non-scoring protocol failure. All future terminal records use the repaired, representation-normalizing scorer."
+}
