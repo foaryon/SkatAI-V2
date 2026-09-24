@@ -439,10 +439,9 @@ def next_skat_action(
         remaining = list(hand12)
         for card in discards:
             _remove_owned(remaining, card, error="AI_DISCARD_NOT_OWNED")
-        action = ".".join(discards)
-        if contract is not None and "O" in contract:
-            action += "." + ".".join(remaining)
-        return action
+        # A split declaration/discard sends only the material two-card
+        # discard. ISS appends the ten-card Ouvert hand to its echoed move.
+        return ".".join(discards)
 
     if not _declaration_complete(post):
         return None
@@ -853,10 +852,9 @@ class ISSSkatAIDecisionProvider:
                     _remove_owned(
                         remaining, card, error="AI_DISCARD_NOT_OWNED"
                     )
-                action = result.action
-                if "O" in contract:
-                    action += "." + ".".join(remaining)
-                return action
+                # A split declaration/discard sends only the material
+                # two-card discard. ISS owns the Ouvert reveal expansion.
+                return result.action
 
             return self._decide(
                 table,

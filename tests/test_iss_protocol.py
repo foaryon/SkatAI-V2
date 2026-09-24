@@ -242,3 +242,22 @@ def test_weird_official_hidden_split_discard_is_normalized_private():
     assert m.kind == "discard_only"
     assert m.payload[:2] == ("??", "??")
     assert m.payload[2:] == tuple(hand)
+
+
+def test_historical_redundant_22_card_ouvert_echo_is_tightly_normalized():
+    sent_open_hand = ["S8", "CT", "SK", "H8", "H9", "HJ", "SJ", "C7", "ST", "S7"]
+    server_open_hand = ["H8", "H9", "HJ", "S7", "S8", "ST", "SJ", "SK", "C7", "CT"]
+    m = parse_move_line(
+        "0 CQ.CA." + ".".join(sent_open_hand) + "." + ".".join(server_open_hand)
+    )
+    assert m.kind == "discard_only"
+    assert m.payload == ("CQ", "CA", *sent_open_hand)
+
+
+def test_nonredundant_22_card_payload_remains_invalid():
+    sent_open_hand = ["S8", "CT", "SK", "H8", "H9", "HJ", "SJ", "C7", "ST", "S7"]
+    mismatched = ["H8", "H9", "HJ", "S7", "S8", "ST", "SJ", "SK", "C7", "C8"]
+    with pytest.raises(ISSProtocolError, match="UNKNOWN_ACTION"):
+        parse_move_line(
+            "0 CQ.CA." + ".".join(sent_open_hand) + "." + ".".join(mismatched)
+        )

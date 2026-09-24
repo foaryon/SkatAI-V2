@@ -339,10 +339,18 @@ class ISSEffectJournal:
             return True
         ep = expected.split(".")
         op = observed.split(".")
-        if len(ep) == 2 and len(op) == 12 and op[:2] == ep:
-            from skatai.iss.protocol import is_card
+        from skatai.iss.protocol import is_card
 
+        if len(ep) == 2 and len(op) == 12 and op[:2] == ep:
             return all(is_card(x) for x in ep) and all(is_card(x) for x in op[2:])
+        if len(ep) == 12 and len(op) == 22 and op[:12] == ep:
+            return (
+                all(is_card(x) for x in op)
+                and len(set(ep[:2])) == 2
+                and len(set(ep[2:])) == 10
+                and set(op[12:]) == set(ep[2:])
+                and not (set(ep[:2]) & set(op[12:]))
+            )
         return False
 
     def confirm_observed_action(

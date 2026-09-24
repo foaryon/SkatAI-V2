@@ -74,3 +74,24 @@ def test_cardplay_replay_computes_legal_cards_and_public_points():
     assert set(s.legal_cards).issubset(set(s.hand))
     assert s.declarer_visible_points == 0
     assert s.defender_points == 0
+
+
+def test_split_ouvert_server_echo_uses_only_first_two_as_discards():
+    deal_mh = (
+        "w ??.??.??.??.??.??.??.??.??.??|"
+        "C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8|"
+        "??.??.??.??.??.??.??.??.??.??|??.??"
+    )
+    final_hand = ("C9", "CT", "CJ", "CQ", "CK", "CA", "S7", "S8", "S9", "ST")
+    s = replay_player_view(moves(
+        deal_mh,
+        "1 18", "0 p", "2 p", "1 s",
+        "w S9.ST",
+        "1 NO",
+        "1 C7.C8." + ".".join(final_hand),
+    ))
+    assert s.phase == ISSPhase.CARDPLAY
+    assert s.contract == "NO"
+    assert s.discarded_cards == ("C7", "C8")
+    assert s.open_hand_cards == final_hand
+    assert tuple(sorted(s.hand)) == tuple(sorted(final_hand))

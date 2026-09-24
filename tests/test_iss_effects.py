@@ -413,3 +413,14 @@ def test_new_position_reuses_existing_pending_effect_for_same_game(tmp_path):
     assert created2 is False
     assert existing.effect_id == first.effect_id
     assert len(journal.pending_for_game("T", 1)) == 1
+
+
+def test_semantic_echo_accepts_only_matching_historical_22_card_ouvert_echo():
+    expected = "CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7"
+    observed = (
+        expected + ".H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT"
+    )
+    assert ISSEffectJournal.wire_actions_equivalent(expected, observed)
+
+    bad = expected + ".H8.H9.HJ.S7.S8.ST.SJ.SK.C7.C8"
+    assert not ISSEffectJournal.wire_actions_equivalent(expected, bad)

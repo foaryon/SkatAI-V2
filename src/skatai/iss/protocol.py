@@ -213,6 +213,22 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
     ):
         return "discard_only", tuple(parts)
 
+    # A historical malformed split-ouvert send can be echoed by ISS as
+    # <discard-2>.<open-hand-10>.<the-same-open-hand-10>. Accept only that
+    # tightly constrained redundant shape so archived/live recovery can
+    # normalize it without broadening the action grammar.
+    if (
+        actor != WORLD_ACTOR
+        and len(parts) == 22
+        and all(is_card(x) for x in parts)
+        and len(set(parts[:2])) == 2
+        and len(set(parts[2:12])) == 10
+        and len(set(parts[12:22])) == 10
+        and set(parts[2:12]) == set(parts[12:22])
+        and not (set(parts[:2]) & set(parts[12:22]))
+    ):
+        return "discard_only", tuple(parts[:12])
+
     # Official 2019 defender-view code can render a split hidden discard as
     # "<card>.??.??" and append ten ouvert cards. Normalize away the leaked
     # first token: V2 must not treat it as legitimate private information.

@@ -96,3 +96,17 @@ def test_decision_provider_cardplay_is_guardable():
     assert d.request.decision_type is DecisionType.PLAY_CARD
     assert d.result.action == "S7"
     assert d.wire_action == "S7"
+
+
+def test_pickup_null_ouvert_split_discard_wire_is_only_two_cards():
+    ai = AI()
+    ai.contract = "NO"
+    d = provider(ai).next_decision(
+        table(
+            deal0(), "1 18", "0 y", "1 p", "2 p",
+            "0 s", "w S9.ST", "0 NO",
+        )
+    )
+    assert d.request.decision_type is DecisionType.DISCARD
+    assert d.result.action == "C7.C8"
+    assert d.wire_action == "C7.C8"

@@ -237,7 +237,11 @@ def replay_player_view(moves: Sequence[WireMove]) -> ISSNormalizedState:
                         "DISCARD_ONLY_WITHOUT_HALF_DECLARATION"
                     )
                 cards = tuple(move.payload)
-                discarded = tuple(c for c in cards if c != UNKNOWN_CARD)
+                if len(cards) not in (2, 12):
+                    raise ISSGameViewError(
+                        f"DISCARD_ONLY_BAD_CARD_COUNT:{len(cards)}"
+                    )
+                discarded = tuple(c for c in cards[:2] if c != UNKNOWN_CARD)
                 if viewer == declarer and len(discarded) == 2:
                     for card in discarded:
                         if card not in hand:
@@ -246,6 +250,8 @@ def replay_player_view(moves: Sequence[WireMove]) -> ISSNormalizedState:
                             )
                         hand.remove(card)
                 contract = half_declared_contract
+                if len(cards) == 12 and "O" in contract:
+                    open_hand = tuple(c for c in cards[2:] if c != UNKNOWN_CARD)
                 phase = ISSPhase.CARDPLAY
                 to_move = 0
                 half_declared_contract = None
