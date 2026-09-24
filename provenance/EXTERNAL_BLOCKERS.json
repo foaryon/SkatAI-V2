@@ -2,7 +2,7 @@
   "blockers": [
     {
       "does_not_block": [
-        "R8 ISS external gameplay gate",
+        "R9 ISS external gameplay gate",
         "Hetzner evidence persistence",
         "local V2 research",
         "cardplay reconstruction and weakness diagnostics"
@@ -15,8 +15,8 @@
       "verified_state": {
         "github_connector_admin_permission": true,
         "github_connector_push_permission": true,
-        "local_head": "decebe68c99c53d4bfe905dd95a4e6df0a4f1f16",
-        "local_repo": "/workspace/skatai-v2",
+        "local_head": "b3f8624fe1d93577c01e9e420cca5ca878cd4817",
+        "local_repo": "/workspace/skatai-v2-r9-integration",
         "normal_git_push_error": "could not read Username for https://github.com",
         "normal_https_git_auth": false,
         "normal_https_git_push_error": "could not read Username for https://github.com",
@@ -32,8 +32,8 @@
       }
     }
   ],
-  "last_verified_at": "2026-09-24T03:31:01Z",
-  "latest_verified_code_head": "a7da2a2ea0d251b289591d940e2827dc1ef84d92",
+  "last_verified_at": "2026-09-24T06:06:50Z",
+  "latest_verified_code_head": "2782200076c1",
   "notes": [
     "Hetzner S3 remains authoritative persistent V2 storage and is healthy.",
     "ISS credentials are available only at runtime and authenticated gameplay can proceed independently of GitHub push authentication."

@@ -29,7 +29,7 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-24T06:04:39Z",
+  "captured_at": "2026-09-24T06:06:50Z",
   "external_blockers": [
     {
       "action": "Authenticate normal Git transport on the RunPod control host and push the existing clean V2 main history to https://github.com/foaryon/SkatAI-V2.git without reconstructing history.",
@@ -39,7 +39,7 @@
   "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R9 readiness and execution",
   "git": {
     "branch": "fix/r9-ouvert-integrated-v1",
-    "campaign_epoch_commit": null,
+    "campaign_epoch_commit": "b3f8624fe1d93577c01e9e420cca5ca878cd4817",
     "code_head": "2782200076c1",
     "new_v2_github_repository_attached": true,
     "normal_https_auth_present_on_runpod": false,
@@ -55,7 +55,7 @@
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
     "active_table_error_fail_closed": true,
-    "adapter_status": "R9_FIX_VALIDATED_PENDING_REFREEZE_COMMIT_AND_READINESS",
+    "adapter_status": "R9_GATE_READY_POST_OUVERT_WIRE_RECOVERY",
     "all_phase_single_adapter": true,
     "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
@@ -113,11 +113,10 @@
     "r8_primary_strength_use": false
   },
   "next_safe_actions": [
-    "Commit the R9 refreeze provenance on the clean integrated fix branch.",
-    "Run R9 readiness against the dedicated R9 runtime/S3 namespace without connecting to ISS.",
-    "Launch R9 only from the resulting clean committed source identity.",
+    "Launch clean isolated R9 from the final clean committed source identity and dedicated R9 runtime/S3 namespace.",
     "Do not reuse R1-R8 scored records in the R9 primary strength estimator.",
-    "Preserve and mirror every R9 deployment-valid game before campaign progression.",
+    "Verify initial R9 gameplay, evidence mirroring, exactly-once effect confirmation, and opponent-stack rotation before treating the epoch as healthy.",
+    "Treat any active-game ISS table_error or unresolvable external effect as PROTOCOL_FAILURE and stop fail-closed.",
     "Resolve GitHub normal-transport authentication independently; do not reconstruct commits through GitHub API/file-by-file writes."
   ],
   "schema": "skatai.v2.continuation-state.v1",

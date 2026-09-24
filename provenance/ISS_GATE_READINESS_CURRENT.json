@@ -1,45 +1,16 @@
 {
-  "authenticated_preflight": {
-    "joined_table": false,
-    "result_sha256": "6a59eaece82af12a7f7cf4ee13260f100eba8ec45d8cbb602d4055a73f1fc165",
-    "scored_game": false,
-    "status": "AUTHENTICATED"
-  },
-  "campaign_epoch_commit": "966c4c7bc2504f73a4a660e94aecc7bd7b07179c",
-  "captured_at": "2026-09-24T03:05:02Z",
-  "code_head": "ab72f447e82d516120a78018c96d606f7eb7a03b",
+  "schema": "skatai.v2.external-iss-readiness-snapshot.v1",
+  "captured_at": "2026-09-24T06:06:50Z",
+  "code_head": "2782200076c1",
+  "campaign_epoch_commit": "b3f8624fe1d93577c01e9e420cca5ca878cd4817",
+  "gate_epoch": "post-ouvert-wire-recovery-v1",
+  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r9",
+  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r9",
+  "live_network_action_performed": false,
   "deployment_identity_arms": [
     "B0",
     "B1"
   ],
-  "gate_epoch": "post-overlapping-effect-and-table-error-recovery-v1",
-  "interpretation": {
-    "cross_epoch_table_authority_isolation_applied": true,
-    "declaration_legality_regression_verified": true,
-    "defender_resignation_semantics_verified": true,
-    "mirror_namespace_recovery_verified": true,
-    "mutable_mirror_fault_injection_verified": true,
-    "mutable_mirror_snapshot_regression_verified": true,
-    "only_reported_readiness_blocker": null,
-    "out_of_order_resignation_reconciliation_verified": true,
-    "primary_epoch_scored_games": 0,
-    "prior_epochs_reused_for_strength": false,
-    "r3_closed_after_common_adapter_fix": true,
-    "r4_closed_after_common_protocol_fix": true,
-    "r5_closed_after_common_evidence_transport_fix": true,
-    "r6_closed_after_common_exactly_once_fix": true,
-    "ready_for_authenticated_live_gate": true,
-    "single_pending_material_effect_per_game_verified": true,
-    "skip_inference_while_effect_pending_verified": true,
-    "table_error_fail_closed_verified": true,
-    "terminal_sgf_parser_erratum_applied": true
-  },
-  "live_network_action_performed": false,
-  "object_storage": {
-    "ok": true,
-    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r7",
-    "returncode": 0
-  },
   "readiness": {
     "blockers": [],
     "checks": {
@@ -53,32 +24,32 @@
         "files": {
           "campaign_quotas": {
             "ok": true,
-            "path": "/workspace/skatai-v2/provenance/B1_EXTERNAL_ISS_CAMPAIGN_QUOTAS.json",
+            "path": "/workspace/skatai-v2-r9-integration/provenance/B1_EXTERNAL_ISS_CAMPAIGN_QUOTAS.json",
             "sha256": "1d043caa3275aa60f22e134fd31c1041bba32a15588cd9889f13ee6a5bb20cb9"
           },
           "decision_rule": {
             "ok": true,
-            "path": "/workspace/skatai-v2/provenance/B1_EXTERNAL_ISS_DECISION_RULE.json",
+            "path": "/workspace/skatai-v2-r9-integration/provenance/B1_EXTERNAL_ISS_DECISION_RULE.json",
             "sha256": "35369e4a2ff054a5efaf80d658c24dd8321da91f8f909049c458a2d2cfab057e"
           },
           "deployment_identities": {
             "ok": true,
-            "path": "/workspace/skatai-v2/provenance/B1_EXTERNAL_ISS_DEPLOYMENT_IDENTITIES.json",
+            "path": "/workspace/skatai-v2-r9-integration/provenance/B1_EXTERNAL_ISS_DEPLOYMENT_IDENTITIES.json",
             "sha256": "67798b844a85b794227ff1b93af64296395bba1622a74137789d48be0c6952fb"
           },
           "gate_protocol": {
             "ok": true,
-            "path": "/workspace/skatai-v2/provenance/B1_EXTERNAL_ISS_GATE_PROTOCOL.json",
+            "path": "/workspace/skatai-v2-r9-integration/provenance/B1_EXTERNAL_ISS_GATE_PROTOCOL.json",
             "sha256": "abe30687b0bacd6be9fc59497572c39dfb5f09a37cda063369b5eac6be2b8738"
           },
           "ledger_contract": {
             "ok": true,
-            "path": "/workspace/skatai-v2/provenance/B1_EXTERNAL_ISS_LEDGER_CONTRACT.json",
+            "path": "/workspace/skatai-v2-r9-integration/provenance/B1_EXTERNAL_ISS_LEDGER_CONTRACT.json",
             "sha256": "896d77b753b4e92323593b888ac40b93ff5ca3f3171afd5cd83c061f40ec6f3b"
           },
           "three_player_amendment": {
             "ok": true,
-            "path": "/workspace/skatai-v2/provenance/B1_EXTERNAL_ISS_THREE_PLAYER_STRATA_AMENDMENT.json",
+            "path": "/workspace/skatai-v2-r9-integration/provenance/B1_EXTERNAL_ISS_THREE_PLAYER_STRATA_AMENDMENT.json",
             "sha256": "239a9b85b71c5a7b8e34cfa4d83c9000095d79895436272e6c2fa1da9c2270ab"
           }
         },
@@ -107,7 +78,83 @@
     "ready": true,
     "schema": "skatai.v2.external-iss-readiness.v1"
   },
-  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r7",
-  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r7",
-  "schema": "skatai.v2.external-iss-readiness-snapshot.v1"
+  "object_storage": {
+    "ok": true,
+    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r9",
+    "returncode": 0
+  },
+  "assets": {
+    "b0_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "deployment_identities": {
+      "B0": {
+        "arm": "B0",
+        "body": {
+          "arm": "B0",
+          "baseline_id": "V2-B0",
+          "bidding": {
+            "accuracy": 231,
+            "bid_threshold": -5.0,
+            "implementation": "frozen upstream api.py BID"
+          },
+          "downstream": "frozen SkatZero declaration/discard/cardplay",
+          "inference_api_sha256": "466833534eb0bfd699318596115237b82f2d34bbc4123cc32345d691c780508d",
+          "pretrained_models": {
+            "D_0.pth": "11e09514a370933baa4dfc6a0334f2c45d0e2b6c1292d1c3c6f0991660a8452f",
+            "D_1.pth": "3a7489e2250324408800a7a0ca41489c9fd2328e2fb471353cac402c8e0fc65d",
+            "D_2.pth": "2b618269cc42bb199e6f0b07fed97c0256d69cec461accaf0330ebe3ba557c1b",
+            "G_0.pth": "9131b75aff1c20d436bdc4262ef614b16e438ec20b2d94beb2b8a6dd2a1876d4",
+            "G_1.pth": "9c2732c936ac15530efdcb114e188e2243772412f2d7a60ed600a9ba0a15e2a8",
+            "G_2.pth": "2973542e4922638b61b4a538e9b3d9113b6ad69927c35f193596cb81ae37def2",
+            "N_0.pth": "625f32c9594318da5f27ebd86cc8b1a6f9eb82d6a7d72586c615796e1f0791c6",
+            "N_1.pth": "fdf0e0377cc4fc090f54e84f1c369999d44a3ea5b724ef1f73578824bd03785a",
+            "N_2.pth": "c75585fb9a4c9fa9e784c3d47d39f11b4ef919bec17ae3b8810b35b343a9d3fc"
+          },
+          "schema": "skatai.v2.iss-deployment-identity.v1",
+          "upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
+        },
+        "deployment_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+        "release_id": "ISS-GATE-B0-7dd67922902692fd"
+      },
+      "B1": {
+        "arm": "B1",
+        "body": {
+          "arm": "B1",
+          "bidding_model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+          "bidding_threshold": 0.5,
+          "candidate_id": "V2-B1-bidding-linearish-full-v1",
+          "frozen_downstream_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+          "parent_baseline": "V2-B0",
+          "pretrained_models": {
+            "D_0.pth": "11e09514a370933baa4dfc6a0334f2c45d0e2b6c1292d1c3c6f0991660a8452f",
+            "D_1.pth": "3a7489e2250324408800a7a0ca41489c9fd2328e2fb471353cac402c8e0fc65d",
+            "D_2.pth": "2b618269cc42bb199e6f0b07fed97c0256d69cec461accaf0330ebe3ba557c1b",
+            "G_0.pth": "9131b75aff1c20d436bdc4262ef614b16e438ec20b2d94beb2b8a6dd2a1876d4",
+            "G_1.pth": "9c2732c936ac15530efdcb114e188e2243772412f2d7a60ed600a9ba0a15e2a8",
+            "G_2.pth": "2973542e4922638b61b4a538e9b3d9113b6ad69927c35f193596cb81ae37def2",
+            "N_0.pth": "625f32c9594318da5f27ebd86cc8b1a6f9eb82d6a7d72586c615796e1f0791c6",
+            "N_1.pth": "fdf0e0377cc4fc090f54e84f1c369999d44a3ea5b724ef1f73578824bd03785a",
+            "N_2.pth": "c75585fb9a4c9fa9e784c3d47d39f11b4ef919bec17ae3b8810b35b343a9d3fc"
+          },
+          "schema": "skatai.v2.iss-deployment-identity.v1",
+          "treatment": "replace bidding only; keep SkatZero declaration/discard/cardplay frozen",
+          "upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b"
+        },
+        "deployment_identity_sha256": "120239116da78bb2e82b632d3470d0c7cf5d62261889e96f1442abeb3514a103",
+        "release_id": "ISS-GATE-B1-120239116da78bb2"
+      }
+    }
+  },
+  "interpretation": {
+    "ready_for_authenticated_live_gate": true,
+    "only_reported_readiness_blocker": null,
+    "primary_epoch_scored_games": 0,
+    "prior_epochs_reused_for_strength": false,
+    "r8_closed_after_common_ouvert_wire_fix": true,
+    "split_ouvert_two_card_wire_regression_verified": true,
+    "legacy_22_card_echo_recovery_verified": true,
+    "effect_reconciliation_without_replay_verified": true,
+    "gameview_reconstruction_verified": true,
+    "full_suite": "278 passed"
+  }
 }
