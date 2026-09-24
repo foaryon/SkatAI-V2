@@ -12,8 +12,16 @@
     "source_secret_value_logged": false,
     "source_secret_value_persisted": false
   },
-  "captured_at": "2026-09-23T23:07:31Z",
-  "code_head": "22559602327c1f408ec82572d86e9deb1fab60ec",
+  "campaign_epoch_commit": "d09d9a22c415388acb1626bb82374f6839c8beae",
+  "captured_at": "2026-09-24T00:13:11Z",
+  "code_head": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
+  "container_recreation": {
+    "automatic_invocation_present": false,
+    "latest_recreation_required_manual_recovery": true,
+    "pre_start_present": false,
+    "required_template_fix": "Invoke /workspace/sentinelx-host/supervisor.sh automatically from the RunPod CPU template/startup path.",
+    "self_heal_logic_in_start_script": true
+  },
   "host_id": "host_c8c6a6b0a7123805",
   "hostname": "623783ac54a3",
   "neutral_root": "/workspace/sentinelx-host",
@@ -24,7 +32,7 @@
   },
   "runtime": {
     "authenticated_non_scoring_preflight": "PASS",
-    "full_test_suite_passed": 255,
+    "full_test_suite_passed": 258,
     "iss_client_id_present": true,
     "iss_host_present": true,
     "iss_password_present": true,

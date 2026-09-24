@@ -29,17 +29,18 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-23T23:12:20Z",
+  "captured_at": "2026-09-24T00:13:11Z",
   "external_blockers": [
     {
       "action": "Create brand-new V2 GitHub repository and attach/push this clean history without V1 ancestry.",
       "id": "github-v2-repository-creation"
     }
   ],
-  "first_unfinished_dependency_for_b1_strength": "deployment-valid ISS external gate campaign execution",
+  "first_unfinished_dependency_for_b1_strength": "clean post-erratum deployment-valid ISS external gate epoch R2 execution",
   "git": {
     "branch": "main",
-    "code_head": "3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa",
+    "campaign_epoch_commit": "d09d9a22c415388acb1626bb82374f6839c8beae",
+    "code_head": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
     "new_v2_github_repository_attached": false,
     "remote_present": false,
     "workspace": "/workspace/skatai-v2"
@@ -47,12 +48,16 @@
   "iss": {
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
-    "adapter_status": "AUTHENTICATED_GATE_READY_AFTER_LIVE_PROTOCOL_FIX",
+    "adapter_status": "R2_GATE_READY_POST_TERMINAL_SGF_ERRATUM",
     "all_phase_single_adapter": true,
     "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
+    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R2.json",
     "frozen_external_gate_ready": true,
     "frozen_external_gate_ready_except_credentials": false,
+    "gate_epoch": "post-sgf-normalization-v1",
+    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
+    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
     "hetzner_per_game_evidence_mirror": true,
     "host": "skatgame.net",
     "latest_live_protocol_failure": {
@@ -60,7 +65,11 @@
       "provenance": "provenance/ISS_GATE_LIVE_PROTOCOL_FAILURE_20260923T230903Z.json",
       "resolved_by_commit": "3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa"
     },
+    "parser_erratum": "provenance/B1_EXTERNAL_ISS_TERMINAL_SGF_PARSER_ERRATUM.json",
     "port": 7000,
+    "pre_erratum_segment_primary_strength_use": false,
+    "pre_erratum_segment_records": 3,
+    "primary_epoch_scored_live_games": 0,
     "scored_live_games": 0,
     "secret_present_on_worker": true,
     "secret_source": "RunPod General Secret -> ISS_PASSWORD in process memory",
@@ -68,10 +77,11 @@
     "worker_transport_reconnect": true
   },
   "next_safe_actions": [
-    "Retry the frozen external ISS gate worker at code commit 3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa without changing quotas, deployment identities, or decision rule.",
-    "Persist and mirror each deployment-valid game before advancing the campaign.",
-    "Do not mutate Git while an active ISS game is bound to this source commit.",
-    "Continue independent non-contaminating Skat research only in ways that do not alter the running gate source tree."
+    "Start the clean post-erratum R2 external ISS gate epoch with runtime and S3 namespaces isolated from the pre-erratum segment.",
+    "Preserve and mirror every deployment-valid R2 game before advancing the campaign.",
+    "Do not mutate Git while an active R2 ISS game is bound to the current source commit.",
+    "Continue independent non-contaminating Skat research only outside the active gate source tree.",
+    "When practical, make RunPod template/container startup invoke the persistent neutral SentinelX supervisor automatically and fault-test recreation."
   ],
   "schema": "skatai.v2.continuation-state.v1",
   "science": {
@@ -109,10 +119,13 @@
     }
   },
   "sentinelx": {
-    "container_recreation_self_healing_bootstrap": true,
+    "automatic_container_start_invocation_present": false,
+    "bootstrap_self_heal_logic_present": true,
+    "container_recreation_self_healing_bootstrap": false,
     "host_id": "host_c8c6a6b0a7123805",
     "hostname": "623783ac54a3",
     "legacy_v1_supervisor_dependency_observed": false,
+    "manual_recovery_required_for_latest_recreation": true,
     "neutral_root": "/workspace/sentinelx-host",
     "pre_start_launches_neutral_supervisor": false,
     "runtime_general_secret_mapping": true,
@@ -129,6 +142,6 @@
   "tests": {
     "environment": "/tmp/skatai-v2-dev",
     "pytest_failed": 0,
-    "pytest_passed": 256
+    "pytest_passed": 258
   }
 }

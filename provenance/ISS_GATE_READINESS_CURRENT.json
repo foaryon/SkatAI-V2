@@ -5,21 +5,25 @@
     "scored_game": false,
     "status": "AUTHENTICATED"
   },
-  "captured_at": "2026-09-23T23:12:20Z",
-  "code_head": "3b52482bdb7e6e4347cb78e3ffb3c2c9fcf12cfa",
+  "campaign_epoch_commit": "d09d9a22c415388acb1626bb82374f6839c8beae",
+  "captured_at": "2026-09-24T00:13:11Z",
+  "code_head": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
   "deployment_identity_arms": [
     "B0",
     "B1"
   ],
+  "gate_epoch": "post-sgf-normalization-v1",
   "interpretation": {
-    "no_scored_iss_game_started": true,
     "only_reported_readiness_blocker": null,
-    "ready_for_authenticated_live_gate": true
+    "pre_erratum_segment_reused_for_strength": false,
+    "primary_epoch_scored_games": 0,
+    "ready_for_authenticated_live_gate": true,
+    "terminal_sgf_parser_erratum_applied": true
   },
   "live_network_action_performed": true,
   "object_storage": {
     "ok": true,
-    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
+    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
     "returncode": 0
   },
   "readiness": {
@@ -89,5 +93,7 @@
     "ready": true,
     "schema": "skatai.v2.external-iss-readiness.v1"
   },
+  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
+  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
   "schema": "skatai.v2.external-iss-readiness-snapshot.v1"
 }
