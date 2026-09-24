@@ -305,3 +305,61 @@ def test_run_does_not_retry_authentication_protocol_failure(monkeypatch, tmp_pat
     import pytest
     with pytest.raises(ISSTransportError, match="LOGIN_EXPECTED_WELCOME"):
         w.run()
+
+
+def test_fresh_epoch_create_ignores_replayed_foreign_table():
+    from skatai.iss.gate_worker import ExternalGateWorker
+    from skatai.iss.service import parse_service_line
+
+    class Client:
+        def __init__(self):
+            self.sent = []
+        def send_service_command(self, line):
+            self.sent.append(line)
+
+    w = object.__new__(ExternalGateWorker)
+    w.client = Client()
+    w.desired_stack = "kermit+zoot"
+    w.table_id = None
+    w._expected_new_table_id = "NEW"
+    w.assignment_by_game = {}
+
+    w._on_create(parse_service_line("create OLD SkatAI 3"))
+    assert w.table_id is None
+    assert w._expected_new_table_id == "NEW"
+    assert w.client.sent == []
+
+    w._on_create(parse_service_line("create NEW SkatAI 3"))
+    assert w.table_id == "NEW"
+    assert w._expected_new_table_id is None
+    assert w.client.sent == [
+        "table NEW SkatAI invite kermit",
+        "table NEW SkatAI invite zoot",
+        "table NEW SkatAI ready",
+    ]
+
+
+def test_table_event_admission_is_epoch_scoped():
+    from skatai.iss.gate_worker import ActiveGame, ExternalGateWorker, GameAssignment
+    from skatai.iss.service import parse_service_line
+
+    w = object.__new__(ExternalGateWorker)
+    w.table_id = "CURRENT"
+    w._expected_new_table_id = "EXPECTED"
+    w.assignment_by_game = {
+        ("RESTORED", 7): ActiveGame(
+            GameAssignment("B1", "kermit+zoot", 0, 300, True),
+            protocol_offset=10,
+            effect_offset=20,
+        )
+    }
+
+    assert w._event_is_admitted(parse_service_line("create CURRENT SkatAI 3"))
+    assert w._event_is_admitted(parse_service_line("create EXPECTED SkatAI 3"))
+    assert w._event_is_admitted(
+        parse_service_line("table RESTORED SkatAI start 7 SkatAI 100 kermit 100 zoot 100")
+    )
+    assert not w._event_is_admitted(parse_service_line("create FOREIGN SkatAI 3"))
+    assert not w._event_is_admitted(
+        parse_service_line("table FOREIGN SkatAI start 1 SkatAI 100 kermit 100 zoot 100")
+    )

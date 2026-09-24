@@ -956,6 +956,7 @@ class ExternalGateWorker:
         self.assignment_by_game: dict[tuple[str, int], ActiveGame] = {}
         self.desired_stack: str | None = None
         self.table_id: str | None = None
+        self._expected_new_table_id: str | None = None
         self._table_password: str | None = None
         self._transport_failure_streak = 0
 
@@ -966,6 +967,7 @@ class ExternalGateWorker:
             return
         (table_id, _), active = next(iter(restored.items()))
         self.table_id = table_id
+        self._expected_new_table_id = None
         self.desired_stack = active.assignment.stack
         self.switch.set_arm(active.assignment.arm)
 
@@ -1003,6 +1005,7 @@ class ExternalGateWorker:
             raise ISSGateWorkerError("NO_UNDERFILLED_STACK_WITH_OPEN_GATE")
         name, password = _private_table_credentials()
         self.desired_stack = str(stack)
+        self._expected_new_table_id = name
         self._table_password = password
         self.client.send_service_command(
             command_create_table(
@@ -1011,6 +1014,20 @@ class ExternalGateWorker:
                 table_password=password,
             )
         )
+
+    def _admitted_table_ids(self) -> set[str]:
+        admitted = {table_id for table_id, _ in self.assignment_by_game}
+        if self.table_id is not None:
+            admitted.add(self.table_id)
+        if self._expected_new_table_id is not None:
+            admitted.add(self._expected_new_table_id)
+        return admitted
+
+    def _event_is_admitted(self, event) -> bool:
+        table_id = event.fields.get("table_id")
+        if table_id is None:
+            return True
+        return str(table_id) in self._admitted_table_ids()
 
     def _on_create(self, event) -> None:
         if self.client is None or not bool(event.fields.get("is_player")):
@@ -1025,7 +1042,13 @@ class ExternalGateWorker:
             # Reconnect replay for an already-started game. Do not re-invite
             # opponents or send READY while that game is in progress.
             return
+        if incoming_table_id != self._expected_new_table_id:
+            # ISS replays table directory/create state after reconnect. A
+            # fresh campaign epoch must never adopt a table merely because
+            # SkatAI is still listed there from an older worker/epoch.
+            return
         self.table_id = incoming_table_id
+        self._expected_new_table_id = None
         viewer = str(event.fields["viewer_name"])
         for opponent in self.desired_stack.split("+"):
             self.client.send_service_command(
@@ -1180,6 +1203,19 @@ class ExternalGateWorker:
                         f"KEEPALIVE_FAILED:{type(exc).__name__}"
                     ) from exc
                 line = client.transport.read_line()
+                preview = parse_service_line(line)
+                if not self._event_is_admitted(preview):
+                    # Preserve the inbound protocol evidence, but do not apply
+                    # foreign/pre-existing table state to the client and never
+                    # let it reach the move provider/effect guard.
+                    if client.journal is not None:
+                        client.journal.write("in", line)
+                    self.evidence.append_connection_event(
+                        "FOREIGN_TABLE_EVENT_IGNORED",
+                        event_kind=preview.kind,
+                        table_id=str(preview.fields.get("table_id")),
+                    )
+                    continue
                 self._on_start_preapply(line)
                 event = client.handle_line(line)
                 if event.kind == "create":
@@ -1190,8 +1226,11 @@ class ExternalGateWorker:
                     if not keep_running:
                         return self.campaign_status()
                 elif event.kind == "destroy":
-                    if self.table_id == str(event.fields["table_id"]):
+                    destroyed_table_id = str(event.fields["table_id"])
+                    if self.table_id == destroyed_table_id:
                         self.table_id = None
+                    if self._expected_new_table_id == destroyed_table_id:
+                        self._expected_new_table_id = None
                     if self.desired_stack is None:
                         self._create_next_table()
         finally:
@@ -1225,7 +1264,7 @@ class ExternalGateWorker:
 
         self._restore_active_game_authority()
         client_policy = ISSClientPolicy(
-            accept_invitations=True,
+            accept_invitations=False,
             ready_when_joined=False,
             ready_after_game=False,
         )
