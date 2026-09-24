@@ -45,6 +45,28 @@ def _extract_frozen_source(archive: Path, destination: Path) -> None:
             os.chmod(target, 0o644)
 
 
+def _verify_materialized(root: Path, manifest: dict) -> dict:
+    bundle = root / "bundle"
+    if json.loads((bundle / "manifest.json").read_text()) != manifest:
+        raise ReleasePackageError("MATERIALIZED_MANIFEST_MISMATCH")
+    for row in manifest["components"]:
+        component = bundle / row["path"]
+        if component.stat().st_size != row["bytes"] or sha256_file(component) != row["sha256"]:
+            raise ReleasePackageError(f"MATERIALIZED_COMPONENT_MISMATCH:{row['path']}")
+    baseline = json.loads((bundle / "provenance/B0_SKATZERO_BASELINE.json").read_text())
+    if manifest["model_hashes"] != baseline["pretrained_models"]:
+        raise ReleasePackageError("B0_RELEASE_MODEL_IDENTITY_MISMATCH")
+    if sha256_file(bundle / "source/skatzero-source.tar") != baseline["git_archive_sha256"]:
+        raise ReleasePackageError("B0_SOURCE_HASH_MISMATCH")
+    skatzero_root = root / "skatzero"
+    if sha256_file(skatzero_root / "api.py") != baseline["implementation_hashes"]["inference_api_py"]:
+        raise ReleasePackageError("B0_INFERENCE_API_HASH_MISMATCH")
+    for name, expected in sorted(baseline["pretrained_models"].items()):
+        if sha256_file(skatzero_root / "models/latest" / name) != expected:
+            raise ReleasePackageError(f"B0_RUNTIME_MODEL_HASH_MISMATCH:{name}")
+    return baseline
+
+
 def load_model(
     package: Path,
     *,
@@ -66,7 +88,10 @@ def load_model(
     ):
         raise ReleasePackageError("UNSUPPORTED_RELEASE_IDENTITY")
     if destination.exists():
-        raise ReleasePackageError(f"DESTINATION_EXISTS:{destination}")
+        _verify_materialized(destination, manifest)
+        from skatai.runtime.skatzero_backend import build_b0_skat_ai
+
+        return build_b0_skat_ai(destination / "skatzero", python_executable)
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = destination.with_name(f".{destination.name}.tmp-{os.getpid()}")
     if staging.exists():
@@ -108,6 +133,8 @@ def load_model(
                 if sha256_file(model) != expected:
                     raise ReleasePackageError(f"B0_MODEL_HASH_MISMATCH:{name}")
                 os.link(model, installed)
+
+        _verify_materialized(staging, manifest)
 
         os.replace(staging, destination)
         parent_fd = os.open(destination.parent, os.O_RDONLY)
