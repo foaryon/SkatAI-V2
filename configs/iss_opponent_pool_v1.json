@@ -1,0 +1,97 @@
+{
+  "schema": "skatai.v2.iss-opponent-pool.v1",
+  "effective_after": "R9",
+  "source": {
+    "url": "https://skatgame.net/mburo/iss-ratings.html",
+    "ratings_as_of": "Sun Sep 20 06:02:12 MDT 2026",
+    "http_last_modified": "Sun, 20 Sep 2026 12:02:12 GMT",
+    "refresh_observation": "Sunday refresh pattern observed; treat as dynamic evidence, not a contractual cadence"
+  },
+  "primary_opponents": [
+    {
+      "name": "theCount",
+      "role": "PRIMARY_BENCHMARK_AND_DATA_OPPONENT",
+      "program_status": "VERIFIED_PROGRAM",
+      "rank": 3,
+      "games": 40733,
+      "elo": 1118.1,
+      "rating_confidence_90_half_width": 23.6
+    },
+    {
+      "name": "zoot",
+      "role": "PRIMARY_BENCHMARK_AND_DATA_OPPONENT",
+      "program_status": "VERIFIED_PROGRAM",
+      "rank": 4,
+      "games": 61511,
+      "elo": 1113.1,
+      "rating_confidence_90_half_width": 22.2
+    },
+    {
+      "name": "kermit",
+      "role": "PRIMARY_BENCHMARK_AND_DATA_OPPONENT",
+      "program_status": "VERIFIED_PROGRAM",
+      "rank": 6,
+      "games": 31216,
+      "elo": 1106.5,
+      "rating_confidence_90_half_width": 24.9
+    }
+  ],
+  "verified_program_fillers": [
+    {
+      "name": "xskat",
+      "program_status": "VERIFIED_PROGRAM",
+      "rank": 53,
+      "games": 150990,
+      "elo": 1000.0,
+      "notes": "ISS reference program; useful diversity/fallback, not a primary strength anchor"
+    },
+    {
+      "name": "bernie",
+      "program_status": "VERIFIED_PROGRAM",
+      "rank": 77,
+      "games": 30808,
+      "elo": 990.7,
+      "rating_confidence_90_half_width": 20.0,
+      "notes": "Verified Skat program; useful diversity/fallback"
+    }
+  ],
+  "dynamic_fillers": {
+    "eligibility": [
+      "online and accepts table invitations",
+      "identity captured in raw ISS evidence",
+      "prefer higher current ISS rating with adequate sample/confidence",
+      "do not label an account as a bot/program unless independently verified",
+      "do not let filler traffic displace the three primary opponents from core benchmark coverage"
+    ],
+    "currently_observed_examples": [
+      {
+        "name": "Klotho",
+        "rank": 24,
+        "games": 6475,
+        "elo": 1046.2,
+        "rating_confidence_90_half_width": 38.6,
+        "program_status": "UNKNOWN"
+      },
+      {
+        "name": "thresher",
+        "rank": 25,
+        "games": 3260,
+        "elo": 1035.0,
+        "rating_confidence_90_half_width": 48.8,
+        "program_status": "UNKNOWN"
+      }
+    ]
+  },
+  "post_r9_parallel_policy": {
+    "principle": "maximize useful games per hour without weakening scientific separation or exactly-once recovery",
+    "core_tables": [
+      ["SkatAI", "kermit", "zoot"],
+      ["SkatAI", "kermit", "theCount"],
+      ["SkatAI", "zoot", "theCount"]
+    ],
+    "additional_tables": "Use one or two primary opponents when available, then fill remaining seats with the strongest eligible online fillers. Prefer verified programs for bot-decision data.",
+    "scale_up": "Validate 2 concurrent tables first, then 4, then increase only while protocol integrity, exactly-once recovery, mirroring, latency, and opponent availability remain healthy.",
+    "training_boundary": "High-volume collection is research/training/failure-mining data. Frozen external acceptance identities and holdouts remain isolated and must not be contaminated.",
+    "current_r9_unchanged": true
+  }
+}
