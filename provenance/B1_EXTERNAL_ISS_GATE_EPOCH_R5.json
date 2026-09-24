@@ -1,0 +1,98 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-resignation-ordering-recovery-v1",
+  "captured_at": "2026-09-24T02:07:38Z",
+  "status": "PRIMARY_GATE_REFROZEN_AFTER_ISS_RESIGNATION_SEMANTICS_FIX",
+  "rationale": "R4 exposed two protocol/recovery defects around ISS RE resignation messages. Official ISS client source defines RE as a cardplay resignation that ends immediately only when the declarer resigns; defenders require both defenders to resign. The same reference implementation explicitly treats RE and LE as out-of-order moves that do not replace the expected turn. V2 had treated every RE as terminal and exactly-once reconciliation had treated an out-of-order RE arriving before the echo of an already-sent card as the replacement move. Both defects are fixed and regression-tested.",
+  "executable_code_commit": "64c1c05b9e7e013e8388bced304bba8b8d3e87c9",
+  "resignation_semantics_fix_commit": "64c1c05b9e7e013e8388bced304bba8b8d3e87c9",
+  "closed_r4": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r4",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r4",
+    "ledger_sha256": "4ebe81de90c597a197deb8dc895f715d24e9e4782e1d7fabb4a33f10aa41439f",
+    "records": 3,
+    "scored_records": 1,
+    "protocol_failures": 2,
+    "active_games": 0,
+    "primary_strength_use": false,
+    "disposition": "DIAGNOSTIC_DEPLOYMENT_EVIDENCE_ONLY_AFTER_COMMON_PROTOCOL_CHANGE",
+    "failure_games": [
+      {
+        "game_id": "a1d8fddf9897bba265daf6ec2707d6c313d40d883a0623e13bafbe8301398619",
+        "reason": "STALE_EXTERNAL_EFFECTS_AT_TERMINAL:1",
+        "evidence_sha256": "48c70ea42281fb18035da5406d6b419da04836ba20a9e361860435c09e60bdd2",
+        "remote_hash_verified": true
+      },
+      {
+        "game_id": "906d058fb0766d7a61ff7a026609f0f3ce3aa896d8db6a16d0a0c0ea4aa87556",
+        "reason": "PROTOCOL_SINGLE_DEFENDER_RE_FALSE_TERMINAL_STALL",
+        "evidence_sha256": "6962627683c4a11cd7b9323af4bd1a5d75680b6c1d0aab437450c0d43a9ac900",
+        "remote_hash_verified": true
+      }
+    ],
+    "scored_game": {
+      "game_id": "de1dbd9dc1f6040c405c9a8f1791fa7562625d1fee418f63f519ae4e9e1061c4",
+      "evidence_sha256": "0ed1bb59aafaef718af27d0c128eb4fc49b228f564f217d00f46bf413d68f794",
+      "remote_hash_verified": true
+    },
+    "remote_current_ledger_hash_verified": true
+  },
+  "official_iss_client_reference": {
+    "source_url": "https://skatgame.net/iss/clients.tgz",
+    "download_page_version": "14.11033.16",
+    "archive_md5": "2e8ee6f1550bf02de70c20d19e1dc64c",
+    "archive_md5_matches_official_download_page": true,
+    "semantics": {
+      "SimpleState.java": "RE marks the acting player resigned; terminal iff declarer resigned or both defenders resigned.",
+      "Table.java": "RE and LE are explicitly handled as out-of-order moves that do not replace the current expected turn."
+    }
+  },
+  "live_failure_reproduction": {
+    "out_of_order_echo_game": {
+      "game_id": "a1d8fddf9897bba265daf6ec2707d6c313d40d883a0623e13bafbe8301398619",
+      "sequence": [
+        "out: seat2 DQ",
+        "in: seat1 RE",
+        "in: seat2 DQ"
+      ],
+      "pre_fix_effect_outcome": "ABORTED_STALE",
+      "post_fix_effect_outcome": "CONFIRMED"
+    },
+    "single_defender_stall_game": {
+      "game_id": "906d058fb0766d7a61ff7a026609f0f3ce3aa896d8db6a16d0a0c0ea4aa87556",
+      "sequence": [
+        "in: seat1 RE",
+        "in: seat2 DA"
+      ],
+      "pre_fix_bridge_terminal": true,
+      "post_fix_bridge_terminal": false
+    }
+  },
+  "verification": {
+    "regression_tests_red_before_fix": 2,
+    "targeted_tests_after_fix": "2 passed",
+    "full_tests": "266 passed",
+    "git_diff_check": "clean",
+    "r4_remote_ledger_hash_verified": true,
+    "r4_all_three_evidence_hashes_remote_verified": true
+  },
+  "science_boundary": {
+    "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256_unchanged": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "treatment_difference_remains": "bidding only",
+    "common_iss_protocol_recovery_changed_equally_for_b0_and_b1": true,
+    "reuse_r4_primary_strength_records": false
+  },
+  "new_epoch": {
+    "epoch": "R5",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r5",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r5",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R5"
+  }
+}
