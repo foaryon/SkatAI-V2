@@ -273,3 +273,45 @@ def test_client_environment_can_disable_read_timeout(monkeypatch):
     monkeypatch.setenv("ISS_READ_TIMEOUT_S", "")
     client, _ = client_from_environment()
     assert client.transport.config.read_timeout_s is None
+
+
+
+def test_client_does_not_redecide_while_game_effect_is_pending(tmp_path):
+    from types import SimpleNamespace
+
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from test_iss_effects import request_result
+
+    class MustNotRunProvider:
+        def next_decision(self, table):
+            raise AssertionError("provider must not run while a game effect is pending")
+
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    req, result = request_result()
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash="a" * 64,
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=4,
+        wire_action="18",
+        outbound_line="table T SkatAI play 18",
+    )
+    journal.mark_send_returned(effect.effect_id)
+
+    client = ISSClientCore(
+        FakeTransport(),
+        move_provider=MustNotRunProvider(),
+        effect_guard=ISSAuthorityGuard(journal),
+    )
+    table = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        is_player=True,
+        in_progress=True,
+    )
+
+    client._maybe_send_move(table)
+    assert client.transport.sent == []
+    assert len(journal.pending_for_game("T", 1)) == 1

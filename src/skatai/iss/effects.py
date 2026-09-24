@@ -230,17 +230,25 @@ class ISSEffectJournal:
         if effect_id in states:
             return states[effect_id], False
 
-        for state in states.values():
+        pending_same_game = [
+            state
+            for state in states.values()
             if (
                 not state.terminal
                 and state.table_id == str(table_id)
                 and state.game_sequence == int(game_sequence)
-                and state.position_hash == request.position_hash
-                and state.effect_id != effect_id
-            ):
+            )
+        ]
+        if pending_same_game:
+            if len(pending_same_game) != 1:
                 raise ISSEffectError(
-                    f"CONFLICTING_PENDING_EFFECT_FOR_POSITION:{state.effect_id}"
+                    f"MULTIPLE_PENDING_EFFECTS_FOR_GAME:{table_id}:{game_sequence}"
                 )
+            # ISS may deliver out-of-order RE/LE messages while our material
+            # action is still awaiting its echo. Such messages can change a
+            # request/position hash without consuming the turn. Preserve the
+            # already-durable effect and never create an overlapping send.
+            return pending_same_game[0], False
 
         self._append(
             "INTENT",
@@ -451,6 +459,9 @@ class ISSEffectJournal:
 class ISSAuthorityGuard:
     def __init__(self, journal: ISSEffectJournal) -> None:
         self.journal = journal
+
+    def has_pending_for_game(self, table_id: str, game_sequence: int) -> bool:
+        return bool(self.journal.pending_for_game(table_id, game_sequence))
 
     def prepare(
         self,

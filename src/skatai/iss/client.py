@@ -125,6 +125,19 @@ class ISSClientCore:
         if self.move_provider is None or not table.is_player or not table.in_progress:
             return
 
+        # Exactly one material external effect may be in flight per game.
+        # Out-of-order ISS messages such as defender RE/LE can leave the same
+        # player on turn while changing the reconstructed protocol position.
+        # Do not even re-run inference until the durable prior effect has been
+        # confirmed or made stale by reconciliation.
+        if (
+            self.effect_guard is not None
+            and self.effect_guard.has_pending_for_game(
+                table.table_id, table.game_sequence
+            )
+        ):
+            return
+
         from skatai.iss.service import command_play
 
         decision_method = getattr(self.move_provider, "next_decision", None)

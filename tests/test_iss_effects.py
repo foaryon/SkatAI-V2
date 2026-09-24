@@ -369,3 +369,47 @@ def test_reconcile_skips_out_of_order_resign_before_own_echo(tmp_path):
     assert outcomes[0]["outcome"] == "CONFIRMED"
     assert outcomes[0]["observed_action"] == "DQ"
     assert journal.pending() == []
+
+
+
+def test_new_position_reuses_existing_pending_effect_for_same_game(tmp_path):
+    from skatai.runtime.decision import DecisionRequest, decide
+
+    req, result = request_result()
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    first, created = journal.begin(
+        req,
+        result,
+        external_state_hash="a" * 64,
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=4,
+        wire_action="18",
+        outbound_line="table T SkatAI play 18",
+    )
+    assert created is True
+    journal.mark_send_returned(first.effect_id)
+
+    shifted = DecisionRequest.create(
+        game_id=req.game_id,
+        sequence_no=req.sequence_no + 1,
+        decision_type=req.decision_type,
+        observation=req.observation,
+        source=req.source,
+        source_context={**req.source_context, "out_of_order_event": "RE"},
+    )
+    shifted_result = decide(_ai(), shifted, release_id="R1")
+    existing, created2 = journal.begin(
+        shifted,
+        shifted_result,
+        external_state_hash="b" * 64,
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=5,
+        wire_action="18",
+        outbound_line="table T SkatAI play 18",
+    )
+
+    assert created2 is False
+    assert existing.effect_id == first.effect_id
+    assert len(journal.pending_for_game("T", 1)) == 1
