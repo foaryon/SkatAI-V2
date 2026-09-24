@@ -599,3 +599,68 @@ def test_active_table_error_is_persisted_as_protocol_failure_and_stops_worker(tm
     assert ("mirror", "failure-game") in calls
     assert sent == ["table T SkatAI leave"]
     assert worker.table_id is None
+
+
+
+def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch):
+    from types import SimpleNamespace
+
+    import skatai.iss.gate_worker as gw
+    from skatai.iss.gate_worker import ActiveGame, ExternalGateWorker, GameAssignment
+    from skatai.iss.service import parse_service_line
+
+    sent = []
+
+    class Evidence:
+        def append_game(self, **kwargs):
+            return {"result": {"game_id": "g"}}
+
+        def mirror_game(self, game_id):
+            assert game_id == "g"
+
+        def scored_rows(self):
+            return []
+
+    class Switch:
+        def latency_summary(self, game_id):
+            return 1.0, 2.0
+
+    worker = object.__new__(ExternalGateWorker)
+    worker.client = SimpleNamespace(send_service_command=sent.append)
+    worker.switch = Switch()
+    worker.evidence = Evidence()
+    worker.assignment_by_game = {
+        ("T", 6): ActiveGame(
+            assignment=GameAssignment("B1", "kermit+zoot", 0, 300, True),
+            protocol_offset=11,
+            effect_offset=22,
+        )
+    }
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+zoot"
+    worker._expected_new_table_id = None
+    worker._table_password = "ephemeral"
+    worker._transport_failure_streak = 0
+    worker._persist_active_game_authority = lambda: None
+    worker.campaign_status = lambda: {
+        "next_per_arm_target": 300,
+        "next_stack": "kermit+theCount",
+    }
+    monkeypatch.setattr(
+        gw,
+        "next_underfilled_stack",
+        lambda rows, *, per_arm: "kermit+theCount",
+    )
+
+    table = SimpleNamespace(
+        table_id="T",
+        game_sequence=6,
+        game_sgf="(;GM[Skat])",
+        viewer_name="SkatAI",
+    )
+
+    assert worker._on_end(SimpleNamespace(), table) is True
+    assert sent == ["table T SkatAI leave"]
+    assert worker.desired_stack is None
+    assert worker.table_id == "T"
+    assert worker._event_is_admitted(parse_service_line("destroy T SkatAI"))

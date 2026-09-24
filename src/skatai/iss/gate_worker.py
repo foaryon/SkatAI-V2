@@ -1332,7 +1332,9 @@ class ExternalGateWorker:
             self.client.send_service_command(
                 command_leave(table.table_id, table.viewer_name)
             )
-            self.table_id = None
+            # Keep the departing table admitted until ISS confirms its
+            # destruction. The destroy event clears table_id and creates the
+            # next table when desired_stack is None.
             self.desired_stack = None
             self._table_password = None
             return True
