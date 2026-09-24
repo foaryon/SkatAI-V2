@@ -29,18 +29,18 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-24T03:31:01Z",
+  "captured_at": "2026-09-24T06:04:39Z",
   "external_blockers": [
     {
       "action": "Authenticate normal Git transport on the RunPod control host and push the existing clean V2 main history to https://github.com/foaryon/SkatAI-V2.git without reconstructing history.",
       "id": "github-v2-normal-git-auth"
     }
   ],
-  "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R8 execution",
+  "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R9 readiness and execution",
   "git": {
-    "branch": "main",
-    "campaign_epoch_commit": "decebe68c99c53d4bfe905dd95a4e6df0a4f1f16",
-    "code_head": "a7da2a2ea0d251b289591d940e2827dc1ef84d92",
+    "branch": "fix/r9-ouvert-integrated-v1",
+    "campaign_epoch_commit": null,
+    "code_head": "2782200076c1",
     "new_v2_github_repository_attached": true,
     "normal_https_auth_present_on_runpod": false,
     "normal_ssh_auth_present_on_runpod": false,
@@ -49,22 +49,22 @@
     "remote_push_authenticated": false,
     "remote_url": "https://github.com/foaryon/SkatAI-V2.git",
     "remote_visibility": "public",
-    "workspace": "/workspace/skatai-v2"
+    "workspace": "/workspace/skatai-v2-r9-integration"
   },
   "iss": {
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
     "active_table_error_fail_closed": true,
-    "adapter_status": "R8_GATE_READY_POST_STACK_ROTATION_LIVENESS_RECOVERY",
+    "adapter_status": "R9_FIX_VALIDATED_PENDING_REFREEZE_COMMIT_AND_READINESS",
     "all_phase_single_adapter": true,
     "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
-    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R8.json",
+    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R9.json",
     "frozen_external_gate_ready": true,
     "frozen_external_gate_ready_except_credentials": false,
-    "gate_epoch": "post-stack-rotation-liveness-recovery-v1",
-    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
-    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
+    "gate_epoch": "post-ouvert-wire-recovery-v1",
+    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r9",
+    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r9",
     "hetzner_per_game_evidence_mirror": true,
     "host": "skatgame.net",
     "latest_live_infrastructure_failure": {
@@ -76,22 +76,17 @@
       "resolved_by_commit": "a7da2a2ea0d251b289591d940e2827dc1ef84d92"
     },
     "latest_live_protocol_failure": {
-      "affected_r6_games": [
-        "e7e98b0a558b3281d4b3411fcc92434338d438f3d57ea92272f3f3668b5c9a79",
-        "1d4826db6efb4c6f64e2e16ae4f86701e5bb74c7856de0be3434f25d43c8fffc"
-      ],
-      "classification": "OUT_OF_ORDER_RE_CREATED_OVERLAPPING_MATERIAL_EFFECT",
-      "observed_duplicate_actions": [
-        "HT",
-        "HK"
-      ],
-      "provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R7.json",
-      "r6_primary_strength_use": false,
+      "classification": "SPLIT_OUVERT_DISCARD_DUPLICATED_OPEN_HAND_ON_WIRE",
+      "affected_r8_game": "a6fbc2091482b2780fcebb110c98bbe5aaf4158764128881c984c215a5743582",
+      "observed_after_scored_games": 67,
+      "r8_primary_strength_use": false,
+      "external_action_replay_on_recovery": false,
+      "provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R9.json",
       "resolved_by_commits": [
-        "e031643",
-        "ab72f44"
-      ],
-      "server_rejections": 2
+        "1587f85",
+        "cd5b856",
+        "2782200"
+      ]
     },
     "parser_erratum": "provenance/B1_EXTERNAL_ISS_TERMINAL_SGF_PARSER_ERRATUM.json",
     "port": 7000,
@@ -105,7 +100,7 @@
     "r5_primary_strength_use": false,
     "r6_primary_strength_use": false,
     "r7_primary_strength_use": false,
-    "scored_live_games": 20,
+    "scored_live_games": 87,
     "secret_present_on_worker": true,
     "secret_source": "RunPod General Secret -> ISS_PASSWORD in process memory",
     "single_pending_material_effect_per_game": true,
@@ -114,16 +109,15 @@
     "stranded_authority_recovery": "provenance/B1_EXTERNAL_ISS_STRANDED_AUTHORITY_RECOVERY.json",
     "table_authority_isolation": true,
     "terminal_less_failure_recovery": true,
-    "worker_transport_reconnect": true
+    "worker_transport_reconnect": true,
+    "r8_primary_strength_use": false
   },
   "next_safe_actions": [
-    "Launch the clean isolated R8 external ISS gate epoch from a clean Git tree and dedicated R8 runtime/S3 namespace.",
-    "Do not reuse R1/R2/R3/R4/R5/R6/R7 scored records in the R8 primary strength estimator.",
-    "Verify the first R8 stack rotation actually destroys the departing table and creates the next frozen-priority opponent stack.",
-    "Treat any active-game ISS table_error as PROTOCOL_FAILURE and stop fail-closed.",
-    "Preserve and mirror every R8 deployment-valid game before advancing the campaign.",
-    "Do not mutate main while an R8 active game is bound to the running source commit.",
-    "Continue independent non-contaminating cardplay weakness research on the separate lab worktree.",
+    "Commit the R9 refreeze provenance on the clean integrated fix branch.",
+    "Run R9 readiness against the dedicated R9 runtime/S3 namespace without connecting to ISS.",
+    "Launch R9 only from the resulting clean committed source identity.",
+    "Do not reuse R1-R8 scored records in the R9 primary strength estimator.",
+    "Preserve and mirror every R9 deployment-valid game before campaign progression.",
     "Resolve GitHub normal-transport authentication independently; do not reconstruct commits through GitHub API/file-by-file writes."
   ],
   "schema": "skatai.v2.continuation-state.v1",
@@ -205,7 +199,7 @@
   "tests": {
     "environment": "/tmp/skatai-v2-dev",
     "pytest_failed": 0,
-    "pytest_passed": 271,
-    "required_pythonpath": "/workspace/skatai-v2/src"
+    "pytest_passed": 278,
+    "required_pythonpath": "/workspace/skatai-v2-r9-integration/src"
   }
 }

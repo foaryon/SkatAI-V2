@@ -1,0 +1,83 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-ouvert-wire-recovery-v1",
+  "captured_at": "2026-09-24T06:04:39Z",
+  "status": "PRIMARY_GATE_REFROZEN_AFTER_SPLIT_OUVERT_WIRE_FIX",
+  "rationale": "R8 produced 67 deployment-valid scored games, then a B1 Null-Ouvert pickup game exposed a common ISS adapter defect: after the separate NO declaration half-move V2 sent the two-card discard plus ten open-hand cards. ISS appended the open hand to its echo, producing a 22-card move that the frozen parser rejected. Recovery closed the stranded active game fail-closed without replaying the material effect and mirrored the failure evidence. R9 starts from zero under the corrected common adapter so the primary estimator does not mix source identities or reuse R8 scores.",
+  "fix_commits": {
+    "wire_encoding": "1587f85",
+    "live_echo_recovery": "cd5b856",
+    "gameview_reconstruction": "2782200"
+  },
+  "closed_r8": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
+    "worker_source_commit": "b176a0b43f4d0c118700362c450cfa1369db25f3",
+    "ledger_sha256": "3c44396a4dd1b5c1ffd67bd5ce5e4da5997c6f2f478633ab1a5bb4982212b42f",
+    "active_games_sha256": "e9f92bf246d76feb1abf1b00a3d0d6bca31b389c92fa0161e010418fca5a57a2",
+    "status_sha256": "a357bdb1e75036183bc4f684a727625fa86ce0c6b0827f9589f1172bafee89aa",
+    "scored_records": 67,
+    "protocol_failure_records": 1,
+    "scored_by_arm": {
+      "B0": 34,
+      "B1": 33
+    },
+    "scored_by_stack": {
+      "kermit+zoot": 24,
+      "kermit+theCount": 24,
+      "zoot+theCount": 19
+    },
+    "active_games": 0,
+    "primary_strength_use": false,
+    "failure_game_id": "a6fbc2091482b2780fcebb110c98bbe5aaf4158764128881c984c215a5743582",
+    "failure_reason": "R8_OUVERT_DISCARD_OUTBOUND_ALREADY_INCLUDED_OPEN_HAND_SERVER_APPENDED_OPEN_HAND_PARSE_FAILURE",
+    "external_action_replay_on_recovery": false,
+    "failure_evidence_mirrored": true,
+    "disposition": "DIAGNOSTIC_DEPLOYMENT_EVIDENCE_ONLY_DUE_COMMON_OUVERT_WIRE_PROTOCOL_DEFECT"
+  },
+  "root_cause": {
+    "classification": "SPLIT_OUVERT_DISCARD_DUPLICATED_OPEN_HAND_ON_WIRE",
+    "mechanism": [
+      "After pickup, V2 correctly emitted a separate Null-Ouvert declaration half-move.",
+      "For the following discard half-move, V2 incorrectly expanded the two discarded cards with the ten-card open hand.",
+      "ISS itself appended the ten-card open hand to the echoed move.",
+      "The resulting 22-card echo was not a legal canonical V2 move and parsing failed after SEND_RETURNED.",
+      "Crash recovery observed the server echo, did not replay the pending external action, persisted one PROTOCOL_FAILURE record, cleared active-game authority, and mirrored the failure bundle."
+    ]
+  },
+  "fixes": {
+    "split_ouvert_outbound_is_two_discard_cards_only": true,
+    "legacy_live_22_card_echo_recovery_is_narrow_and_fail_closed": true,
+    "effect_reconciliation_handles_exact_legacy_echo_without_replay": true,
+    "gameview_uses_first_two_cards_as_material_discard_and_reconstructs_open_hand": true,
+    "gameplay_policy_models_changed": false,
+    "scoring_changed": false
+  },
+  "verification": {
+    "targeted_and_regression_tests": "278 passed",
+    "integration_worktree_clean": true,
+    "integration_head": "2782200076c1",
+    "r8_failure_mirror_present": true
+  },
+  "science_boundary": {
+    "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256_unchanged": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "b0_deployment_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+    "b1_deployment_identity_sha256": "120239116da78bb2e82b632d3470d0c7cf5d62261889e96f1442abeb3514a103",
+    "treatment_difference_remains": "bidding only",
+    "common_adapter_fix_applies_equally_to_b0_and_b1": true,
+    "reuse_r8_primary_strength_records": false
+  },
+  "new_epoch": {
+    "epoch": "R9",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r9",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r9",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R9"
+  }
+}
