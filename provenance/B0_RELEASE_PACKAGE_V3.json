@@ -1,0 +1,22 @@
+{
+  "all_phase_host_smoke_evidence_sha256": "930f2b6bfee42adfc1e83fd8793c2eb847a031c42e839042dc8164ca84c40b6a",
+  "embedded_loader_source_verification": true,
+  "limitations": [
+    "Actual user host software integration pending.",
+    "Deployment-matched latency, memory, gameplay, replacement and crash acceptance pending.",
+    "B1 external ISS gate paused with unreconciled active game."
+  ],
+  "package_bytes": 110786560,
+  "package_manifest_sha256": "b3e5e7cd9dbb32f6bd004a2c2dd2460703205c1ff2431d79fe5deedeee80ecf1",
+  "package_sha256": "0497d17c89f0c5f28fc5517b295fd7acf2320cfe8e3023ed9cbf11d2d7a45694",
+  "release_id": "V2-B0-package-v3",
+  "remote_manifest_sha256": "7218a4949f14213331ab9a2c6e2537ed363353d3778fc2a5e095cdbd5099a3a2",
+  "remote_readback_verified": true,
+  "reproducible_builds": 2,
+  "schema": "skatai.v2.b0-release-package-validation.v1",
+  "source_commit": "f56a1003075e9043924eac39eed83d37995647bf",
+  "source_integrity_tests_passed": 23,
+  "status": "STAGED_BASELINE_PACKAGE_HOST_ACCEPTANCE_PENDING",
+  "supersedes_staged_package": "V2-B0-package-v2",
+  "v3_runtime_auxiliary_source_tamper_rejected": true
+}
