@@ -663,6 +663,174 @@ class GateEvidence:
             "current/active-games.json",
         )
 
+
+    def reconcile_terminal_active_games(
+        self,
+        games: Mapping[tuple[str, int], ActiveGame],
+        *,
+        source_commit: str,
+    ) -> tuple[dict[tuple[str, int], ActiveGame], list[str]]:
+        """Finish an interrupted terminal-game mirror without replaying ISS.
+
+        A game is auto-reconciled only when the local terminal evidence package
+        and immutable gate ledger independently prove that the active authority
+        already reached a valid SCORED terminal under this exact source commit.
+        Any matching-but-incomplete/conflicting terminal package fails closed.
+        Mid-game authorities with no terminal evidence are left untouched for
+        normal reconnect replay/effect reconciliation.
+        """
+        remaining = dict(games)
+        recovered: list[str] = []
+        if not remaining:
+            return remaining, recovered
+
+        ledger_by_game = {record.game_id: record for record in self.ledger.records()}
+        candidates: dict[
+            tuple[str, int], list[tuple[Path, dict[str, Any]]]
+        ] = {key: [] for key in remaining}
+
+        for evidence_path in sorted(self.games_dir.glob("*.evidence.json")):
+            try:
+                payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+                key = (
+                    str(payload["table_id"]),
+                    int(payload["server_game_num"]),
+                )
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if key in candidates:
+                candidates[key].append((evidence_path, payload))
+
+        for key, active in list(remaining.items()):
+            matches = candidates.get(key, [])
+            if not matches:
+                # No terminal package: preserve authority for ordinary reconnect.
+                continue
+            if len(matches) != 1:
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_AMBIGUOUS_EVIDENCE:{key}:{len(matches)}"
+                )
+
+            evidence_path, evidence = matches[0]
+            game_id = str(evidence.get("game_id") or "")
+            if (
+                evidence.get("schema") != "skatai.v2.external-iss-game-evidence.v1"
+                or evidence.get("source_commit") != source_commit
+                or evidence.get("status") != "SCORED"
+                or evidence.get("failure_reason") is not None
+                or not game_id
+                or evidence_path.name != f"{game_id}.evidence.json"
+            ):
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_EVIDENCE_MISMATCH:{key}"
+                )
+
+            expected_assignment = active.assignment.__dict__
+            if evidence.get("assignment") != expected_assignment:
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_ASSIGNMENT_MISMATCH:{key}"
+                )
+            if evidence.get("actual_stack") != active.assignment.stack:
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_STACK_MISMATCH:{key}"
+                )
+
+            identity = self.identities.get(active.assignment.arm)
+            if (
+                identity is None
+                or evidence.get("deployment_identity_sha256")
+                != identity.get("deployment_identity_sha256")
+                or evidence.get("release_id") != identity.get("release_id")
+            ):
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_DEPLOYMENT_IDENTITY_MISMATCH:{key}"
+                )
+
+            result = evidence.get("result")
+            if (
+                not isinstance(result, dict)
+                or result.get("game_id") != game_id
+                or int(result.get("seat", -1)) != active.assignment.seat
+            ):
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_RESULT_MISMATCH:{key}"
+                )
+
+            effects = evidence.get("effects")
+            if not isinstance(effects, list) or any(
+                not isinstance(effect, dict)
+                or effect.get("status") != "CONFIRMED"
+                for effect in effects
+            ):
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_NONTERMINAL_EFFECT:{key}"
+                )
+
+            artifacts = evidence.get("artifacts")
+            if not isinstance(artifacts, dict):
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_ARTIFACTS_MISSING:{key}"
+                )
+            required_artifacts = {
+                "terminal_sgf": self.games_dir / f"{game_id}.sgf",
+                "service_slice": self.games_dir / f"{game_id}.service.jsonl",
+                "effect_slice": self.games_dir / f"{game_id}.effects.jsonl",
+            }
+            for artifact_name, artifact_path in required_artifacts.items():
+                meta = artifacts.get(artifact_name)
+                if (
+                    not isinstance(meta, dict)
+                    or not artifact_path.is_file()
+                    or int(meta.get("bytes", -1)) != artifact_path.stat().st_size
+                    or meta.get("sha256") != sha256_file(artifact_path)
+                ):
+                    raise ISSGateWorkerError(
+                        "TERMINAL_ACTIVE_RECOVERY_ARTIFACT_MISMATCH:"
+                        f"{key}:{artifact_name}"
+                    )
+
+            record = ledger_by_game.get(game_id)
+            if (
+                record is None
+                or record.status != "SCORED"
+                or record.source_commit != source_commit
+                or record.arm != active.assignment.arm
+                or record.opponent != active.assignment.stack
+                or record.seat != active.assignment.seat
+                or record.model_sha256
+                != evidence.get("deployment_identity_sha256")
+                or record.raw_sgf_sha256
+                != artifacts["terminal_sgf"]["sha256"]
+                or record.journal_sha256 != sha256_file(evidence_path)
+                or record.score != float(result.get("score"))
+            ):
+                raise ISSGateWorkerError(
+                    f"TERMINAL_ACTIVE_RECOVERY_LEDGER_MISMATCH:{key}"
+                )
+
+            # Mirror verification is deliberately first. If it raises, the
+            # durable active authority remains unchanged and restart is safe to
+            # retry without producing any ISS material effect.
+            self.mirror_game(game_id)
+
+            next_remaining = dict(remaining)
+            next_remaining.pop(key, None)
+            self.persist_active_games(
+                next_remaining,
+                source_commit=source_commit,
+            )
+            remaining = next_remaining
+            recovered.append(game_id)
+            self.append_connection_event(
+                "TERMINAL_ACTIVE_GAME_RECOVERED",
+                game_id=game_id,
+                table_id=key[0],
+                game_sequence=key[1],
+                source_commit=source_commit,
+            )
+
+        return remaining, recovered
+
     @staticmethod
     def _file_size(path: Path) -> int:
         return path.stat().st_size if path.exists() else 0
@@ -1155,6 +1323,10 @@ class ExternalGateWorker:
 
     def _restore_active_game_authority(self) -> None:
         restored = self.evidence.restore_active_games(source_commit=self.source_commit)
+        restored, _ = self.evidence.reconcile_terminal_active_games(
+            restored,
+            source_commit=self.source_commit,
+        )
         self.assignment_by_game = restored
         if not restored:
             return

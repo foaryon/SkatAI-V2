@@ -664,3 +664,167 @@ def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch
     assert worker.desired_stack is None
     assert worker.table_id == "T"
     assert worker._event_is_admitted(parse_service_line("destroy T SkatAI"))
+
+def _terminal_recovery_fixture(tmp_path):
+    import json
+    from dataclasses import asdict
+
+    from skatai.evaluation.iss_ledger import ISSGateLedgerRecord, sha256_file
+    from skatai.iss.gate_worker import ActiveGame, GateEvidence, GatePaths, GameAssignment
+
+    paths = GatePaths(
+        repo_root=tmp_path,
+        runtime_root=tmp_path / "runtime",
+        skatzero_root=tmp_path / "b0",
+        skatzero_python=tmp_path / "python",
+        b1_model=tmp_path / "b1.pt",
+    )
+    identities = {
+        "B0": {"deployment_identity_sha256": "a" * 64, "release_id": "B0-test"},
+        "B1": {"deployment_identity_sha256": "b" * 64, "release_id": "B1-test"},
+    }
+    source_commit = "abc1234"
+    ev = GateEvidence(paths=paths, identities=identities, source_commit=source_commit)
+    assignment = GameAssignment("B0", "kermit+zoot", 2, 300, True)
+    active = ActiveGame(assignment, protocol_offset=11, effect_offset=22)
+    table_id, game_sequence = "T-terminal", 9
+    game_id = "f" * 64
+
+    sgf = ev.games_dir / f"{game_id}.sgf"
+    service = ev.games_dir / f"{game_id}.service.jsonl"
+    effects = ev.games_dir / f"{game_id}.effects.jsonl"
+    evidence_path = ev.games_dir / f"{game_id}.evidence.json"
+    sgf.write_text("(;GM[Skat])", encoding="utf-8")
+    service.write_text('{"direction":"in"}\n', encoding="utf-8")
+    effects.write_text('{"event":"CONFIRMED"}\n', encoding="utf-8")
+    evidence = {
+        "schema": "skatai.v2.external-iss-game-evidence.v1",
+        "game_id": game_id,
+        "table_id": table_id,
+        "server_game_num": game_sequence,
+        "source_commit": source_commit,
+        "assignment": asdict(assignment),
+        "actual_stack": assignment.stack,
+        "deployment_identity_sha256": "a" * 64,
+        "release_id": "B0-test",
+        "status": "SCORED",
+        "failure_reason": None,
+        "result": {
+            "game_id": game_id,
+            "seat": 2,
+            "score": 0.0,
+            "raw_sgf_sha256": sha256_file(sgf),
+        },
+        "artifacts": {
+            "terminal_sgf": {"sha256": sha256_file(sgf), "bytes": sgf.stat().st_size},
+            "service_slice": {"sha256": sha256_file(service), "bytes": service.stat().st_size},
+            "effect_slice": {"sha256": sha256_file(effects), "bytes": effects.stat().st_size},
+        },
+        "effects": [{"effect_id": "e1", "status": "CONFIRMED"}],
+    }
+    evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    rec = ISSGateLedgerRecord.create(
+        game_id=game_id,
+        arm="B0",
+        opponent="kermit+zoot",
+        seat=2,
+        status="SCORED",
+        score=0.0,
+        model_sha256="a" * 64,
+        source_commit=source_commit,
+        raw_sgf_sha256=sha256_file(sgf),
+        journal_sha256=sha256_file(evidence_path),
+    )
+    ev.ledger.append(rec)
+    return ev, {(table_id, game_sequence): active}, game_id, evidence_path
+
+
+def test_terminal_active_recovery_mirrors_before_clearing_authority(tmp_path):
+    ev, active, game_id, _ = _terminal_recovery_fixture(tmp_path)
+    calls = []
+    ev.mirror_game = lambda gid: calls.append(("mirror", gid)) or {"game_id": gid}
+    ev.persist_active_games = (
+        lambda games, *, source_commit:
+        calls.append(("persist", dict(games), source_commit)) or {"ok": True}
+    )
+
+    remaining, recovered = ev.reconcile_terminal_active_games(
+        active, source_commit="abc1234"
+    )
+
+    assert remaining == {}
+    assert recovered == [game_id]
+    assert calls[0] == ("mirror", game_id)
+    assert calls[1][0] == "persist"
+    assert calls[1][1] == {}
+
+
+def test_terminal_active_recovery_keeps_authority_if_mirror_fails(tmp_path):
+    import pytest
+
+    ev, active, _, _ = _terminal_recovery_fixture(tmp_path)
+    persisted = []
+    def fail_mirror(game_id):
+        raise RuntimeError("mirror interrupted")
+    ev.mirror_game = fail_mirror
+    ev.persist_active_games = lambda *args, **kwargs: persisted.append(True)
+
+    with pytest.raises(RuntimeError, match="mirror interrupted"):
+        ev.reconcile_terminal_active_games(active, source_commit="abc1234")
+
+    assert persisted == []
+    assert active
+
+
+def test_terminal_active_recovery_fails_closed_on_nonterminal_evidence(tmp_path):
+    import json
+    import pytest
+
+    ev, active, _, evidence_path = _terminal_recovery_fixture(tmp_path)
+    payload = json.loads(evidence_path.read_text())
+    payload["effects"][0]["status"] = "SEND_RETURNED"
+    evidence_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    # Update the ledger's journal hash would require rewriting immutable ledger
+    # evidence, so the recovery must reject this altered terminal package.
+    ev.mirror_game = lambda game_id: (_ for _ in ()).throw(
+        AssertionError("must not mirror invalid evidence")
+    )
+
+    with pytest.raises(Exception):
+        ev.reconcile_terminal_active_games(active, source_commit="abc1234")
+
+def test_terminal_active_recovery_preserves_midgame_authority_without_terminal_evidence(tmp_path):
+    from skatai.iss.gate_worker import ActiveGame, GateEvidence, GatePaths, GameAssignment
+
+    paths = GatePaths(
+        repo_root=tmp_path,
+        runtime_root=tmp_path / "runtime",
+        skatzero_root=tmp_path / "b0",
+        skatzero_python=tmp_path / "python",
+        b1_model=tmp_path / "b1.pt",
+    )
+    identities = {
+        "B0": {"deployment_identity_sha256": "a" * 64, "release_id": "B0-test"},
+        "B1": {"deployment_identity_sha256": "b" * 64, "release_id": "B1-test"},
+    }
+    ev = GateEvidence(paths=paths, identities=identities, source_commit="abc1234")
+    active = {
+        ("T-midgame", 3): ActiveGame(
+            GameAssignment("B1", "kermit+theCount", 1, 300, True),
+            protocol_offset=10,
+            effect_offset=20,
+        )
+    }
+    ev.mirror_game = lambda game_id: (_ for _ in ()).throw(
+        AssertionError("mid-game authority must not be mirrored")
+    )
+    ev.persist_active_games = lambda *args, **kwargs: (_ for _ in ()).throw(
+        AssertionError("mid-game authority must not be rewritten")
+    )
+
+    remaining, recovered = ev.reconcile_terminal_active_games(
+        active, source_commit="abc1234"
+    )
+
+    assert remaining == active
+    assert recovered == []
