@@ -1,0 +1,92 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-authority-isolation-v1",
+  "captured_at": "2026-09-24T00:42:10Z",
+  "status": "PRIMARY_GATE_REFROZEN_CLEAN_RESTART",
+  "rationale": "R2 exposed cross-epoch ISS table adoption: reconnect table/create replays from an older namespace were admitted into a fresh epoch and assigned the opposite treatment arm. R1/R2 were fully closed as diagnostic/recovery evidence, authoritative S3 current pointers were verified byte-identical, and the gate worker was changed so only epoch-restored active tables or the exact worker-generated fresh private table ID can reach the decision adapter.",
+  "executable_code_commit": "8920bbd75b4c83df033cebc4e1d41613e17412fe",
+  "authority_fix_commit": "3870bc6b6b3281d5e074489913c1ad936c37d76f",
+  "terminal_less_recovery_commit": "8920bbd75b4c83df033cebc4e1d41613e17412fe",
+  "closed_prior_namespaces": [
+    {
+      "epoch": "R1",
+      "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate",
+      "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
+      "final_ledger_sha256": "fe08d169701dd87d2991b5c60530ba6025c788588f2885f3b7ce242430cbc0fc",
+      "records": 9,
+      "scored_records": 5,
+      "protocol_failures": 4,
+      "active_games": 0,
+      "primary_strength_use": false,
+      "disposition": "DIAGNOSTIC_RECOVERY_HISTORY_ONLY"
+    },
+    {
+      "epoch": "R2",
+      "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
+      "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
+      "final_ledger_sha256": "c83e0c3c0397c8cf43b334d7290dac0fcba968ec7367fabfb3b62b7b6d5b90a6",
+      "records": 2,
+      "scored_records": 0,
+      "protocol_failures": 2,
+      "active_games": 0,
+      "primary_strength_use": false,
+      "disposition": "CROSS_EPOCH_AUTHORITY_FAILURE_DIAGNOSTIC_ONLY"
+    }
+  ],
+  "failure_recovery": {
+    "external_action_replay": false,
+    "stranded_active_authorities_closed": 4,
+    "terminal_less_failure_evidence_supported": true,
+    "score_rewrites": false,
+    "ledger_rewrites": false,
+    "all_current_ledger_active_status_pointers_remote_hash_verified": true
+  },
+  "table_authority_boundary": {
+    "foreign_table_events_journaled_but_not_applied": true,
+    "fresh_table_admission": "exact worker-generated private table id only",
+    "reconnect_admission": "only tables already present in this epoch's durable active-game authority",
+    "unsolicited_invitations_accepted": false,
+    "decision_policy_changed": false,
+    "deployment_model_identity_changed": false
+  },
+  "frozen_science": {
+    "b0_release_id": "ISS-GATE-B0-7dd67922902692fd",
+    "b1_release_id": "ISS-GATE-B1-120239116da78bb2",
+    "b0_deployment_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+    "b1_deployment_identity_sha256": "120239116da78bb2e82b632d3470d0c7cf5d62261889e96f1442abeb3514a103",
+    "gate_protocol_sha256": "abe30687b0bacd6be9fc59497572c39dfb5f09a37cda063369b5eac6be2b8738",
+    "decision_rule_sha256": "35369e4a2ff054a5efaf80d658c24dd8321da91f8f909049c458a2d2cfab057e",
+    "campaign_quotas_sha256": "1d043caa3275aa60f22e134fd31c1041bba32a15588cd9889f13ee6a5bb20cb9",
+    "ledger_contract_sha256": "896d77b753b4e92323593b888ac40b93ff5ca3f3171afd5cd83c061f40ec6f3b",
+    "looks_per_arm": [
+      300,
+      1000,
+      3000
+    ],
+    "primary_opponent_stacks": [
+      "kermit+zoot",
+      "kermit+theCount",
+      "zoot+theCount"
+    ],
+    "seats": [
+      0,
+      1,
+      2
+    ]
+  },
+  "verification": {
+    "gate_worker_targeted_tests": "21 passed",
+    "full_tests": "262 passed"
+  },
+  "new_epoch": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r3",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind active-game authority and every evidence bundle to the Git HEAD actually running the epoch"
+  }
+}
