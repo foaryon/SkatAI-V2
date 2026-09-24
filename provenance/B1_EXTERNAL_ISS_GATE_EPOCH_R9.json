@@ -3,8 +3,8 @@
   "epoch_id": "post-split-ouvert-discard-wire-recovery-v1",
   "captured_at": "2026-09-24T05:55:42Z",
   "status": "PRIMARY_GATE_REFROZEN_AFTER_OUVERT_SPLIT_DISCARD_WIRE_FIX",
-  "rationale": "R8 completed 67 scored deployment-valid games, then encountered its first pickup Null Ouvert declaration. The split-discard adapter incorrectly transmitted the two discarded cards plus the ten-card open hand. ISS then appended the open hand to its echo, producing a 22-card action that V2 correctly rejected as UNKNOWN_ACTION. The raw server echo proves the outbound effect was delivered; recovery confirmed that effect without replay, recorded the interrupted game as PROTOCOL_FAILURE, cleared active-game authority, and stopped the stale in-memory worker fail-closed. R9 changes only common ISS wire encoding: split discard transmits exactly two cards and leaves Ouvert reveal expansion to ISS.",
-  "executable_code_commit": "decd6ffa13ef50c055424e326bc22745f7ceb968",
+  "rationale": "R8 completed 67 scored deployment-valid games, then encountered its first pickup Null Ouvert declaration. The split-discard adapter incorrectly transmitted the two discarded cards plus the ten-card open hand. ISS then appended the open hand to its echo, producing a 22-card action that V2 correctly rejected as UNKNOWN_ACTION. Recovery proved delivery without replay, recorded the interrupted game as PROTOCOL_FAILURE, and cleared authority. R9 sends exactly the two discard cards in split mode and correctly reconstructs the canonical 12-card ISS Ouvert echo as two discards plus ten revealed hand cards; the malformed 22-card form remains fail-closed.",
+  "executable_code_commit": "ea448f7",
   "closed_r8": {
     "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
     "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
@@ -64,16 +64,20 @@
     "new_twenty_two_card_protocol_shape_accepted_as_normal": false,
     "gameplay_policy_models_changed": false,
     "scoring_changed": false,
-    "bidding_changed": false
+    "bidding_changed": false,
+    "canonical_gameview_twelve_card_split_ouvert_echo_reconstructed": true
   },
   "verification": {
     "targeted_regressions_after_fix": "12 passed",
-    "full_tests_after_fix": "273 passed",
+    "full_tests_after_fix": "274 passed",
     "diff_check_clean": true,
     "r8_active_games": 0,
     "r8_pending_effects": 0,
     "r8_worker_processes_after_containment": 0,
-    "r8_final_service_and_connection_journals_remote_hash_verified": true
+    "r8_final_service_and_connection_journals_remote_hash_verified": true,
+    "pre_fix_canonical_12_card_echo_repro": "incorrect: 12 discarded cards, 12-card hand retained, open hand empty",
+    "targeted_iss_tests_after_complete_fix": "95 passed",
+    "full_tests_after_complete_fix": "274 passed"
   },
   "science_boundary": {
     "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
@@ -93,6 +97,6 @@
     },
     "reuse_prior_epoch_games": false,
     "training_use_before_gate_decision": false,
-    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R9"
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R9; executable behavior must include ea448f7 or a descendant with identical reviewed ISS behavior"
   }
 }
