@@ -75,6 +75,43 @@ def test_pickup_declaration_and_discard_share_cli_result(monkeypatch):
     assert len(calls) == 1
 
 
+def test_pickup_declaration_falls_back_to_best_ranked_legal_contract(monkeypatch):
+    calls = []
+    def fake(*args, **kwargs):
+        calls.append(1)
+        return [
+            "N -136.0",
+            "C -170.0",
+            "S -170.0",
+            "H -170.0",
+            "D -170.0",
+            "NO -182.0",
+            "G -195.01",
+            "N.DT.DJ",
+        ]
+    monkeypatch.setattr(backend, "_run_cli", fake)
+
+    policy = backend.FrozenB0DeclarationDiscardPolicy(Path("/r"), Path("/p"))
+    d = DeclarationObservation.create(
+        ("CT","S7","HK","S9","C7","HJ","HT","DT","C8","DJ","H8","C9"),
+        seat=1,
+        winning_bid=77,
+        picked_up_skat=True,
+        legal_contracts=["C","S","H","D","G"],
+        max_accepted_bids_by_seat=[72,77,0],
+    )
+
+    assert policy.choose_contract(d) == "C"
+    x = DiscardObservation.create(
+        d.cards,
+        seat=1,
+        winning_bid=77,
+        max_accepted_bids_by_seat=[72,77,0],
+    )
+    assert policy.choose_discard(x) == ("DT","DJ")
+    assert len(calls) == 1
+
+
 def test_downstream_policy_refuses_missing_public_bid_state():
     p = backend.FrozenB0DeclarationDiscardPolicy(Path("/r"), Path("/p"))
     obs = DeclarationObservation.create(

@@ -132,12 +132,12 @@ class FrozenB0DeclarationDiscardPolicy:
         self.python_executable = python_executable
         self.timeout_s = float(timeout_s)
         self._pickup_cache: dict[
-            tuple[tuple[str, ...], int, int, tuple[int, int, int]], str
+            tuple[tuple[str, ...], int, int, tuple[int, int, int]], tuple[str, ...]
         ] = {}
 
-    def _pickup_line(
+    def _pickup_lines(
         self, observation: DeclarationObservation | DiscardObservation
-    ) -> str:
+    ) -> tuple[str, ...]:
         bids = _require_bid_vector(observation.max_accepted_bids_by_seat)
         opp1, opp2 = _relative_opponent_bids(observation.seat, bids)
         cards = (
@@ -162,15 +162,27 @@ class FrozenB0DeclarationDiscardPolicy:
                 ],
                 timeout_s=self.timeout_s,
             )
-            self._pickup_cache[key] = lines[-1]
+            self._pickup_cache[key] = tuple(lines)
         return self._pickup_cache[key]
+
+    def _pickup_line(
+        self, observation: DeclarationObservation | DiscardObservation
+    ) -> str:
+        return self._pickup_lines(observation)[-1]
 
     def choose_contract(self, observation: DeclarationObservation) -> str:
         bids = _require_bid_vector(observation.max_accepted_bids_by_seat)
         opp1, opp2 = _relative_opponent_bids(observation.seat, bids)
         if observation.picked_up_skat:
-            final = self._pickup_line(observation)
+            lines = self._pickup_lines(observation)
+            final = lines[-1]
             contract = final.split(".", 1)[0]
+            if contract not in observation.legal_contracts:
+                for line in lines[:-1]:
+                    ranked = line.split(maxsplit=1)
+                    if len(ranked) == 2 and ranked[0] in observation.legal_contracts:
+                        contract = ranked[0]
+                        break
         else:
             if len(observation.cards) != 10:
                 raise SkatAIInterfaceError("B0_HAND_DECLARATION_REQUIRES_10_CARDS")
