@@ -183,6 +183,50 @@ def test_semantic_echo_accepts_ouvert_augmented_discard_only():
     assert not ISSEffectJournal.wire_actions_equivalent("18", "18.C7")
 
 
+def test_semantic_echo_accepts_live_double_hand_ouvert_discard():
+    expected = "CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7"
+    observed = expected + ".H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT"
+    assert ISSEffectJournal.wire_actions_equivalent(expected, observed)
+    assert not ISSEffectJournal.wire_actions_equivalent(
+        expected,
+        expected + ".H8.H9.HJ.S7.S8.ST.SJ.SK.C7.D7",
+    )
+
+
+def test_reconcile_live_double_hand_ouvert_discard_confirms_pending_effect(tmp_path):
+    from skatai.iss.effects import table_state_hash
+    from skatai.iss.protocol import parse_move_line
+    from types import SimpleNamespace
+
+    req, result = request_result()
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    before = SimpleNamespace(table_id="T", game_sequence=2, moves=[])
+    expected = "CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7"
+    observed = expected + ".H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT"
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash=table_state_hash(before),
+        table_id="T",
+        game_sequence=2,
+        protocol_sequence=0,
+        wire_action=expected,
+        outbound_line="table T SkatAI play " + expected,
+    )
+    journal.mark_send_returned(effect.effect_id)
+
+    after = SimpleNamespace(
+        table_id="T",
+        game_sequence=2,
+        moves=[parse_move_line("0 " + observed)],
+    )
+    outcomes = journal.reconcile_table(after)
+    assert outcomes[0]["outcome"] == "CONFIRMED"
+    assert outcomes[0]["observed_action"] == observed
+    assert outcomes[0]["status"] == "CONFIRMED"
+    assert journal.pending() == []
+
+
 def test_protocol_state_hash_ignores_connection_flags():
     from types import SimpleNamespace
     from skatai.iss.effects import table_state_hash

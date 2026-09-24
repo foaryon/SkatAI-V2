@@ -236,6 +236,31 @@ def test_split_ouvert_discard_keeps_open_hand_cards():
     assert m.payload[2:] == tuple(hand)
 
 
+def test_live_split_ouvert_discard_double_hand_echo_is_normalized():
+    action = (
+        "CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7."
+        "H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT"
+    )
+    m = parse_move_line("0 " + action)
+    assert m.kind == "discard_only"
+    assert m.payload == (
+        "CQ", "CA", "S8", "CT", "SK", "H8",
+        "H9", "HJ", "SJ", "C7", "ST", "S7",
+    )
+
+
+def test_live_split_ouvert_discard_double_hand_echo_fails_closed_on_mismatch():
+    import pytest
+    from skatai.iss.protocol import ISSProtocolError
+
+    action = (
+        "CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7."
+        "H8.H9.HJ.S7.S8.ST.SJ.SK.C7.D7"
+    )
+    with pytest.raises(ISSProtocolError, match="UNKNOWN_ACTION"):
+        parse_move_line("0 " + action)
+
+
 def test_weird_official_hidden_split_discard_is_normalized_private():
     hand = ["C7","C8","C9","CT","CJ","CQ","CK","CA","S7","S8"]
     m = parse_move_line("2 H7.??.??." + ".".join(hand))
