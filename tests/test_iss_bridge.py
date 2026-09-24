@@ -126,3 +126,21 @@ def test_decision_provider_emits_stable_request_result_and_wire_action():
     assert d1.wire_action == "20"
     assert d1.request.source == "ISS"
     assert d1.request.source_context["table_id"] == "T"
+
+
+def test_single_defender_resign_does_not_end_bridge_cardplay():
+    from skatai.iss.bridge import _post_auction_context
+    from skatai.iss.protocol import parse_move_line
+
+    moves = [
+        parse_move_line("0 C"),
+        parse_move_line("0 C7"),
+        parse_move_line("1 RE"),
+        parse_move_line("2 S7"),
+    ]
+    ctx = _post_auction_context(moves)
+    assert ctx.terminal is False
+    assert ctx.cardplays == ((0, "C7"), (2, "S7"))
+
+    both_defenders = _post_auction_context(moves + [parse_move_line("2 RE")])
+    assert both_defenders.terminal is True

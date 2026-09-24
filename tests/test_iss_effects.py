@@ -329,3 +329,43 @@ def test_effect_state_binds_decision_phase_release_and_latency(tmp_path):
     assert effect.release_id == "R1"
     assert effect.decision_type == "BID"
     assert effect.latency_ms >= 0.0
+
+
+def test_reconcile_skips_out_of_order_resign_before_own_echo(tmp_path):
+    from skatai.iss.protocol import parse_move_line
+    from skatai.iss.effects import table_state_hash
+    from types import SimpleNamespace
+
+    req, result = request_result()
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    before = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[parse_move_line("0 C7"), parse_move_line("1 C8")],
+    )
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash=table_state_hash(before),
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=2,
+        wire_action="DQ",
+        outbound_line="table T SkatAI play DQ",
+    )
+    journal.mark_send_returned(effect.effect_id)
+
+    after = SimpleNamespace(
+        table_id="T",
+        game_sequence=1,
+        moves=[
+            parse_move_line("0 C7"),
+            parse_move_line("1 C8"),
+            parse_move_line("1 RE"),
+            parse_move_line("2 DQ"),
+        ],
+    )
+    outcomes = journal.reconcile_table(after)
+    assert outcomes[0]["outcome"] == "CONFIRMED"
+    assert outcomes[0]["observed_action"] == "DQ"
+    assert journal.pending() == []

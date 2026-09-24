@@ -367,7 +367,25 @@ class ISSEffectJournal:
         for state in self.pending_for_game(table.table_id, table.game_sequence):
             seq = state.protocol_sequence
             if len(moves) > seq:
-                observed = str(moves[seq].action)
+                observed_move = next(
+                    (
+                        move
+                        for move in moves[seq:]
+                        if move.kind not in {"resign", "leave"}
+                    ),
+                    None,
+                )
+                if observed_move is None:
+                    outcomes.append(
+                        {
+                            "effect_id": state.effect_id,
+                            "outcome": "PENDING_OUT_OF_ORDER_ONLY",
+                            "status": state.status,
+                        }
+                    )
+                    continue
+
+                observed = str(observed_move.action)
                 if self.wire_actions_equivalent(state.wire_action, observed):
                     final = self.confirm(
                         state.effect_id,

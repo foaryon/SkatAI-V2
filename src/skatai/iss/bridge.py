@@ -114,6 +114,7 @@ def _post_auction_context(moves: Sequence[WireMove]) -> PostAuctionContext:
     declaration: WireMove | None = None
     discard_only: WireMove | None = None
     cardplays: list[tuple[int, str]] = []
+    resigned_players: set[int] = set()
     terminal = False
 
     for move in moves:
@@ -136,8 +137,20 @@ def _post_auction_context(moves: Sequence[WireMove]) -> PostAuctionContext:
             if move.actor not in PLAYER_ACTORS:
                 raise ISSBridgeError("NONPLAYER_CARDPLAY")
             cardplays.append((int(move.actor), str(move.payload)))
-        elif move.kind in {"resign", "timeout", "leave"}:
+        elif move.kind == "resign":
+            if move.actor not in PLAYER_ACTORS:
+                raise ISSBridgeError("NONPLAYER_RESIGN")
+            resigned_players.add(int(move.actor))
+        elif move.kind in {"timeout", "leave"}:
             terminal = True
+
+    if declaration is not None:
+        declarer = int(declaration.actor)
+        terminal = (
+            terminal
+            or declarer in resigned_players
+            or len(resigned_players - {declarer}) >= 2
+        )
 
     return PostAuctionContext(
         picked_up_skat=picked_up,
