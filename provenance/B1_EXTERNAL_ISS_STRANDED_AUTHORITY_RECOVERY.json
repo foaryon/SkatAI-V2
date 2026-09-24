@@ -1,0 +1,78 @@
+{
+  "captured_at": "2026-09-24T00:43:22Z",
+  "closed_namespaces": [
+    {
+      "active_games_after": 0,
+      "active_games_sha256": "eac74ea5db53aef990e933f01d927cb471ce9df64b2b7e1e56dc831b20dbfa32",
+      "final_ledger_sha256": "fe08d169701dd87d2991b5c60530ba6025c788588f2885f3b7ce242430cbc0fc",
+      "name": "R1",
+      "recovery_records": [
+        {
+          "arm": "B1",
+          "failure_reason": "RECOVERY_NO_TERMINAL_WITH_UNRESOLVED_EXTERNAL_EFFECT_AFTER_WORKER_STOP",
+          "game_id": "03019dd28f920c04a025722fe2340b3f963b857c515a2486684286052422dee2",
+          "game_sequence": 1,
+          "status": "PROTOCOL_FAILURE",
+          "table_id": "AI9164f7",
+          "terminal_sgf_present": false
+        },
+        {
+          "arm": "B1",
+          "failure_reason": "RECOVERY_NO_TERMINAL_WITH_STALE_EXTERNAL_EFFECT_AFTER_WORKER_STOP",
+          "game_id": "1c50fc4f5bda5554fd3d8c0fc812f39db69f683b99f468852ac342d1402421c4",
+          "game_sequence": 4,
+          "status": "PROTOCOL_FAILURE",
+          "table_id": "AIa6360c",
+          "terminal_sgf_present": false
+        }
+      ],
+      "remote_current_hashes_match": true,
+      "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate",
+      "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
+      "status_sha256": "4ea1d5efbdfe4a8f04596b19962a28d561a03f28bf846dd0f90d9bc5157d42d1"
+    },
+    {
+      "active_games_after": 0,
+      "active_games_sha256": "ae6aeceae4f4a479b17c6a10611a323021fc478ffb4c921dc37e9485b4f8f954",
+      "final_ledger_sha256": "c83e0c3c0397c8cf43b334d7290dac0fcba968ec7367fabfb3b62b7b6d5b90a6",
+      "name": "R2",
+      "recovery_records": [
+        {
+          "arm": "B0",
+          "failure_reason": "CROSS_EPOCH_TABLE_AUTHORITY_CONFLICT_WITH_R1_UNRESOLVED_EXTERNAL_EFFECT",
+          "game_id": "b5e40ad5750b6ab1add50d63e3a3e1ff36a4d910aff4e06f03f9fea89ce1b505",
+          "game_sequence": 1,
+          "status": "PROTOCOL_FAILURE",
+          "table_id": "AI9164f7",
+          "terminal_sgf_present": false
+        },
+        {
+          "arm": "B0",
+          "failure_reason": "CROSS_EPOCH_TABLE_AUTHORITY_CONFLICT_WITH_R1",
+          "game_id": "5cc5ddd1457aded028bdd2ebf43615fc8f47b7430fa7273d02c8b17a06be7a18",
+          "game_sequence": 4,
+          "status": "PROTOCOL_FAILURE",
+          "table_id": "AIa6360c",
+          "terminal_sgf_present": false
+        }
+      ],
+      "remote_current_hashes_match": true,
+      "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
+      "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
+      "status_sha256": "c951acf5534fe2e704430785a28efba63f49e9617cb11ac0c4cd3a3c37526424"
+    }
+  ],
+  "external_action_replay": false,
+  "fixes": {
+    "authority_isolation_commit": "3870bc6b6b3281d5e074489913c1ad936c37d76f",
+    "terminal_less_recovery_commit": "8920bbd75b4c83df033cebc4e1d41613e17412fe"
+  },
+  "primary_strength_disposition": {
+    "R1": "EXCLUDED_DIAGNOSTIC_RECOVERY_HISTORY",
+    "R2": "EXCLUDED_CROSS_EPOCH_AUTHORITY_FAILURE",
+    "R3": "NEW_CLEAN_PRIMARY_EPOCH"
+  },
+  "schema": "skatai.v2.external-iss-stranded-authority-recovery.v1",
+  "status": "COMPLETE",
+  "worker_running_during_recovery": false
+}

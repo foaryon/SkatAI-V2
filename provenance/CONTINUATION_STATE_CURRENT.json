@@ -29,18 +29,18 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-24T00:13:11Z",
+  "captured_at": "2026-09-24T00:43:22Z",
   "external_blockers": [
     {
       "action": "Create brand-new V2 GitHub repository and attach/push this clean history without V1 ancestry.",
       "id": "github-v2-repository-creation"
     }
   ],
-  "first_unfinished_dependency_for_b1_strength": "clean post-erratum deployment-valid ISS external gate epoch R2 execution",
+  "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R3 execution",
   "git": {
     "branch": "main",
-    "campaign_epoch_commit": "d09d9a22c415388acb1626bb82374f6839c8beae",
-    "code_head": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
+    "campaign_epoch_commit": "4179067555802fbb373de07d35c7a54b5cb98052",
+    "code_head": "8920bbd75b4c83df033cebc4e1d41613e17412fe",
     "new_v2_github_repository_attached": false,
     "remote_present": false,
     "workspace": "/workspace/skatai-v2"
@@ -48,16 +48,16 @@
   "iss": {
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
-    "adapter_status": "R2_GATE_READY_POST_TERMINAL_SGF_ERRATUM",
+    "adapter_status": "R3_GATE_READY_POST_AUTHORITY_ISOLATION",
     "all_phase_single_adapter": true,
     "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
-    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R2.json",
+    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R3.json",
     "frozen_external_gate_ready": true,
     "frozen_external_gate_ready_except_credentials": false,
-    "gate_epoch": "post-sgf-normalization-v1",
-    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
-    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
+    "gate_epoch": "post-authority-isolation-v1",
+    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r3",
+    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3",
     "hetzner_per_game_evidence_mirror": true,
     "host": "skatgame.net",
     "latest_live_protocol_failure": {
@@ -70,18 +70,24 @@
     "pre_erratum_segment_primary_strength_use": false,
     "pre_erratum_segment_records": 3,
     "primary_epoch_scored_live_games": 0,
+    "r1_primary_strength_use": false,
+    "r2_primary_strength_use": false,
     "scored_live_games": 0,
     "secret_present_on_worker": true,
     "secret_source": "RunPod General Secret -> ISS_PASSWORD in process memory",
     "stable_decision_boundary": true,
+    "stranded_authority_recovery": "provenance/B1_EXTERNAL_ISS_STRANDED_AUTHORITY_RECOVERY.json",
+    "table_authority_isolation": true,
+    "terminal_less_failure_recovery": true,
     "worker_transport_reconnect": true
   },
   "next_safe_actions": [
-    "Start the clean post-erratum R2 external ISS gate epoch with runtime and S3 namespaces isolated from the pre-erratum segment.",
-    "Preserve and mirror every deployment-valid R2 game before advancing the campaign.",
-    "Do not mutate Git while an active R2 ISS game is bound to the current source commit.",
-    "Continue independent non-contaminating Skat research only outside the active gate source tree.",
-    "When practical, make RunPod template/container startup invoke the persistent neutral SentinelX supervisor automatically and fault-test recreation."
+    "Launch the clean isolated R3 external ISS gate epoch from a clean Git tree and dedicated R3 runtime/S3 namespace.",
+    "Do not reuse R1/R2 scored records in the R3 primary strength estimator.",
+    "Preserve and mirror every R3 deployment-valid game before advancing the campaign.",
+    "Do not mutate Git while an R3 active game is bound to the running source commit.",
+    "Continue independent non-contaminating Skat research outside the active gate source tree where safe.",
+    "When practical, make the RunPod CPU template invoke the persistent neutral SentinelX supervisor automatically and fault-test recreation."
   ],
   "schema": "skatai.v2.continuation-state.v1",
   "science": {
@@ -142,6 +148,6 @@
   "tests": {
     "environment": "/tmp/skatai-v2-dev",
     "pytest_failed": 0,
-    "pytest_passed": 258
+    "pytest_passed": 262
   }
 }

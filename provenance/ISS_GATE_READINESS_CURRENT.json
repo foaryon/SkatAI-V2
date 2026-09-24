@@ -5,25 +5,26 @@
     "scored_game": false,
     "status": "AUTHENTICATED"
   },
-  "campaign_epoch_commit": "d09d9a22c415388acb1626bb82374f6839c8beae",
-  "captured_at": "2026-09-24T00:13:11Z",
-  "code_head": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
+  "campaign_epoch_commit": "4179067555802fbb373de07d35c7a54b5cb98052",
+  "captured_at": "2026-09-24T00:43:22Z",
+  "code_head": "8920bbd75b4c83df033cebc4e1d41613e17412fe",
   "deployment_identity_arms": [
     "B0",
     "B1"
   ],
-  "gate_epoch": "post-sgf-normalization-v1",
+  "gate_epoch": "post-authority-isolation-v1",
   "interpretation": {
+    "cross_epoch_table_authority_isolation_applied": true,
     "only_reported_readiness_blocker": null,
-    "pre_erratum_segment_reused_for_strength": false,
     "primary_epoch_scored_games": 0,
+    "prior_epochs_reused_for_strength": false,
     "ready_for_authenticated_live_gate": true,
     "terminal_sgf_parser_erratum_applied": true
   },
   "live_network_action_performed": true,
   "object_storage": {
     "ok": true,
-    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
+    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3",
     "returncode": 0
   },
   "readiness": {
@@ -93,7 +94,7 @@
     "ready": true,
     "schema": "skatai.v2.external-iss-readiness.v1"
   },
-  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
-  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
+  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r3",
+  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3",
   "schema": "skatai.v2.external-iss-readiness-snapshot.v1"
 }

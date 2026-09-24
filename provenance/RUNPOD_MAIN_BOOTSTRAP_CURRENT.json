@@ -12,9 +12,9 @@
     "source_secret_value_logged": false,
     "source_secret_value_persisted": false
   },
-  "campaign_epoch_commit": "d09d9a22c415388acb1626bb82374f6839c8beae",
-  "captured_at": "2026-09-24T00:13:11Z",
-  "code_head": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
+  "campaign_epoch_commit": "4179067555802fbb373de07d35c7a54b5cb98052",
+  "captured_at": "2026-09-24T00:43:22Z",
+  "code_head": "8920bbd75b4c83df033cebc4e1d41613e17412fe",
   "container_recreation": {
     "automatic_invocation_present": false,
     "latest_recreation_required_manual_recovery": true,
@@ -32,7 +32,7 @@
   },
   "runtime": {
     "authenticated_non_scoring_preflight": "PASS",
-    "full_test_suite_passed": 258,
+    "full_test_suite_passed": 262,
     "iss_client_id_present": true,
     "iss_host_present": true,
     "iss_password_present": true,
