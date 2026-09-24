@@ -105,7 +105,7 @@ def test_client_dispatches_one_idempotent_bidding_action_for_same_state():
 
 def test_decision_provider_emits_stable_request_result_and_wire_action():
     from skatai.iss.bridge import ISSBiddingDecisionProvider
-    from test_product_interface import _ai
+    from tests.test_product_interface import _ai
 
     t = _table()
     for line in [

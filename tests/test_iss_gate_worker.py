@@ -534,7 +534,7 @@ def test_active_table_error_is_persisted_as_protocol_failure_and_stops_worker(tm
         GameAssignment,
         ISSGateWorkerError,
     )
-    from test_iss_effects import request_result
+    from tests.test_iss_effects import request_result
 
     calls = []
     sent = []

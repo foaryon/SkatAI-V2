@@ -11,7 +11,7 @@ from skatai.runtime.interface import (
     DiscardObservation,
     SkatAIInterfaceError,
 )
-from test_product_interface import HAND10, HAND12, _ai
+from tests.test_product_interface import HAND10, HAND12, _ai
 
 
 def test_request_identity_is_stable_and_state_bound():

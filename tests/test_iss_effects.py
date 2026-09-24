@@ -9,7 +9,7 @@ from skatai.iss.effects import (
 )
 from skatai.runtime.decision import DecisionRequest, DecisionType, decide
 from skatai.runtime.interface import BiddingObservation
-from test_product_interface import HAND10, _ai
+from tests.test_product_interface import HAND10, _ai
 
 
 def request_result():

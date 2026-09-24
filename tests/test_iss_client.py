@@ -132,7 +132,7 @@ def test_client_from_environment_rejects_open_password_file(monkeypatch, tmp_pat
 def test_decision_aware_client_persists_intent_before_send_and_confirms_on_echo(tmp_path):
     from skatai.iss.bridge import ISSBiddingDecisionProvider
     from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
-    from test_product_interface import _ai
+    from tests.test_product_interface import _ai
 
     deal = (
         "??.??.??.??.??.??.??.??.??.??|"
@@ -173,7 +173,7 @@ def test_decision_aware_client_persists_intent_before_send_and_confirms_on_echo(
 def test_decision_aware_restart_does_not_replay_unresolved_effect(tmp_path):
     from skatai.iss.bridge import ISSBiddingDecisionProvider
     from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
-    from test_product_interface import _ai
+    from tests.test_product_interface import _ai
 
     deal = (
         "??.??.??.??.??.??.??.??.??.??|"
@@ -280,7 +280,7 @@ def test_client_does_not_redecide_while_game_effect_is_pending(tmp_path):
     from types import SimpleNamespace
 
     from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
-    from test_iss_effects import request_result
+    from tests.test_iss_effects import request_result
 
     class MustNotRunProvider:
         def next_decision(self, table):
