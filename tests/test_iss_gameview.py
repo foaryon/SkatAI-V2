@@ -74,3 +74,27 @@ def test_cardplay_replay_computes_legal_cards_and_public_points():
     assert set(s.legal_cards).issubset(set(s.hand))
     assert s.declarer_visible_points == 0
     assert s.defender_points == 0
+
+
+
+def test_pickup_null_ouvert_duplicate_echo_reconstructs_discards_and_open_hand():
+    deal_mh = (
+        "w ??.??.??.??.??.??.??.??.??.??|"
+        "S8.CT.SK.CQ.CA.H8.H9.HJ.SJ.C7|"
+        "??.??.??.??.??.??.??.??.??.??|??.??"
+    )
+    s = replay_player_view(moves(
+        deal_mh,
+        "1 18", "0 p", "2 p", "1 s",
+        "w ST.S7",
+        "1 NO",
+        (
+            "1 CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7."
+            "H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT"
+        ),
+    ))
+    assert s.phase == ISSPhase.CARDPLAY
+    assert s.contract == "NO"
+    assert s.discarded_cards == ("CQ", "CA")
+    assert set(s.hand) == {"S8", "CT", "SK", "H8", "H9", "HJ", "SJ", "C7", "ST", "S7"}
+    assert set(s.open_hand_cards) == set(s.hand)

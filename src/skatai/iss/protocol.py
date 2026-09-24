@@ -213,6 +213,23 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
     ):
         return "discard_only", tuple(parts)
 
+    # Live ISS can echo a pickup-ouvert split discard as the 12-card
+    # client payload (two discards + ten open-hand cards) followed by the
+    # same ten open-hand cards again in server order. Accept only that exact
+    # duplicated-hand shape and normalize it back to the canonical 12-card
+    # discard-only payload.
+    if (
+        actor != WORLD_ACTOR
+        and len(parts) == 22
+        and all(is_card(x, allow_unknown=True) for x in parts[:2])
+        and all(is_card(x) for x in parts[2:])
+    ):
+        sent_open = tuple(parts[2:12])
+        echoed_open = tuple(parts[12:])
+        if sorted(sent_open) != sorted(echoed_open):
+            raise ISSProtocolError("OUVERT_ECHO_HAND_MISMATCH")
+        return "discard_only", tuple((*parts[:2], *echoed_open))
+
     # Official 2019 defender-view code can render a split hidden discard as
     # "<card>.??.??" and append ten ouvert cards. Normalize away the leaked
     # first token: V2 must not treat it as legitimate private information.

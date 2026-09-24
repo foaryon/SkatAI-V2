@@ -242,3 +242,26 @@ def test_weird_official_hidden_split_discard_is_normalized_private():
     assert m.kind == "discard_only"
     assert m.payload[:2] == ("??", "??")
     assert m.payload[2:] == tuple(hand)
+
+
+
+def test_live_pickup_ouvert_duplicate_hand_echo_normalizes():
+    action = (
+        "0 CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7."
+        "H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT"
+    )
+    move = parse_move_line(action)
+    assert move.kind == "discard_only"
+    assert move.payload[:2] == ("CQ", "CA")
+    assert move.payload[2:] == (
+        "H8", "H9", "HJ", "S7", "S8", "ST", "SJ", "SK", "C7", "CT"
+    )
+
+
+def test_live_pickup_ouvert_duplicate_hand_echo_rejects_mismatch():
+    action = (
+        "0 CQ.CA.S8.CT.SK.H8.H9.HJ.SJ.C7.ST.S7."
+        "H8.H9.HJ.S7.S8.ST.SJ.SK.C7.C8"
+    )
+    with pytest.raises(ISSProtocolError, match="OUVERT_ECHO_HAND_MISMATCH"):
+        parse_move_line(action)
