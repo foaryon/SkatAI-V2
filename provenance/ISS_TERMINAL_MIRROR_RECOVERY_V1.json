@@ -1,0 +1,57 @@
+{
+  "schema": "skatai.v2.iss-terminal-mirror-recovery.v1",
+  "captured_at": "2026-09-24T13:42:30Z",
+  "status": "VERIFIED_FUTURE_RECOVERY_FIX_NOT_HOT_SWITCHED_INTO_RUNNING_R9",
+  "demonstrated_failure": {
+    "runtime_epoch": "R9",
+    "source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+    "game_id": "503cbd6026c9895eae026de8ef3f709198e5662f9565c8d2b5890766c562997d",
+    "table_id": "AI66d72e",
+    "game_sequence": 5,
+    "mechanism": "worker interruption after terminal local evidence/ledger append and during Hetzner mirror, before active-game authority clear",
+    "external_action_replayed_during_manual_recovery": false
+  },
+  "fix": {
+    "implementation_commit": "e5843701244da06ae4eb9f4697701855ad10c2fc",
+    "branch": "fix/r9-terminal-mirror-recovery-v1",
+    "behavior": [
+      "scan only active authorities for an exact local terminal evidence package",
+      "require exact source commit, assignment, deployment identity, SCORED status, artifact hashes, matching immutable ledger row, and terminal CONFIRMED effects",
+      "leave mid-game authorities untouched when no terminal evidence exists",
+      "fail closed on matching but incomplete or conflicting terminal evidence",
+      "hash-verified mirror must complete before active authority is cleared",
+      "persist remaining authority only after mirror success",
+      "emit a terminal-active-game recovery event after durable authority update"
+    ],
+    "scientific_treatment_changed": false,
+    "bidding_changed": false,
+    "cardplay_policy_changed": false,
+    "scoring_changed": false
+  },
+  "verification": {
+    "fail_first_observed": "2 tests failed with missing reconcile_terminal_active_games before implementation",
+    "targeted_terminal_recovery_tests": "4 passed",
+    "targeted_iss_tests": "99 passed",
+    "full_tests": "278 passed",
+    "full_test_environment": {
+      "python": "3.11",
+      "pytest": "9.1.1",
+      "pyarrow": "18.1.0",
+      "numpy": "1.26.4",
+      "torch": "2.1.2+cpu",
+      "environment": "/tmp/skatai-v2-test-venv"
+    },
+    "real_game5_read_only_predicate_test": "PASS",
+    "real_game5_expected_order": [
+      "mirror game evidence",
+      "persist zero remaining active authorities",
+      "append TERMINAL_ACTIVE_GAME_RECOVERED event"
+    ]
+  },
+  "integration_boundary": {
+    "current_live_r9_worker_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+    "hot_switch_running_r9": false,
+    "rationale": "Do not alter source identity of an in-progress frozen external strength epoch. The existing recovery watch continues to reconcile c77b401 interruptions before any pinned relaunch.",
+    "future_use": "integrate as authoritative main/future epoch recovery behavior after source reconciliation; retain current R9 scientific source identity"
+  }
+}
