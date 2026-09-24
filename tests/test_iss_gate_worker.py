@@ -264,6 +264,14 @@ def test_run_retries_recoverable_transport_failure_then_resumes(monkeypatch, tmp
     w.evidence = Evidence()
     w._transport_failure_streak = 0
     w._restore_active_game_authority = lambda: None
+    w.mirror_writebehind = type(
+        "MirrorWriteBehindStub",
+        (),
+        {
+            "start": lambda self: None,
+            "stop": lambda self, *, flush: None,
+        },
+    )()
 
     calls = []
     def connected_session(*, client_policy):
@@ -311,6 +319,14 @@ def test_run_does_not_retry_authentication_protocol_failure(monkeypatch, tmp_pat
     w.evidence = Evidence()
     w._transport_failure_streak = 0
     w._restore_active_game_authority = lambda: None
+    w.mirror_writebehind = type(
+        "MirrorWriteBehindStub",
+        (),
+        {
+            "start": lambda self: None,
+            "stop": lambda self, *, flush: None,
+        },
+    )()
     w._run_connected_session = lambda **kwargs: (_ for _ in ()).throw(
         ISSTransportError("LOGIN_EXPECTED_WELCOME")
     )
@@ -482,7 +498,6 @@ def test_terminal_less_failure_mirror_does_not_require_sgf(tmp_path):
 
 def test_upload_verified_uses_immutable_snapshot_for_mutable_source(tmp_path, monkeypatch):
     import hashlib
-    import io
     import subprocess
     from pathlib import Path
 
@@ -498,19 +513,14 @@ def test_upload_verified_uses_immutable_snapshot_for_mutable_source(tmp_path, mo
             copied["path"] = Path(args[2])
             copied["bytes"] = copied["path"].read_bytes()
             source.write_bytes(original + b'{"n":2}\n')
-            return subprocess.CompletedProcess(args, 0)
+            return subprocess.CompletedProcess(args, 0, stdout=b"", stderr=b"")
+        if args[0:2] == ["rclone", "cat"]:
+            return subprocess.CompletedProcess(
+                args, 0, stdout=copied["bytes"], stderr=b""
+            )
         raise AssertionError(args)
 
-    class FakePopen:
-        def __init__(self, args, **kwargs):
-            assert args[0:2] == ["rclone", "cat"]
-            self.stdout = io.BytesIO(copied["bytes"])
-
-        def wait(self):
-            return 0
-
     monkeypatch.setattr(worker.subprocess, "run", fake_run)
-    monkeypatch.setattr(worker.subprocess, "Popen", FakePopen)
 
     mirror = worker.HetznerEvidenceMirror(local_root=tmp_path)
     result = mirror.upload_verified(source, "current/service.jsonl")
@@ -610,13 +620,14 @@ def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch
     from skatai.iss.service import parse_service_line
 
     sent = []
+    queued = []
 
     class Evidence:
         def append_game(self, **kwargs):
             return {"result": {"game_id": "g"}}
 
-        def mirror_game(self, game_id):
-            assert game_id == "g"
+        def enqueue_mirror_game(self, game_id):
+            queued.append(game_id)
 
         def scored_rows(self):
             return []
@@ -642,6 +653,7 @@ def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch
     worker._table_password = "ephemeral"
     worker._transport_failure_streak = 0
     worker._persist_active_game_authority = lambda: None
+    worker.mirror_writebehind = SimpleNamespace(enforce_backpressure=lambda: None)
     worker.campaign_status = lambda: {
         "next_per_arm_target": 300,
         "next_stack": "kermit+theCount",
@@ -660,6 +672,7 @@ def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch
     )
 
     assert worker._on_end(SimpleNamespace(), table) is True
+    assert queued == ["g"]
     assert sent == ["table T SkatAI leave"]
     assert worker.desired_stack is None
     assert worker.table_id == "T"
@@ -742,11 +755,15 @@ def _terminal_recovery_fixture(tmp_path):
 def test_terminal_active_recovery_mirrors_before_clearing_authority(tmp_path):
     ev, active, game_id, _ = _terminal_recovery_fixture(tmp_path)
     calls = []
-    ev.mirror_game = lambda gid: calls.append(("mirror", gid)) or {"game_id": gid}
+    ev.mirror_game = (
+        lambda gid, **kwargs:
+        calls.append(("mirror", gid, kwargs)) or {"game_id": gid}
+    )
     ev.persist_active_games = (
         lambda games, *, source_commit:
         calls.append(("persist", dict(games), source_commit)) or {"ok": True}
     )
+    ev.mirror_current_state = lambda: calls.append(("current",)) or []
 
     remaining, recovered = ev.reconcile_terminal_active_games(
         active, source_commit="abc1234"
@@ -754,9 +771,14 @@ def test_terminal_active_recovery_mirrors_before_clearing_authority(tmp_path):
 
     assert remaining == {}
     assert recovered == [game_id]
-    assert calls[0] == ("mirror", game_id)
+    assert calls[0] == (
+        "mirror",
+        game_id,
+        {"include_current": False},
+    )
     assert calls[1][0] == "persist"
     assert calls[1][1] == {}
+    assert calls[2] == ("current",)
 
 
 def test_terminal_active_recovery_keeps_authority_if_mirror_fails(tmp_path):
@@ -764,7 +786,7 @@ def test_terminal_active_recovery_keeps_authority_if_mirror_fails(tmp_path):
 
     ev, active, _, _ = _terminal_recovery_fixture(tmp_path)
     persisted = []
-    def fail_mirror(game_id):
+    def fail_mirror(game_id, **kwargs):
         raise RuntimeError("mirror interrupted")
     ev.mirror_game = fail_mirror
     ev.persist_active_games = lambda *args, **kwargs: persisted.append(True)
@@ -828,3 +850,302 @@ def test_terminal_active_recovery_preserves_midgame_authority_without_terminal_e
 
     assert remaining == active
     assert recovered == []
+
+
+def _writebehind_evidence(tmp_path):
+    from skatai.iss.gate_worker import GateEvidence, GatePaths
+
+    paths = GatePaths(
+        repo_root=tmp_path,
+        runtime_root=tmp_path / "runtime",
+        skatzero_root=tmp_path / "b0",
+        skatzero_python=tmp_path / "python",
+        b1_model=tmp_path / "b1.pt",
+    )
+    identities = {
+        "B0": {
+            "deployment_identity_sha256": "a" * 64,
+            "release_id": "B0-test",
+        },
+        "B1": {
+            "deployment_identity_sha256": "b" * 64,
+            "release_id": "B1-test",
+        },
+    }
+    return GateEvidence(
+        paths=paths,
+        identities=identities,
+        source_commit="abc1234",
+    )
+
+
+def test_active_authority_persist_is_local_and_marks_remote_dirty(tmp_path):
+    from skatai.iss.gate_worker import ActiveGame, GameAssignment
+
+    ev = _writebehind_evidence(tmp_path)
+    ev.mirror.upload_verified = lambda *args, **kwargs: (_ for _ in ()).throw(
+        AssertionError("hot path must not perform remote upload")
+    )
+    active = {
+        ("T", 1): ActiveGame(
+            GameAssignment("B0", "kermit+zoot", 0, 300, True),
+            protocol_offset=11,
+            effect_offset=22,
+        )
+    }
+
+    payload = ev.persist_active_games(active, source_commit="abc1234")
+
+    assert payload["games"][0]["table_id"] == "T"
+    assert ev.active_games_path.is_file()
+    assert ev.mirror_current_dirty_path.is_file()
+
+
+def test_mirror_batch_combines_games_and_current_state_in_one_transfer(tmp_path):
+    import json
+
+    ev = _writebehind_evidence(tmp_path)
+    ev.active_games_path.write_text(
+        json.dumps(
+            {
+                "schema": "skatai.v2.external-iss-active-games.v1",
+                "source_commit": "abc1234",
+                "games": [],
+            }
+        )
+        + "\n"
+    )
+    ev.mark_current_mirror_dirty()
+
+    for game_id in ("g1", "g2"):
+        for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
+            (ev.games_dir / f"{game_id}.{suffix}").write_text(
+                f"{game_id}:{suffix}\n"
+            )
+        ev.enqueue_mirror_game(game_id)
+
+    calls = []
+
+    def batch(files):
+        items = list(files)
+        calls.append(items)
+        return [
+            ev._mirror_file_metadata(local, remote)
+            for local, remote in items
+        ]
+
+    ev.mirror.upload_batch_verified = batch
+    result = ev.mirror_batch(limit=8)
+
+    assert len(calls) == 1
+    remotes = [remote for _, remote in calls[0]]
+    assert "manifests/g1.json" in remotes
+    assert "manifests/g2.json" in remotes
+    assert remotes.count("current/active-games.json") == 1
+    assert result["mirrored_games"] == ["g1", "g2"]
+    assert result["pending_games"] == 0
+    assert not ev.mirror_current_dirty_path.exists()
+    assert not list(ev.mirror_queue_dir.glob("*.json"))
+
+
+def test_mirror_batch_failure_preserves_durable_queue(tmp_path):
+    import pytest
+
+    ev = _writebehind_evidence(tmp_path)
+    game_id = "g-fail"
+    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
+        (ev.games_dir / f"{game_id}.{suffix}").write_text(
+            f"{game_id}:{suffix}\n"
+        )
+    marker = ev.enqueue_mirror_game(game_id)
+    ev.mark_current_mirror_dirty()
+
+    def fail_batch(files):
+        list(files)
+        raise RuntimeError("hetzner unavailable")
+
+    ev.mirror.upload_batch_verified = fail_batch
+
+    with pytest.raises(RuntimeError, match="hetzner unavailable"):
+        ev.mirror_batch(limit=8)
+
+    assert marker.is_file()
+    assert ev.mirror_current_dirty_path.is_file()
+    assert ev.mirror_backlog_status()["pending_games"] == 1
+
+
+def test_upload_batch_verified_uses_one_copy_and_one_download_check(
+    tmp_path, monkeypatch
+):
+    import subprocess
+
+    import skatai.iss.gate_worker as gw
+
+    a = tmp_path / "a.txt"
+    b = tmp_path / "b.txt"
+    a.write_text("alpha\n")
+    b.write_text("beta\n")
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(gw.subprocess, "run", fake_run)
+    mirror = gw.HetznerEvidenceMirror(local_root=tmp_path)
+    result = mirror.upload_batch_verified(
+        [(a, "games/a.txt"), (b, "current/b.txt")]
+    )
+
+    assert len(result) == 2
+    assert len(calls) == 2
+    assert calls[0][:2] == ["rclone", "copy"]
+    assert calls[1][:2] == ["rclone", "check"]
+    assert "--download" in calls[1]
+    assert "--one-way" in calls[1]
+
+
+def test_mirror_policy_environment_is_bounded():
+    from skatai.iss.gate_worker import mirror_policy_from_environment
+
+    policy = mirror_policy_from_environment(
+        {
+            "ISS_GATE_MIRROR_BATCH_GAMES": "12",
+            "ISS_GATE_MIRROR_MAX_DELAY_S": "240",
+            "ISS_GATE_MIRROR_RETRY_DELAY_S": "15",
+            "ISS_GATE_MIRROR_POLL_INTERVAL_S": "1",
+            "ISS_GATE_MIRROR_MAX_PENDING_GAMES": "12",
+            "ISS_GATE_MIRROR_MAX_BACKLOG_AGE_S": "240",
+        }
+    )
+
+    assert policy.batch_games == 12
+    assert policy.max_delay_s == 240.0
+    assert policy.retry_delay_s == 15.0
+    assert policy.poll_interval_s == 1.0
+
+
+def test_mirror_queue_duplicate_enqueue_is_idempotent_and_hash_bound(tmp_path):
+    ev = _writebehind_evidence(tmp_path)
+    game_id = "g-duplicate"
+    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
+        (ev.games_dir / f"{game_id}.{suffix}").write_text(
+            f"{game_id}:{suffix}\n"
+        )
+
+    first = ev.enqueue_mirror_game(game_id)
+    first_bytes = first.read_bytes()
+    second = ev.enqueue_mirror_game(game_id)
+
+    assert second == first
+    assert second.read_bytes() == first_bytes
+    payload = __import__("json").loads(first_bytes)
+    assert payload["schema"] == "skatai.v2.iss-mirror-queue.v2"
+    assert len(payload["artifacts"]) == 3
+    assert all(len(item["sha256"]) == 64 for item in payload["artifacts"])
+
+
+def test_mirror_queue_rejects_local_artifact_mutation_before_upload(tmp_path):
+    import pytest
+    from skatai.iss.gate_worker import ISSGateWorkerError
+
+    ev = _writebehind_evidence(tmp_path)
+    game_id = "g-mutated"
+    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
+        (ev.games_dir / f"{game_id}.{suffix}").write_text(
+            f"{game_id}:{suffix}\n"
+        )
+    marker = ev.enqueue_mirror_game(game_id)
+    (ev.games_dir / f"{game_id}.effects.jsonl").write_text("tampered\n")
+
+    ev.mirror.upload_batch_verified = lambda files: (_ for _ in ()).throw(
+        AssertionError("remote upload must not start for mutated outbox")
+    )
+    with pytest.raises(
+        ISSGateWorkerError,
+        match="MIRROR_QUEUE_ARTIFACT_BINDING_MISMATCH",
+    ):
+        ev.mirror_batch(limit=2)
+
+    assert marker.is_file()
+    assert ev.mirror_backlog_status()["pending_games"] == 1
+
+
+def test_mirror_batch_preserves_newer_current_dirty_generation(tmp_path):
+    import json
+
+    ev = _writebehind_evidence(tmp_path)
+    game_id = "g-current-race"
+    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
+        (ev.games_dir / f"{game_id}.{suffix}").write_text(
+            f"{game_id}:{suffix}\n"
+        )
+    ev.enqueue_mirror_game(game_id)
+    ev.active_games_path.write_text(
+        json.dumps(
+            {
+                "schema": "skatai.v2.external-iss-active-games.v1",
+                "source_commit": "abc1234",
+                "games": [],
+            }
+        )
+        + "\n"
+    )
+    ev.mark_current_mirror_dirty()
+    before = ev.mirror_current_dirty_path.read_bytes()
+
+    def batch(files):
+        items = list(files)
+        ev.mark_current_mirror_dirty()
+        return [
+            ev._mirror_file_metadata(local, remote)
+            for local, remote in items
+        ]
+
+    ev.mirror.upload_batch_verified = batch
+    ev.mirror_batch(limit=2)
+
+    assert ev.mirror_current_dirty_path.is_file()
+    assert ev.mirror_current_dirty_path.read_bytes() != before
+    assert ev.mirror_backlog_status()["pending_games"] == 0
+    assert ev.mirror_backlog_status()["current_dirty"] is True
+
+
+def test_mirror_backpressure_drains_bounded_backlog(tmp_path):
+    from skatai.iss.gate_worker import MirrorPolicy, MirrorWriteBehind
+
+    ev = _writebehind_evidence(tmp_path)
+    for game_id in ("g1", "g2", "g3", "g4"):
+        for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
+            (ev.games_dir / f"{game_id}.{suffix}").write_text(
+                f"{game_id}:{suffix}\n"
+            )
+        ev.enqueue_mirror_game(game_id)
+
+    calls = []
+    def batch(*, limit=None):
+        calls.append(limit)
+        entries = ev.pending_mirror_entries()[:limit]
+        for marker, _ in entries:
+            marker.unlink()
+        return ev.mirror_backlog_status()
+
+    ev.mirror_batch = batch
+    wb = MirrorWriteBehind(
+        ev,
+        policy=MirrorPolicy(
+            batch_games=2,
+            max_delay_s=60,
+            retry_delay_s=10,
+            poll_interval_s=1,
+            max_pending_games=4,
+            max_pending_bytes=64 * 1024 * 1024,
+            max_backlog_age_s=120,
+        ),
+    )
+
+    assert wb.backpressure_required() is True
+    wb.enforce_backpressure()
+    assert calls == [2]
+    assert ev.mirror_backlog_status()["pending_games"] == 2
+    assert wb.backpressure_required() is False

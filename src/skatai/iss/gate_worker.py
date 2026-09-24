@@ -9,6 +9,7 @@ from pathlib import Path
 import secrets
 import statistics
 import subprocess
+import tempfile
 import threading
 import time
 from typing import Any, Iterable, Mapping
@@ -122,6 +123,57 @@ class ReconnectPolicy:
             raise ValueError("RECONNECT_ATTEMPTS_PER_CYCLE_LT_ONE")
         if self.cooldown_s <= 0:
             raise ValueError("RECONNECT_COOLDOWN_MUST_BE_POSITIVE")
+
+
+@dataclass(frozen=True)
+class MirrorPolicy:
+    batch_games: int = 2
+    max_delay_s: float = 60.0
+    retry_delay_s: float = 10.0
+    poll_interval_s: float = 1.0
+    max_pending_games: int = 4
+    max_pending_bytes: int = 64 * 1024 * 1024
+    max_backlog_age_s: float = 120.0
+
+    def validate(self) -> None:
+        if self.batch_games < 1:
+            raise ValueError("MIRROR_BATCH_GAMES_LT_ONE")
+        if self.max_delay_s <= 0:
+            raise ValueError("MIRROR_MAX_DELAY_MUST_BE_POSITIVE")
+        if self.retry_delay_s <= 0:
+            raise ValueError("MIRROR_RETRY_DELAY_MUST_BE_POSITIVE")
+        if self.poll_interval_s <= 0:
+            raise ValueError("MIRROR_POLL_INTERVAL_MUST_BE_POSITIVE")
+        if self.max_pending_games < self.batch_games:
+            raise ValueError("MIRROR_MAX_PENDING_GAMES_LT_BATCH")
+        if self.max_pending_bytes <= 0:
+            raise ValueError("MIRROR_MAX_PENDING_BYTES_MUST_BE_POSITIVE")
+        if self.max_backlog_age_s < self.max_delay_s:
+            raise ValueError("MIRROR_MAX_BACKLOG_AGE_LT_DELAY")
+
+
+def mirror_policy_from_environment(
+    environ: Mapping[str, str] | None = None,
+) -> MirrorPolicy:
+    env = os.environ if environ is None else environ
+    try:
+        policy = MirrorPolicy(
+            batch_games=int(env.get("ISS_GATE_MIRROR_BATCH_GAMES", "2")),
+            max_delay_s=float(env.get("ISS_GATE_MIRROR_MAX_DELAY_S", "60")),
+            retry_delay_s=float(env.get("ISS_GATE_MIRROR_RETRY_DELAY_S", "10")),
+            poll_interval_s=float(env.get("ISS_GATE_MIRROR_POLL_INTERVAL_S", "1")),
+            max_pending_games=int(env.get("ISS_GATE_MIRROR_MAX_PENDING_GAMES", "4")),
+            max_pending_bytes=int(
+                env.get("ISS_GATE_MIRROR_MAX_PENDING_BYTES", str(64 * 1024 * 1024))
+            ),
+            max_backlog_age_s=float(
+                env.get("ISS_GATE_MIRROR_MAX_BACKLOG_AGE_S", "120")
+            ),
+        )
+    except ValueError as exc:
+        raise ValueError("BAD_ISS_MIRROR_ENV") from exc
+    policy.validate()
+    return policy
 
 
 def reconnect_policy_from_environment(
@@ -395,6 +447,14 @@ class HetznerEvidenceMirror:
             remote_root
             or ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate"
         ).rstrip("/")
+        try:
+            self.command_timeout_s = float(
+                os.environ.get("ISS_GATE_MIRROR_RCLONE_TIMEOUT_S", "120")
+            )
+        except ValueError as exc:
+            raise ISSGateWorkerError("MIRROR_BAD_RCLONE_TIMEOUT") from exc
+        if self.command_timeout_s <= 0:
+            raise ISSGateWorkerError("MIRROR_BAD_RCLONE_TIMEOUT")
 
     def probe(self) -> dict[str, Any]:
         proc = subprocess.run(
@@ -403,6 +463,7 @@ class HetznerEvidenceMirror:
             stderr=subprocess.PIPE,
             text=True,
             check=False,
+            timeout=self.command_timeout_s,
         )
         return {
             "ok": proc.returncode == 0,
@@ -420,6 +481,7 @@ class HetznerEvidenceMirror:
             stderr=subprocess.PIPE,
             text=True,
             check=False,
+            timeout=self.command_timeout_s,
         )
         if listed.returncode != 0:
             raise ISSGateWorkerError(
@@ -437,6 +499,7 @@ class HetznerEvidenceMirror:
             stderr=subprocess.PIPE,
             text=True,
             check=False,
+            timeout=self.command_timeout_s,
         )
         if proc.returncode != 0:
             tmp.unlink(missing_ok=True)
@@ -468,24 +531,21 @@ class HetznerEvidenceMirror:
                 ["rclone", "copyto", str(snapshot), remote, *RCLONE_S3_ARGS],
                 check=True,
                 stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=self.command_timeout_s,
             )
-            proc = subprocess.Popen(
+            readback = subprocess.run(
                 ["rclone", "cat", remote, *RCLONE_S3_ARGS],
                 stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=self.command_timeout_s,
             )
-            h = hashlib.sha256()
-            assert proc.stdout is not None
-            while True:
-                chunk = proc.stdout.read(1024 * 1024)
-                if not chunk:
-                    break
-                h.update(chunk)
-            rc = proc.wait()
-            if rc != 0:
+            if readback.returncode != 0:
                 raise ISSGateWorkerError(
-                    f"MIRROR_REMOTE_READ_FAILED:{remote_rel}:{rc}"
+                    f"MIRROR_REMOTE_READ_FAILED:{remote_rel}:{readback.returncode}"
                 )
-            actual = h.hexdigest()
+            actual = hashlib.sha256(readback.stdout).hexdigest()
             if actual != expected:
                 raise ISSGateWorkerError(
                     f"MIRROR_HASH_MISMATCH:{remote_rel}:{actual}!={expected}"
@@ -499,6 +559,92 @@ class HetznerEvidenceMirror:
             "sha256": expected,
             "bytes": len(data),
         }
+
+    def upload_batch_verified(
+        self,
+        files: Iterable[tuple[Path, str]],
+    ) -> list[dict[str, Any]]:
+        items = list(files)
+        if not items:
+            return []
+
+        with tempfile.TemporaryDirectory(
+            prefix="skatai-iss-mirror-batch-",
+        ) as tmpdir:
+            stage = Path(tmpdir)
+            metadata: list[dict[str, Any]] = []
+            seen_remote: set[str] = set()
+
+            for local, remote_rel in items:
+                if not local.is_file():
+                    raise ISSGateWorkerError(
+                        f"MIRROR_LOCAL_FILE_MISSING:{local}"
+                    )
+                remote_rel = remote_rel.lstrip("/")
+                if remote_rel in seen_remote:
+                    raise ISSGateWorkerError(
+                        f"MIRROR_BATCH_DUPLICATE_REMOTE:{remote_rel}"
+                    )
+                seen_remote.add(remote_rel)
+
+                data = local.read_bytes()
+                expected = hashlib.sha256(data).hexdigest()
+                staged = stage / remote_rel
+                staged.parent.mkdir(parents=True, exist_ok=True)
+                staged.write_bytes(data)
+                os.chmod(staged, 0o600)
+                metadata.append(
+                    {
+                        "local": str(local),
+                        "remote": (
+                            self.remote_root + "/" + remote_rel
+                        ).replace(":s3:", "s3://", 1),
+                        "sha256": expected,
+                        "bytes": len(data),
+                    }
+                )
+
+            copied = subprocess.run(
+                [
+                    "rclone",
+                    "copy",
+                    str(stage),
+                    self.remote_root,
+                    *RCLONE_S3_ARGS,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=self.command_timeout_s,
+            )
+            if copied.returncode != 0:
+                raise ISSGateWorkerError(
+                    f"MIRROR_BATCH_COPY_FAILED:{copied.returncode}"
+                )
+
+            checked = subprocess.run(
+                [
+                    "rclone",
+                    "check",
+                    str(stage),
+                    self.remote_root,
+                    "--download",
+                    "--one-way",
+                    *RCLONE_S3_ARGS,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=self.command_timeout_s,
+            )
+            if checked.returncode != 0:
+                raise ISSGateWorkerError(
+                    f"MIRROR_BATCH_VERIFY_FAILED:{checked.returncode}"
+                )
+
+            return metadata
 
 
 def object_storage_readiness(paths: GatePaths | None = None) -> dict[str, Any]:
@@ -610,6 +756,172 @@ class GateEvidence:
         self.active_games_path = paths.runtime_root / "active-games.json"
         self.connection_events_path = paths.runtime_root / "connection-events.jsonl"
         self.mirror = HetznerEvidenceMirror(local_root=paths.runtime_root)
+        self.mirror_queue_dir = paths.runtime_root / "mirror-queue"
+        self.mirror_queue_dir.mkdir(parents=True, exist_ok=True)
+        self.mirror_current_dirty_path = (
+            paths.runtime_root / "mirror-current-dirty.json"
+        )
+        self.mirror_status_path = paths.runtime_root / "mirror-status.json"
+        self._mirror_lock = threading.RLock()
+
+    def _game_outbox_artifacts(self, game_id: str) -> list[dict[str, Any]]:
+        artifacts: list[dict[str, Any]] = []
+        for local, remote in self._game_mirror_files(str(game_id)):
+            if not local.is_file():
+                raise ISSGateWorkerError(
+                    f"MIRROR_QUEUE_ARTIFACT_MISSING:{game_id}:{local.name}"
+                )
+            artifacts.append(
+                {
+                    "name": local.name,
+                    "remote": remote,
+                    "sha256": sha256_file(local),
+                    "bytes": local.stat().st_size,
+                }
+            )
+        return artifacts
+
+    def _verify_outbox_artifacts(
+        self,
+        game_id: str,
+        expected: Iterable[Mapping[str, Any]],
+    ) -> None:
+        actual = self._game_outbox_artifacts(game_id)
+        normalized_expected = [
+            {
+                "name": str(item["name"]),
+                "remote": str(item["remote"]),
+                "sha256": str(item["sha256"]),
+                "bytes": int(item["bytes"]),
+            }
+            for item in expected
+        ]
+        if actual != normalized_expected:
+            raise ISSGateWorkerError(
+                f"MIRROR_QUEUE_ARTIFACT_BINDING_MISMATCH:{game_id}"
+            )
+
+    def enqueue_mirror_game(self, game_id: str) -> Path:
+        evidence_path = self.games_dir / f"{game_id}.evidence.json"
+        if not evidence_path.is_file():
+            raise ISSGateWorkerError(
+                f"MIRROR_QUEUE_EVIDENCE_MISSING:{game_id}"
+            )
+        artifacts = self._game_outbox_artifacts(game_id)
+        marker = self.mirror_queue_dir / f"{game_id}.json"
+        if marker.exists():
+            payload = json.loads(marker.read_text(encoding="utf-8"))
+            if (
+                payload.get("schema") != "skatai.v2.iss-mirror-queue.v2"
+                or payload.get("game_id") != game_id
+                or payload.get("source_commit") != self.source_commit
+            ):
+                raise ISSGateWorkerError(
+                    f"MIRROR_QUEUE_MARKER_CONFLICT:{game_id}"
+                )
+            self._verify_outbox_artifacts(
+                game_id,
+                payload.get("artifacts") or [],
+            )
+            return marker
+        _atomic_json(
+            marker,
+            {
+                "schema": "skatai.v2.iss-mirror-queue.v2",
+                "game_id": game_id,
+                "source_commit": self.source_commit,
+                "enqueued_unix_ns": time.time_ns(),
+                "artifacts": artifacts,
+            },
+        )
+        return marker
+
+    def mark_current_mirror_dirty(self) -> None:
+        now = time.time_ns()
+        first_dirty = now
+        if self.mirror_current_dirty_path.exists():
+            payload = json.loads(
+                self.mirror_current_dirty_path.read_text(encoding="utf-8")
+            )
+            if payload.get("source_commit") != self.source_commit:
+                raise ISSGateWorkerError(
+                    "MIRROR_CURRENT_SOURCE_MISMATCH"
+                )
+            first_dirty = int(
+                payload.get(
+                    "first_dirty_unix_ns",
+                    payload.get("generation_unix_ns", now),
+                )
+            )
+        _atomic_json(
+            self.mirror_current_dirty_path,
+            {
+                "schema": "skatai.v2.iss-mirror-current-dirty.v1",
+                "source_commit": self.source_commit,
+                "first_dirty_unix_ns": first_dirty,
+                "generation_unix_ns": now,
+            },
+        )
+
+    def pending_mirror_entries(self) -> list[tuple[Path, dict[str, Any]]]:
+        out: list[tuple[Path, dict[str, Any]]] = []
+        for marker in sorted(self.mirror_queue_dir.glob("*.json")):
+            payload = json.loads(marker.read_text(encoding="utf-8"))
+            if payload.get("schema") != "skatai.v2.iss-mirror-queue.v2":
+                raise ISSGateWorkerError(
+                    f"MIRROR_QUEUE_SCHEMA_MISMATCH:{marker.name}"
+                )
+            if payload.get("source_commit") != self.source_commit:
+                raise ISSGateWorkerError(
+                    f"MIRROR_QUEUE_SOURCE_MISMATCH:{marker.name}"
+                )
+            game_id = str(payload.get("game_id"))
+            if marker.name != f"{game_id}.json":
+                raise ISSGateWorkerError(
+                    f"MIRROR_QUEUE_GAME_ID_MISMATCH:{marker.name}"
+                )
+            artifacts = payload.get("artifacts")
+            if not isinstance(artifacts, list) or not artifacts:
+                raise ISSGateWorkerError(
+                    f"MIRROR_QUEUE_ARTIFACT_BINDING_MISSING:{marker.name}"
+                )
+            out.append((marker, payload))
+        out.sort(key=lambda item: int(item[1]["enqueued_unix_ns"]))
+        return out
+
+    def mirror_backlog_status(self) -> dict[str, Any]:
+        entries = self.pending_mirror_entries()
+        now = time.time_ns()
+        oldest = (
+            None
+            if not entries
+            else max(
+                0.0,
+                (now - int(entries[0][1]["enqueued_unix_ns"])) / 1e9,
+            )
+        )
+        pending_bytes = sum(
+            sum(int(a.get("bytes", 0)) for a in (payload.get("artifacts") or []))
+            for _, payload in entries
+        )
+        return {
+            "pending_games": len(entries),
+            "pending_bytes": pending_bytes,
+            "oldest_pending_age_s": oldest,
+            "current_dirty": self.mirror_current_dirty_path.exists(),
+        }
+
+    def _write_mirror_status(self, **fields: Any) -> None:
+        _atomic_json(
+            self.mirror_status_path,
+            {
+                "schema": "skatai.v2.iss-mirror-status.v1",
+                "source_commit": self.source_commit,
+                "updated_unix_ns": time.time_ns(),
+                **self.mirror_backlog_status(),
+                **fields,
+            },
+        )
 
     def append_connection_event(self, event: str, **fields: Any) -> None:
         payload = {
@@ -658,10 +970,8 @@ class GateEvidence:
     ) -> dict[str, Any]:
         payload = active_games_payload(games, source_commit=source_commit)
         _atomic_json(self.active_games_path, payload)
-        return self.mirror.upload_verified(
-            self.active_games_path,
-            "current/active-games.json",
-        )
+        self.mark_current_mirror_dirty()
+        return payload
 
 
     def reconcile_terminal_active_games(
@@ -808,16 +1118,24 @@ class GateEvidence:
                     f"TERMINAL_ACTIVE_RECOVERY_LEDGER_MISMATCH:{key}"
                 )
 
-            # Mirror verification is deliberately first. If it raises, the
-            # durable active authority remains unchanged and restart is safe to
-            # retry without producing any ISS material effect.
-            self.mirror_game(game_id)
+            # Mirror immutable terminal evidence first. If it raises, the
+            # durable local active authority remains unchanged and restart is
+            # safe to retry without producing any ISS material effect.
+            self.mirror_game(game_id, include_current=False)
 
             next_remaining = dict(remaining)
             next_remaining.pop(key, None)
             self.persist_active_games(
                 next_remaining,
                 source_commit=source_commit,
+            )
+            # Recovery is intentionally stricter than ordinary gameplay:
+            # remotely persist the cleared authority before declaring recovery
+            # complete. The normal hot path uses write-behind batching.
+            self.mirror_current_state()
+            self.mirror_current_dirty_path.unlink(missing_ok=True)
+            (self.mirror_queue_dir / f"{game_id}.json").unlink(
+                missing_ok=True
             )
             remaining = next_remaining
             recovered.append(game_id)
@@ -1222,7 +1540,29 @@ class GateEvidence:
         self.ledger.append(record)
         return {"primary": True, "duplicate_reused": False, **payload}
 
-    def mirror_game(self, game_id: str) -> dict[str, Any]:
+    def _current_mirror_files(self) -> list[tuple[Path, str]]:
+        files: list[tuple[Path, str]] = []
+        for local, remote in (
+            (self.ledger.path, "current/gate-ledger.jsonl"),
+            (self.diagnostic_path, "current/diagnostic-games.jsonl"),
+            (self.protocol_journal, "current/service.jsonl"),
+            (self.effect_journal, "current/effects.jsonl"),
+            (self.active_games_path, "current/active-games.json"),
+            (self.connection_events_path, "current/connection-events.jsonl"),
+            (self.paths.runtime_root / "status.json", "current/status.json"),
+        ):
+            if local.exists():
+                files.append((local, remote))
+        return files
+
+    def mirror_current_state(self) -> list[dict[str, Any]]:
+        with self._mirror_lock:
+            return [
+                self.mirror.upload_verified(local, remote)
+                for local, remote in self._current_mirror_files()
+            ]
+
+    def _game_mirror_files(self, game_id: str) -> list[tuple[Path, str]]:
         files: list[tuple[Path, str]] = []
         sgf_path = self.games_dir / f"{game_id}.sgf"
         if sgf_path.exists():
@@ -1243,35 +1583,232 @@ class GateEvidence:
                 ),
             ]
         )
-        for local, remote in (
-            (self.ledger.path, "current/gate-ledger.jsonl"),
-            (self.diagnostic_path, "current/diagnostic-games.jsonl"),
-            (self.protocol_journal, "current/service.jsonl"),
-            (self.effect_journal, "current/effects.jsonl"),
-            (self.active_games_path, "current/active-games.json"),
-            (self.connection_events_path, "current/connection-events.jsonl"),
-            (self.paths.runtime_root / "status.json", "current/status.json"),
-        ):
-            if local.exists():
-                files.append((local, remote))
+        return files
 
-        uploaded = [
-            self.mirror.upload_verified(local, remote)
-            for local, remote in files
-        ]
-        manifest = {
-            "schema": "skatai.v2.external-iss-evidence-mirror.v1",
-            "game_id": game_id,
-            "source_commit": self.source_commit,
-            "files": uploaded,
+    def _mirror_file_metadata(
+        self,
+        local: Path,
+        remote_rel: str,
+    ) -> dict[str, Any]:
+        data = local.read_bytes()
+        return {
+            "local": str(local),
+            "remote": (
+                self.mirror.remote_root + "/" + remote_rel.lstrip("/")
+            ).replace(":s3:", "s3://", 1),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "bytes": len(data),
         }
-        manifest_path = self.games_dir / f"{game_id}.mirror.json"
-        _atomic_json(manifest_path, manifest)
-        uploaded_manifest = self.mirror.upload_verified(
-            manifest_path, f"manifests/{game_id}.json"
+
+    def mirror_game(
+        self,
+        game_id: str,
+        *,
+        include_current: bool = True,
+    ) -> dict[str, Any]:
+        with self._mirror_lock:
+            files = self._game_mirror_files(game_id)
+
+            uploaded = [
+                self.mirror.upload_verified(local, remote)
+                for local, remote in files
+            ]
+            manifest = {
+                "schema": "skatai.v2.external-iss-evidence-mirror.v1",
+                "game_id": game_id,
+                "source_commit": self.source_commit,
+                "files": uploaded,
+            }
+            manifest_path = self.games_dir / f"{game_id}.mirror.json"
+            _atomic_json(manifest_path, manifest)
+            uploaded_manifest = self.mirror.upload_verified(
+                manifest_path, f"manifests/{game_id}.json"
+            )
+            manifest["manifest"] = uploaded_manifest
+            if include_current:
+                current_token = None
+                if self.mirror_current_dirty_path.exists():
+                    current_token = self.mirror_current_dirty_path.read_bytes()
+                manifest["current"] = self.mirror_current_state()
+                if (
+                    current_token is not None
+                    and self.mirror_current_dirty_path.exists()
+                    and self.mirror_current_dirty_path.read_bytes() == current_token
+                ):
+                    self.mirror_current_dirty_path.unlink(missing_ok=True)
+            return manifest
+
+    def mirror_batch(self, *, limit: int | None = None) -> dict[str, Any]:
+        with self._mirror_lock:
+            entries = self.pending_mirror_entries()
+            selected = entries if limit is None else entries[: max(0, int(limit))]
+            current_token = None
+            if self.mirror_current_dirty_path.exists():
+                current_token = self.mirror_current_dirty_path.read_bytes()
+
+            files: list[tuple[Path, str]] = []
+            mirrored: list[str] = []
+            for _, payload in selected:
+                game_id = str(payload["game_id"])
+                self._verify_outbox_artifacts(
+                    game_id,
+                    payload.get("artifacts") or [],
+                )
+                game_files = self._game_mirror_files(game_id)
+                manifest = {
+                    "schema": "skatai.v2.external-iss-evidence-mirror.v1",
+                    "game_id": game_id,
+                    "source_commit": self.source_commit,
+                    "files": [
+                        self._mirror_file_metadata(local, remote)
+                        for local, remote in game_files
+                    ],
+                }
+                manifest_path = self.games_dir / f"{game_id}.mirror.json"
+                _atomic_json(manifest_path, manifest)
+                files.extend(game_files)
+                files.append(
+                    (manifest_path, f"manifests/{game_id}.json")
+                )
+                mirrored.append(game_id)
+
+            current_files = []
+            if selected or current_token is not None:
+                current_files = self._current_mirror_files()
+                files.extend(current_files)
+
+            uploaded = self.mirror.upload_batch_verified(files)
+
+            for marker, _ in selected:
+                marker.unlink(missing_ok=True)
+
+            if current_token is not None and self.mirror_current_dirty_path.exists():
+                if self.mirror_current_dirty_path.read_bytes() == current_token:
+                    self.mirror_current_dirty_path.unlink(missing_ok=True)
+
+            result = {
+                "mirrored_games": mirrored,
+                "uploaded_files": len(uploaded),
+                "current_files": len(current_files),
+                **self.mirror_backlog_status(),
+            }
+            self._write_mirror_status(
+                state="OK",
+                last_success_unix_ns=time.time_ns(),
+                mirrored_games=len(mirrored),
+                uploaded_files=len(uploaded),
+            )
+            return result
+
+
+class MirrorWriteBehind:
+    def __init__(
+        self,
+        evidence: GateEvidence,
+        *,
+        policy: MirrorPolicy,
+    ) -> None:
+        policy.validate()
+        self.evidence = evidence
+        self.policy = policy
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def _current_dirty_age_s(self) -> float | None:
+        path = self.evidence.mirror_current_dirty_path
+        if not path.exists():
+            return None
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("source_commit") != self.evidence.source_commit:
+            raise ISSGateWorkerError("MIRROR_CURRENT_SOURCE_MISMATCH")
+        dirty_ns = int(
+            payload.get(
+                "first_dirty_unix_ns",
+                payload.get("generation_unix_ns"),
+            )
         )
-        manifest["manifest"] = uploaded_manifest
-        return manifest
+        return max(0.0, (time.time_ns() - dirty_ns) / 1e9)
+
+    def _due(self) -> bool:
+        backlog = self.evidence.mirror_backlog_status()
+        pending = int(backlog["pending_games"])
+        if pending >= self.policy.batch_games:
+            return True
+        oldest = backlog["oldest_pending_age_s"]
+        if oldest is not None and float(oldest) >= self.policy.max_delay_s:
+            return True
+        current_age = self._current_dirty_age_s()
+        return (
+            current_age is not None
+            and current_age >= self.policy.max_delay_s
+        )
+
+    def _run(self) -> None:
+        self.evidence._write_mirror_status(state="RUNNING")
+        while not self._stop.is_set():
+            try:
+                if self._due():
+                    self.evidence.mirror_batch(
+                        limit=self.policy.batch_games
+                    )
+                self._stop.wait(self.policy.poll_interval_s)
+            except Exception as exc:
+                self.evidence._write_mirror_status(
+                    state="DEGRADED",
+                    last_error=f"{type(exc).__name__}:{exc}",
+                    last_error_unix_ns=time.time_ns(),
+                )
+                self._stop.wait(self.policy.retry_delay_s)
+        self.evidence._write_mirror_status(state="STOPPED")
+
+    def backpressure_required(self) -> bool:
+        backlog = self.evidence.mirror_backlog_status()
+        oldest = backlog["oldest_pending_age_s"]
+        return (
+            int(backlog["pending_games"]) >= self.policy.max_pending_games
+            or int(backlog["pending_bytes"]) >= self.policy.max_pending_bytes
+            or (
+                oldest is not None
+                and float(oldest) >= self.policy.max_backlog_age_s
+            )
+        )
+
+    def enforce_backpressure(self) -> None:
+        while self.backpressure_required():
+            self.evidence._write_mirror_status(state="BACKPRESSURE")
+            self.evidence.mirror_batch(limit=self.policy.batch_games)
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="iss-mirror-writebehind",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self, *, flush: bool) -> None:
+        self._stop.set()
+        thread = self._thread
+        if thread is not None:
+            if flush:
+                thread.join()
+            else:
+                thread.join(timeout=1.0)
+        self._thread = None
+        if flush:
+            while True:
+                backlog = self.evidence.mirror_backlog_status()
+                if (
+                    int(backlog["pending_games"]) == 0
+                    and not bool(backlog["current_dirty"])
+                ):
+                    break
+                self.evidence.mirror_batch(
+                    limit=self.policy.batch_games
+                )
 
 
 def _private_table_credentials() -> tuple[str, str]:
@@ -1308,6 +1845,11 @@ class ExternalGateWorker:
             paths=paths,
             identities=self.identities,
             source_commit=self.source_commit,
+        )
+        self.mirror_policy = mirror_policy_from_environment()
+        self.mirror_writebehind = MirrorWriteBehind(
+            self.evidence,
+            policy=self.mirror_policy,
         )
         self.effect_guard = ISSAuthorityGuard(
             ISSEffectJournal(self.evidence.effect_journal)
@@ -1486,10 +2028,19 @@ class ExternalGateWorker:
             game_sequence=table.game_sequence,
         )
         status = self.campaign_status()
-        self.evidence.mirror_game(stored["result"]["game_id"])
+        # Local terminal evidence is already fsync-durable. Queue remote
+        # persistence and immediately continue ISS gameplay; the background
+        # mirror batches immutable games and current-state snapshots.
+        self.evidence.enqueue_mirror_game(stored["result"]["game_id"])
         self.assignment_by_game.pop(key, None)
         self._persist_active_game_authority()
         self._transport_failure_streak = 0
+
+        # Remote mirroring stays off the normal hot path. If the durable
+        # write-behind backlog breaches its bounded safety envelope, stop
+        # starting new games until verified remote persistence catches up.
+        self.mirror_writebehind.enforce_backpressure()
+
         target = status["next_per_arm_target"]
         if target is None:
             self.client.send_service_command(
@@ -1683,6 +2234,7 @@ class ExternalGateWorker:
             raise ISSGateWorkerError("HETZNER_EVIDENCE_MIRROR_NOT_READY")
 
         self._restore_active_game_authority()
+        self.mirror_writebehind.start()
         client_policy = ISSClientPolicy(
             accept_invitations=False,
             ready_when_joined=False,
@@ -1691,37 +2243,49 @@ class ExternalGateWorker:
         reconnect = reconnect_policy_from_environment()
         attempt_in_cycle = 0
 
-        while True:
-            try:
-                result = self._run_connected_session(client_policy=client_policy)
-                if result is not None:
-                    return result
-            except ISSTransportError as exc:
-                if not recoverable_transport_error(exc):
-                    raise
-                self._transport_failure_streak += 1
-                attempt_in_cycle += 1
-                if attempt_in_cycle >= reconnect.attempts_per_cycle:
-                    delay = reconnect.cooldown_s
-                    self.evidence.append_connection_event(
-                        "RECONNECT_CYCLE_COOLDOWN",
-                        reason=str(exc),
-                        failure_streak=self._transport_failure_streak,
-                        attempts_in_cycle=attempt_in_cycle,
-                        delay_s=delay,
+        try:
+            while True:
+                try:
+                    result = self._run_connected_session(
+                        client_policy=client_policy
                     )
-                    attempt_in_cycle = 0
-                else:
-                    delay = reconnect_delay_s(reconnect, attempt_in_cycle)
-                    self.evidence.append_connection_event(
-                        "RECONNECT_WAIT",
-                        reason=str(exc),
-                        failure_streak=self._transport_failure_streak,
-                        attempt_in_cycle=attempt_in_cycle,
-                        delay_s=delay,
-                    )
-                time.sleep(delay)
-                continue
+                    if result is not None:
+                        # A scientific gate is not complete until every queued
+                        # game and the final current-state snapshot are remotely
+                        # verified. This blocking flush is off the gameplay hot
+                        # path because no more gate games are needed.
+                        self.mirror_writebehind.stop(flush=True)
+                        return result
+                except ISSTransportError as exc:
+                    if not recoverable_transport_error(exc):
+                        raise
+                    self._transport_failure_streak += 1
+                    attempt_in_cycle += 1
+                    if attempt_in_cycle >= reconnect.attempts_per_cycle:
+                        delay = reconnect.cooldown_s
+                        self.evidence.append_connection_event(
+                            "RECONNECT_CYCLE_COOLDOWN",
+                            reason=str(exc),
+                            failure_streak=self._transport_failure_streak,
+                            attempts_in_cycle=attempt_in_cycle,
+                            delay_s=delay,
+                        )
+                        attempt_in_cycle = 0
+                    else:
+                        delay = reconnect_delay_s(reconnect, attempt_in_cycle)
+                        self.evidence.append_connection_event(
+                            "RECONNECT_WAIT",
+                            reason=str(exc),
+                            failure_streak=self._transport_failure_streak,
+                            attempt_in_cycle=attempt_in_cycle,
+                            delay_s=delay,
+                        )
+                    time.sleep(delay)
+                    continue
+        finally:
+            # On an abnormal stop the durable queue is intentionally retained
+            # for restart reconciliation; do not block shutdown on Hetzner.
+            self.mirror_writebehind.stop(flush=False)
 
 
 def main() -> None:
