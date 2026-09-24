@@ -1,0 +1,75 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-stack-rotation-liveness-recovery-v1",
+  "captured_at": "2026-09-24T03:29:38Z",
+  "status": "PRIMARY_GATE_REFROZEN_AFTER_STACK_ROTATION_LIVENESS_FIX",
+  "rationale": "R7 produced six deployment-valid scored games, then correctly selected kermit+theCount as the next frozen-priority opponent stack. The worker sent LEAVE for the completed kermit+zoot table but immediately cleared table_id. Subsequent state/destroy events for that departing table therefore failed the epoch admission check and were ignored as foreign. The destroy event is the transition that creates the next table when desired_stack is None, so the campaign remained connected and healthy but could never rotate stacks. R8 retains the departing table as admitted until ISS confirms destroy; destroy then clears table_id and creates the next table.",
+  "executable_code_commit": "a7da2a2ea0d251b289591d940e2827dc1ef84d92",
+  "stack_rotation_fix_commit": "a7da2a2ea0d251b289591d940e2827dc1ef84d92",
+  "closed_r7": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r7",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r7",
+    "worker_source_commit": "e3be224f65f70b55ac26e8180f2920ef1c50fb34",
+    "ledger_sha256": "78fa9d0281eb8ca398bc49dc57db217b4377ed16f648f2b28bf0475cebe01af6",
+    "active_games_sha256": "c8eba7e66a21e45acfe54e9c6470f5fcdcf3490b4cc2262770f902938615ae23",
+    "status_sha256": "162379ba8e06abf057d729df43f032e38ac694d318aeb9064608e4fd0191e8c8",
+    "records": 6,
+    "scored_records": 6,
+    "active_games": 0,
+    "primary_strength_use": false,
+    "disposition": "DIAGNOSTIC_DEPLOYMENT_EVIDENCE_ONLY_DUE_COMMON_STACK_ROTATION_LIVENESS_DEFECT",
+    "remote_current_hashes_verified": true,
+    "remote_game_payloads_verified": 24,
+    "remote_game_manifests_verified": 6,
+    "next_stack_at_stall": "kermit+theCount"
+  },
+  "root_cause": {
+    "classification": "DEPARTING_TABLE_DESTROY_FILTERED_AS_FOREIGN",
+    "mechanism": [
+      "R7 completes the sixth valid kermit+zoot game and frozen quota priority selects kermit+theCount next.",
+      "The worker sends table leave because next_stack differs from the current assignment stack.",
+      "The worker clears table_id before ISS emits the departing table's terminal state/destroy events.",
+      "Epoch admission no longer contains that table id, so those events are persisted as protocol evidence but ignored as foreign.",
+      "The destroy handler therefore never runs.",
+      "Only the destroy handler creates the next table when desired_stack is None, leaving the connected worker indefinitely idle."
+    ],
+    "observed_connected_idle_after_last_game": true,
+    "theCount_seen_online_at_session_start": true,
+    "active_game_at_recovery": false
+  },
+  "fixes": {
+    "retain_departing_table_id_until_destroy": true,
+    "destroy_event_remains_epoch_admitted": true,
+    "destroy_clears_table_and_creates_next_stack": true,
+    "gameplay_policy_models_changed": false,
+    "scoring_changed": false
+  },
+  "verification": {
+    "regression_red_before_fix": true,
+    "targeted_regression_after_fix": "1 passed",
+    "iss_related_tests_after_fix": "70 passed",
+    "full_tests_after_fix": "271 passed",
+    "diff_check_clean": true,
+    "r7_remote_game_payload_check": "24 matching, 0 differences",
+    "r7_remote_manifest_hash_check": "6 verified"
+  },
+  "science_boundary": {
+    "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256_unchanged": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "treatment_difference_remains": "bidding only",
+    "common_orchestration_fix_applies_equally_to_b0_and_b1": true,
+    "reuse_r7_primary_strength_records": false
+  },
+  "new_epoch": {
+    "epoch": "R8",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R8"
+  }
+}
