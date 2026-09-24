@@ -80,3 +80,27 @@ def test_target_is_label_not_part_of_observation_mapping():
 
     assert payload["target_card"] == event.target_card
     assert "target_card" not in payload["observation"]
+
+
+
+def test_cardplay_event_keeps_player_metadata_outside_observation():
+    game = parse_sgf_line("fixture", LIVE_SPLIT_PICKUP)
+    game["players"] = ["p0", "p1", "p2"]
+    game["ratings"] = [701.0, 812.5, 923.0]
+    game["actor_classes"] = ["human", "kermit", "strong_human"]
+
+    events = reconstruct_cardplay_events(game)
+    event = events[0]
+    actor = event.observation.seat
+
+    assert event.actor_name == game["players"][actor]
+    assert event.actor_rating == game["ratings"][actor]
+    assert event.actor_class == game["actor_classes"][actor]
+
+    payload = event.to_mapping()
+    assert payload["actor_name"] == event.actor_name
+    assert payload["actor_rating"] == event.actor_rating
+    assert payload["actor_class"] == event.actor_class
+    assert "actor_name" not in payload["observation"]
+    assert "actor_rating" not in payload["observation"]
+    assert "actor_class" not in payload["observation"]

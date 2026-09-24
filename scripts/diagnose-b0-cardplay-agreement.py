@@ -11,8 +11,10 @@ from typing import Any
 
 from skatai.data.cardplay import CardplayReconstructionError, reconstruct_cardplay_events
 from skatai.evaluation.cardplay_weakness import (
+    choice_type,
     deterministic_balanced_sample,
     event_stratum,
+    lead_position,
     summarize_agreement,
 )
 from skatai.runtime.skatzero_backend import FrozenB0CardplayPolicy
@@ -141,6 +143,11 @@ def run_diagnostic(
                 "seat": int(observation.seat),
                 "declarer": int(observation.declarer),
                 "contract": str(observation.contract),
+                "lead_position": lead_position(event),
+                "choice_type": choice_type(event),
+                "actor_name": str(event.actor_name),
+                "actor_rating": event.actor_rating,
+                "actor_class": str(event.actor_class),
                 "target_card": str(event.target_card),
                 "prediction": str(prediction),
                 "agreement": prediction == event.target_card,

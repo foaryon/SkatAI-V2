@@ -24,6 +24,9 @@ class CardplayEvent:
     play_ordinal: int
     observation: CardplayObservation
     target_card: str
+    actor_name: str = ""
+    actor_rating: float | None = None
+    actor_class: str = "unknown"
 
     def to_mapping(self) -> dict[str, Any]:
         return {
@@ -32,6 +35,9 @@ class CardplayEvent:
             "play_ordinal": self.play_ordinal,
             "observation": asdict(self.observation),
             "target_card": self.target_card,
+            "actor_name": self.actor_name,
+            "actor_rating": self.actor_rating,
+            "actor_class": self.actor_class,
         }
 
 
@@ -140,6 +146,31 @@ def _final_hands(
     if len(current[declarer]) != 10:
         raise CardplayReconstructionError("DECLARER_FINAL_HAND_NOT_TEN")
     return current, (discards[0], discards[1])
+
+
+def _actor_metadata(
+    record: Mapping[str, Any],
+    actor: int,
+) -> tuple[str, float | None, str]:
+    raw_players = record.get("players") or ()
+    raw_ratings = record.get("ratings") or ()
+    raw_classes = record.get("actor_classes") or ()
+
+    name = str(raw_players[actor]) if actor < len(raw_players) else ""
+    rating: float | None = None
+    if actor < len(raw_ratings):
+        try:
+            parsed = float(raw_ratings[actor])
+        except (TypeError, ValueError):
+            parsed = 0.0
+        if parsed > 0.0:
+            rating = parsed
+    actor_class = (
+        str(raw_classes[actor])
+        if actor < len(raw_classes) and str(raw_classes[actor])
+        else "unknown"
+    )
+    return name, rating, actor_class
 
 
 def reconstruct_cardplay_events(record: Mapping[str, Any]) -> tuple[CardplayEvent, ...]:
@@ -252,6 +283,7 @@ def reconstruct_cardplay_events(record: Mapping[str, Any]) -> tuple[CardplayEven
             blind_hand=is_hand,
             open_hand_cards=open_remaining,
         )
+        actor_name, actor_rating, actor_class = _actor_metadata(record, actor)
         events.append(
             CardplayEvent(
                 game_id=game_id,
@@ -259,6 +291,9 @@ def reconstruct_cardplay_events(record: Mapping[str, Any]) -> tuple[CardplayEven
                 play_ordinal=ordinal,
                 observation=obs,
                 target_card=target,
+                actor_name=actor_name,
+                actor_rating=actor_rating,
+                actor_class=actor_class,
             )
         )
 

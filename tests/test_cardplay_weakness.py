@@ -105,3 +105,56 @@ def test_agreement_summary_reports_overall_and_dimensions():
     assert summary["by_role"]["DEFENDER"]["agreement_count"] == 1
     assert summary["by_phase"]["EARLY"]["n"] == 2
     assert summary["by_seat"]["2"]["agreement_rate"] == 1.0
+
+
+
+def test_decision_context_tracks_lead_follow_and_forced_choice():
+    from skatai.evaluation.cardplay_weakness import choice_type, lead_position
+
+    lead_choice = SimpleNamespace(
+        observation=SimpleNamespace(current_trick=(), legal_cards=("C7", "C8")),
+    )
+    follow_forced = SimpleNamespace(
+        observation=SimpleNamespace(current_trick=((0, "C7"),), legal_cards=("C8",)),
+    )
+
+    assert lead_position(lead_choice) == "LEAD"
+    assert choice_type(lead_choice) == "CHOICE"
+    assert lead_position(follow_forced) == "FOLLOW"
+    assert choice_type(follow_forced) == "FORCED"
+
+
+def test_agreement_summary_includes_context_and_actor_class():
+    from skatai.evaluation.cardplay_weakness import summarize_agreement
+
+    rows = [
+        {
+            "family": "SUIT",
+            "role": "DECLARER",
+            "phase": "EARLY",
+            "seat": 0,
+            "lead_position": "LEAD",
+            "choice_type": "CHOICE",
+            "actor_class": "strong_human",
+            "agreement": True,
+            "legal_count": 3,
+            "latency_ms": 10.0,
+        },
+        {
+            "family": "SUIT",
+            "role": "DEFENDER",
+            "phase": "EARLY",
+            "seat": 1,
+            "lead_position": "FOLLOW",
+            "choice_type": "FORCED",
+            "actor_class": "kermit",
+            "agreement": False,
+            "legal_count": 1,
+            "latency_ms": 20.0,
+        },
+    ]
+
+    summary = summarize_agreement(rows)
+    assert summary["by_lead_position"]["LEAD"]["agreement_rate"] == 1.0
+    assert summary["by_choice_type"]["FORCED"]["n"] == 1
+    assert summary["by_actor_class"]["strong_human"]["n"] == 1

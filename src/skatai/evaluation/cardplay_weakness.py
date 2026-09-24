@@ -29,6 +29,14 @@ def play_phase(play_ordinal: int) -> str:
     return "END"
 
 
+def lead_position(event: Any) -> str:
+    return "LEAD" if len(event.observation.current_trick) == 0 else "FOLLOW"
+
+
+def choice_type(event: Any) -> str:
+    return "FORCED" if len(event.observation.legal_cards) == 1 else "CHOICE"
+
+
 def event_stratum(event: Any) -> tuple[str, str, str]:
     observation = event.observation
     role = "DECLARER" if int(observation.seat) == int(observation.declarer) else "DEFENDER"
@@ -107,7 +115,7 @@ def _group_summary(
 ) -> dict[str, dict[str, Any]]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        grouped[str(row[key])].append(row)
+        grouped[str(row.get(key, "UNKNOWN"))].append(row)
     return {
         value: _summarize_group(grouped[value])
         for value in sorted(grouped)
@@ -132,6 +140,9 @@ def summarize_agreement(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "by_role": _group_summary(records, "role"),
         "by_phase": _group_summary(records, "phase"),
         "by_seat": _group_summary(records, "seat"),
+        "by_lead_position": _group_summary(records, "lead_position"),
+        "by_choice_type": _group_summary(records, "choice_type"),
+        "by_actor_class": _group_summary(records, "actor_class"),
         "by_stratum": {
             key: _summarize_group(compound[key])
             for key in sorted(compound)
