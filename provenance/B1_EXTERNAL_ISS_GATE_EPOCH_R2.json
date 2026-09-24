@@ -1,0 +1,82 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-sgf-normalization-v1",
+  "captured_at": "2026-09-24T00:11:24Z",
+  "status": "PRIMARY_GATE_REFROZEN_CLEAN_RESTART",
+  "rationale": "The pre-erratum segment crossed a terminal-evidence parser correction boundary and an asynchronous recovery race appended one old-source game as SCORED after the parser hotfix. To preserve the append-only evidence and avoid post-hoc inclusion/exclusion rules, the entire pre-erratum segment is retained as diagnostic evidence and excluded from the primary strength estimator. The new primary epoch starts from zero scored games.",
+  "parent_segment": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate",
+    "source_commit": "07bcc5f8a29e765867687463533d4036fd883fd3",
+    "final_ledger_sha256": "74d8627332c002ec6b052a6d4f57273ab07387cd018cad6481071dda908161c0",
+    "records": 3,
+    "primary_strength_use": false,
+    "disposition": "DIAGNOSTIC_ONLY_FROZEN_PRE_ERRATUM_SEGMENT",
+    "known_records": [
+      {
+        "game_id": "a10d0f70fd78e7cc1a671361e2c39992fcf873b0709c04f0bd1b5c2a4d98bde1",
+        "arm": "B0",
+        "recorded_status": "SCORED"
+      },
+      {
+        "game_id": "f23a832122e38ec07422630b987679e0a38a795ee784b4b079484c96c4b4cbd4",
+        "arm": "B1",
+        "recorded_status": "PROTOCOL_FAILURE"
+      },
+      {
+        "game_id": "d81fb36d5fdb5c1514071f05a5b4b3a605016aa303f9790bea77c20d0a4ac583",
+        "arm": "B1",
+        "recorded_status": "SCORED",
+        "note": "asynchronous post-hotfix recovery race while active authority still bound to old source commit"
+      }
+    ]
+  },
+  "parser_erratum": {
+    "commit": "d79c0fe51a33f4d90214bf7c7382b3e1a02ae19b",
+    "provenance": "provenance/B1_EXTERNAL_ISS_TERMINAL_SGF_PARSER_ERRATUM.json",
+    "scope": "terminal ISS SGF evidence normalization only",
+    "decision_generation_changed": false
+  },
+  "frozen_science": {
+    "b0_release_id": "ISS-GATE-B0-7dd67922902692fd",
+    "b1_release_id": "ISS-GATE-B1-120239116da78bb2",
+    "b0_deployment_identity_sha256": "7dd67922902692fd065c103fbf31b37696da632e442cede16e31e087343e308a",
+    "b1_deployment_identity_sha256": "120239116da78bb2e82b632d3470d0c7cf5d62261889e96f1442abeb3514a103",
+    "gate_protocol_sha256": "abe30687b0bacd6be9fc59497572c39dfb5f09a37cda063369b5eac6be2b8738",
+    "decision_rule_sha256": "35369e4a2ff054a5efaf80d658c24dd8321da91f8f909049c458a2d2cfab057e",
+    "campaign_quotas_sha256": "1d043caa3275aa60f22e134fd31c1041bba32a15588cd9889f13ee6a5bb20cb9",
+    "ledger_contract_sha256": "896d77b753b4e92323593b888ac40b93ff5ca3f3171afd5cd83c061f40ec6f3b",
+    "looks_per_arm": [
+      300,
+      1000,
+      3000
+    ],
+    "primary_opponent_stacks": [
+      "kermit+zoot",
+      "kermit+theCount",
+      "zoot+theCount"
+    ],
+    "seats": [
+      0,
+      1,
+      2
+    ]
+  },
+  "new_epoch": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r2",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r2",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_parent_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active game and evidence bundle to the Git HEAD used by the worker"
+  },
+  "integrity": {
+    "parent_evidence_preserved": true,
+    "parent_ledger_rewritten": false,
+    "external_actions_replayed": false,
+    "post_hoc_score_filter_added": false
+  }
+}
