@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -45,6 +46,56 @@ def _extract_frozen_source(archive: Path, destination: Path) -> None:
             os.chmod(target, 0o644)
 
 
+def _verify_frozen_source(archive: Path, root: Path) -> None:
+    """Check every extracted source file before reusing a materialization."""
+
+    expected: set[str] = set()
+    with tarfile.open(archive, "r:") as tf:
+        for member in tf:
+            name = member.name
+            parts = PurePosixPath(name).parts
+            if (
+                not name
+                or name.startswith("/")
+                or "\\" in name
+                or any(part in ("", ".", "..") for part in parts)
+                or PurePosixPath(name).as_posix() != name
+                or not (member.isfile() or member.isdir())
+            ):
+                raise ReleasePackageError(f"UNSAFE_FROZEN_SOURCE_MEMBER:{name!r}")
+            expected.add(name)
+            installed = root.joinpath(*parts)
+            if installed.is_symlink():
+                raise ReleasePackageError(f"B0_RUNTIME_SOURCE_LINK:{name}")
+            if member.isdir():
+                if not installed.is_dir():
+                    raise ReleasePackageError(f"B0_RUNTIME_SOURCE_DIR_MISMATCH:{name}")
+                continue
+            if not installed.is_file() or installed.stat().st_size != member.size:
+                raise ReleasePackageError(f"B0_RUNTIME_SOURCE_MISMATCH:{name}")
+            original = tf.extractfile(member)
+            if original is None:
+                raise ReleasePackageError(f"FROZEN_SOURCE_MEMBER_UNREADABLE:{name}")
+            original_hash = hashlib.sha256()
+            installed_hash = hashlib.sha256()
+            with installed.open("rb") as copy:
+                while chunk := original.read(1024 * 1024):
+                    original_hash.update(chunk)
+                while chunk := copy.read(1024 * 1024):
+                    installed_hash.update(chunk)
+            if original_hash.digest() != installed_hash.digest():
+                raise ReleasePackageError(f"B0_RUNTIME_SOURCE_MISMATCH:{name}")
+    for installed in root.rglob("*"):
+        relative = installed.relative_to(root)
+        if installed.is_symlink():
+            raise ReleasePackageError(f"B0_RUNTIME_SOURCE_LINK:{relative}")
+        if "__pycache__" in relative.parts:
+            if installed.is_dir() or installed.suffix == ".pyc":
+                continue
+        if relative.as_posix() not in expected:
+            raise ReleasePackageError(f"B0_RUNTIME_SOURCE_UNEXPECTED:{relative}")
+
+
 def _verify_materialized(root: Path, manifest: dict) -> dict:
     bundle = root / "bundle"
     if json.loads((bundle / "manifest.json").read_text()) != manifest:
@@ -59,6 +110,7 @@ def _verify_materialized(root: Path, manifest: dict) -> dict:
     if sha256_file(bundle / "source/skatzero-source.tar") != baseline["git_archive_sha256"]:
         raise ReleasePackageError("B0_SOURCE_HASH_MISMATCH")
     skatzero_root = root / "skatzero"
+    _verify_frozen_source(bundle / "source/skatzero-source.tar", skatzero_root)
     if sha256_file(skatzero_root / "api.py") != baseline["implementation_hashes"]["inference_api_py"]:
         raise ReleasePackageError("B0_INFERENCE_API_HASH_MISMATCH")
     for name, expected in sorted(baseline["pretrained_models"].items()):

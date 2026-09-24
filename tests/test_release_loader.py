@@ -7,7 +7,7 @@ import tarfile
 import pytest
 
 from skatai.artifacts.release import ReleasePackageError
-from skatai.runtime.release_loader import _extract_frozen_source
+from skatai.runtime.release_loader import _extract_frozen_source, _verify_frozen_source
 
 
 @pytest.mark.parametrize("name", ["../escape.py", "/absolute.py", "a/../escape.py"])
@@ -46,3 +46,32 @@ def test_frozen_source_extracts_regular_file(tmp_path: Path):
 
     _extract_frozen_source(archive, tmp_path / "extracted")
     assert (tmp_path / "extracted/api.py").read_bytes() == payload
+
+
+def test_reused_frozen_source_checks_auxiliary_files(tmp_path: Path):
+    archive = tmp_path / "source.tar"
+    with tarfile.open(archive, "w") as tf:
+        for name, payload in (("api.py", b"import helper\n"), ("helper.py", b"value = 1\n")):
+            member = tarfile.TarInfo(name)
+            member.size = len(payload)
+            tf.addfile(member, io.BytesIO(payload))
+    extracted = tmp_path / "extracted"
+    _extract_frozen_source(archive, extracted)
+    _verify_frozen_source(archive, extracted)
+    (extracted / "helper.py").write_bytes(b"value = 2\n")
+    with pytest.raises(ReleasePackageError, match="B0_RUNTIME_SOURCE_MISMATCH:helper.py"):
+        _verify_frozen_source(archive, extracted)
+
+
+def test_reused_frozen_source_rejects_unexpected_module(tmp_path: Path):
+    archive = tmp_path / "source.tar"
+    payload = b"print('ok')\n"
+    with tarfile.open(archive, "w") as tf:
+        member = tarfile.TarInfo("api.py")
+        member.size = len(payload)
+        tf.addfile(member, io.BytesIO(payload))
+    extracted = tmp_path / "extracted"
+    _extract_frozen_source(archive, extracted)
+    (extracted / "random.py").write_text("unexpected = True\n")
+    with pytest.raises(ReleasePackageError, match="B0_RUNTIME_SOURCE_UNEXPECTED:random.py"):
+        _verify_frozen_source(archive, extracted)
