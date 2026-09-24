@@ -1,0 +1,61 @@
+{
+  "schema": "skatai.v2.iss-ouvert-discard-echo-erratum.v1",
+  "captured_at": "2026-09-24T06:01:53Z",
+  "base_source_commit": "b176a0b43f4d0c118700362c450cfa1369db25f3",
+  "fix_branch": "lab/iss-r9-discard-echo",
+  "tested_fix_commit": "f34ddee",
+  "incident": {
+    "epoch": "R8",
+    "table_id": "AIecf873",
+    "game_sequence": 2,
+    "assigned_arm": "B1",
+    "assigned_stack": "zoot+theCount",
+    "assigned_seat": 0,
+    "scored_games_before_failure": 67,
+    "pending_effect_id": "a16697a8c9d4927d391c7b827e51646f1037c41bae2eacd3965ce869d1aa2c9e",
+    "pending_effect_type": "DISCARD",
+    "worker_exit_code": 1,
+    "exception": "ISSSessionError: INVALID_TABLE_MOVE:UNKNOWN_ACTION:<22-card split-ouvert discard echo>",
+    "server_echo_sha256": "b127a57db0e153cd42bcbfba51d8bc1ae7d8290ac7ef7f831798c51d5f8e4264"
+  },
+  "root_cause": {
+    "summary": "After a separate pickup-game declaration half-move, V2 incorrectly appended the ten-card Ouvert hand to the two-card discard outbound action. ISS appends/re-renders the open hand in the server echo, producing a 22-card echo that the V2 parser did not accept.",
+    "official_reference": [
+      "doc/skat-game-format: discard and declaration encode material discard cards plus Ouvert visibility as applicable",
+      "SimpleState.java DISCARD_AND_DECL split half-phase accepts the material discard first and treats additional Ouvert view cards as visibility data"
+    ]
+  },
+  "recovery_observed": {
+    "active_games_cleared": true,
+    "external_action_replay": false,
+    "ledger_failure_status": "PROTOCOL_FAILURE",
+    "ledger_failure_game_id": "a6fbc2091482b2780fcebb110c98bbe5aaf4158764128881c984c215a5743582",
+    "failure_reason": "R8_OUVERT_DISCARD_OUTBOUND_ALREADY_INCLUDED_OPEN_HAND_SERVER_APPENDED_OPEN_HAND_PARSE_FAILURE"
+  },
+  "fix": {
+    "root_change": "Split declaration/discard now emits only the two material discard cards.",
+    "defensive_parser": "A structurally valid historical 22-card split-Ouvert echo is accepted and normalized to the canonical 12-card discard/open-hand representation.",
+    "exactly_once": "A pending legacy 12-card discard effect can be reconciled against its valid 22-card server echo without replay.",
+    "malformed_echoes": "Fail closed."
+  },
+  "verification": {
+    "targeted": {
+      "passed": 69,
+      "failed": 0
+    },
+    "full_linux": {
+      "passed": 277,
+      "failed": 0
+    },
+    "python": "3.11.13",
+    "environment": "/tmp/skatai-v2-dev/bin/python",
+    "command_full": "PYTHONPATH=src /tmp/skatai-v2-dev/bin/python -m pytest -q"
+  },
+  "science": {
+    "r8_completed_gate_claim": false,
+    "r8_scored_games_preserved_as_evidence": true,
+    "strength_claim_added": false,
+    "new_epoch_required_for_gate_continuation": true
+  },
+  "concurrency_note": "The main worktree was concurrently dirty and failing three targeted tests at capture time; it was intentionally not overwritten."
+}
