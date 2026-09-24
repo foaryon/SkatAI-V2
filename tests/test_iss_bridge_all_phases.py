@@ -58,6 +58,17 @@ def test_bridge_pickup_combines_declaration_and_discard():
     assert next_skat_action(t, e) == "G.C7.C8"
 
 
+def test_bridge_split_pickup_ouvert_sends_only_two_card_discard():
+    e = Engine()
+    e.contract = "NO"
+    t = table(
+        DEAL_FH,
+        "1 18", "0 y", "1 p", "2 p",
+        "0 s", "w S9.ST", "0 NO",
+    )
+    assert next_skat_action(t, e) == "C7.C8"
+
+
 def test_bridge_cardplay_uses_stable_product_surface():
     e = Engine()
     e.contract = "GH"
