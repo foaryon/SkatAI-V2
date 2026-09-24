@@ -1,0 +1,88 @@
+{
+  "schema": "skatai.v2.external-iss-gate-epoch.v1",
+  "epoch_id": "post-mutable-mirror-snapshot-recovery-v1",
+  "captured_at": "2026-09-24T02:27:17Z",
+  "status": "PRIMARY_GATE_REFROZEN_AFTER_MUTABLE_MIRROR_RACE_FIX",
+  "rationale": "R5 completed two deployment-valid games but the worker failed while mirroring current/service.jsonl. upload_verified hashed a live append-only journal and then passed the same mutable source path to rclone; concurrent protocol appends changed the bytes between hash and transfer. R5 active-game authority was reconciled offline from terminal SGF, scored ledger evidence and an empty pending-effect set, then mirrored byte-identically. upload_verified now captures immutable bytes, hashes and uploads that snapshot, and removes the temporary snapshot after verification.",
+  "executable_code_commit": "6a5055c60d65f93cf0b6e8df0a4d04067b98d319",
+  "mirror_snapshot_fix_commit": "6a5055c60d65f93cf0b6e8df0a4d04067b98d319",
+  "closed_r5": {
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r5",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r5",
+    "worker_source_commit": "fb6febc7a06968ce2f0100f0a8be240fb03ea4b4",
+    "ledger_sha256": "dab50ccfee811813c75c0a817794aebe272b82eee1ef90ad8ce095a7cb187a14",
+    "records": 2,
+    "scored_records": 2,
+    "active_games": 0,
+    "primary_strength_use": false,
+    "disposition": "DIAGNOSTIC_DEPLOYMENT_EVIDENCE_ONLY_AFTER_COMMON_STORAGE_RECOVERY_CHANGE",
+    "games": [
+      {
+        "game_id": "64a858d75ce2973026db62c0308062d1fd725a64b2c9c14593979dc1893f0d33",
+        "arm": "B0",
+        "score": 146.0,
+        "evidence_sha256": "eee19957959e3137a2a6966818f6e3c3822cc675b1b1899924a70558789ca1aa",
+        "remote_hash_verified": true
+      },
+      {
+        "game_id": "414220d808ff1117822c946d4162d887b81adfd691994b11ff5c433523d57966",
+        "arm": "B1",
+        "score": 0.0,
+        "evidence_sha256": "48faf1a1366e704031476b2dd7a762af7386185888fdcdc24782baf1eafa27b5",
+        "remote_hash_verified": true
+      }
+    ],
+    "remote_current_ledger_hash_verified": true,
+    "remote_active_games_empty_hash_verified": true
+  },
+  "failure": {
+    "classification": "MUTABLE_CURRENT_JOURNAL_MIRROR_RACE",
+    "exception": "MIRROR_HASH_MISMATCH:current/service.jsonl",
+    "observed_rclone_behavior": "first transfer attempt detected changing source bytes; retry succeeded, but V2 verification compared the remote retry bytes to a stale pre-transfer SHA",
+    "external_gameplay_effect": "none observed; failure occurred during post-terminal evidence mirroring after the second scored record was durably appended",
+    "duplicate_external_effect_replay": false
+  },
+  "recovery": {
+    "terminal_game_id": "414220d808ff1117822c946d4162d887b81adfd691994b11ff5c433523d57966",
+    "terminal_sgf_present": true,
+    "ledger_status": "SCORED",
+    "pending_effects_after_game": 0,
+    "active_authority_cleared_offline": true,
+    "remote_repair_performed_without_iss_connection": true,
+    "game_manifest_recreated_and_remote_verified": true
+  },
+  "verification": {
+    "regression_test_red_before_fix": true,
+    "regression_test_after_fix": "1 passed",
+    "full_tests": "267 passed",
+    "fault_injection": {
+      "source_initial_bytes": 16,
+      "source_final_bytes": 31890,
+      "uploaded_snapshot_bytes": 16,
+      "source_grew_after_snapshot": true,
+      "uploaded_snapshot_sha256": "3e2ee8c80cabd0382e9e3c279c8b7188621510123dd973e3a0996e2634709f73",
+      "remote_hash_verified": true,
+      "probe_remote_deleted_after_verification": true
+    }
+  },
+  "science_boundary": {
+    "b0_upstream_commit_unchanged": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "b1_model_sha256_unchanged": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "treatment_difference_remains": "bidding only",
+    "gameplay_decision_policy_changed": false,
+    "common_evidence_transport_changed_equally_for_b0_and_b1": true,
+    "reuse_r5_primary_strength_records": false
+  },
+  "new_epoch": {
+    "epoch": "R6",
+    "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r6",
+    "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r6",
+    "initial_scored_games": {
+      "B0": 0,
+      "B1": 0
+    },
+    "reuse_prior_epoch_games": false,
+    "training_use_before_gate_decision": false,
+    "source_commit_rule": "bind every active-game authority and evidence bundle to the clean Git HEAD executing R6"
+  }
+}
