@@ -5,29 +5,32 @@
     "scored_game": false,
     "status": "AUTHENTICATED"
   },
-  "campaign_epoch_commit": "d3196b06232dc5a2df8f9658e63c7a0fb5417ee2",
-  "captured_at": "2026-09-24T01:37:17Z",
-  "code_head": "d8e2d4b",
+  "campaign_epoch_commit": "1687222d5218aeb1d61a00ce6bf4180083416036",
+  "captured_at": "2026-09-24T02:10:31Z",
+  "code_head": "64c1c05b9e7e013e8388bced304bba8b8d3e87c9",
   "deployment_identity_arms": [
     "B0",
     "B1"
   ],
-  "gate_epoch": "post-declaration-legality-mirror-recovery-v1",
+  "gate_epoch": "post-resignation-ordering-recovery-v1",
   "interpretation": {
     "cross_epoch_table_authority_isolation_applied": true,
+    "declaration_legality_regression_verified": true,
+    "defender_resignation_semantics_verified": true,
+    "mirror_namespace_recovery_verified": true,
     "only_reported_readiness_blocker": null,
+    "out_of_order_resignation_reconciliation_verified": true,
     "primary_epoch_scored_games": 0,
     "prior_epochs_reused_for_strength": false,
-    "ready_for_authenticated_live_gate": true,
-    "terminal_sgf_parser_erratum_applied": true,
     "r3_closed_after_common_adapter_fix": true,
-    "declaration_legality_regression_verified": true,
-    "mirror_namespace_recovery_verified": true
+    "r4_closed_after_common_protocol_fix": true,
+    "ready_for_authenticated_live_gate": true,
+    "terminal_sgf_parser_erratum_applied": true
   },
-  "live_network_action_performed": true,
+  "live_network_action_performed": false,
   "object_storage": {
     "ok": true,
-    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r3",
+    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r5",
     "returncode": 0
   },
   "readiness": {
@@ -97,7 +100,7 @@
     "ready": true,
     "schema": "skatai.v2.external-iss-readiness.v1"
   },
-  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r4",
-  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r4",
+  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r5",
+  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r5",
   "schema": "skatai.v2.external-iss-readiness-snapshot.v1"
 }
