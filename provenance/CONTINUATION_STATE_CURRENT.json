@@ -29,18 +29,18 @@
       "status": "QUALIFIED_EXTERNAL_ADDITIONS_WITH_QUARANTINE"
     }
   },
-  "captured_at": "2026-09-24T03:05:02Z",
+  "captured_at": "2026-09-24T03:31:01Z",
   "external_blockers": [
     {
       "action": "Authenticate normal Git transport on the RunPod control host and push the existing clean V2 main history to https://github.com/foaryon/SkatAI-V2.git without reconstructing history.",
       "id": "github-v2-normal-git-auth"
     }
   ],
-  "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R7 execution",
+  "first_unfinished_dependency_for_b1_strength": "clean isolated ISS external gate epoch R8 execution",
   "git": {
     "branch": "main",
-    "campaign_epoch_commit": "966c4c7bc2504f73a4a660e94aecc7bd7b07179c",
-    "code_head": "ab72f447e82d516120a78018c96d606f7eb7a03b",
+    "campaign_epoch_commit": "decebe68c99c53d4bfe905dd95a4e6df0a4f1f16",
+    "code_head": "a7da2a2ea0d251b289591d940e2827dc1ef84d92",
     "new_v2_github_repository_attached": true,
     "normal_https_auth_present_on_runpod": false,
     "normal_ssh_auth_present_on_runpod": false,
@@ -55,23 +55,25 @@
     "account_identity_known": true,
     "active_game_crash_safe_authority": true,
     "active_table_error_fail_closed": true,
-    "adapter_status": "R7_GATE_READY_POST_EXACTLY_ONCE_AND_TABLE_ERROR_RECOVERY",
+    "adapter_status": "R8_GATE_READY_POST_STACK_ROTATION_LIVENESS_RECOVERY",
     "all_phase_single_adapter": true,
     "authenticated_preflight_complete": true,
     "durable_effect_guard": true,
-    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R7.json",
+    "epoch_provenance": "provenance/B1_EXTERNAL_ISS_GATE_EPOCH_R8.json",
     "frozen_external_gate_ready": true,
     "frozen_external_gate_ready_except_credentials": false,
-    "gate_epoch": "post-overlapping-effect-and-table-error-recovery-v1",
-    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r7",
-    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r7",
+    "gate_epoch": "post-stack-rotation-liveness-recovery-v1",
+    "gate_runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r8",
+    "gate_s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r8",
     "hetzner_per_game_evidence_mirror": true,
     "host": "skatgame.net",
     "latest_live_infrastructure_failure": {
-      "classification": "MUTABLE_CURRENT_JOURNAL_MIRROR_RACE",
-      "r5_primary_strength_use": false,
-      "recovery": "terminal game reconciled offline; active authority empty; remote hashes verified",
-      "resolved_by_commit": "6a5055c60d65f93cf0b6e8df0a4d04067b98d319"
+      "classification": "DEPARTING_TABLE_DESTROY_FILTERED_AS_FOREIGN",
+      "next_stack_at_stall": "kermit+theCount",
+      "observed_after_scored_games": 6,
+      "r7_primary_strength_use": false,
+      "recovery": "R7 stopped with empty active-game authority after all six games were remote-hash verified; departing table remains admitted through destroy in R8",
+      "resolved_by_commit": "a7da2a2ea0d251b289591d940e2827dc1ef84d92"
     },
     "latest_live_protocol_failure": {
       "affected_r6_games": [
@@ -102,7 +104,8 @@
     "r4_primary_strength_use": false,
     "r5_primary_strength_use": false,
     "r6_primary_strength_use": false,
-    "scored_live_games": 14,
+    "r7_primary_strength_use": false,
+    "scored_live_games": 20,
     "secret_present_on_worker": true,
     "secret_source": "RunPod General Secret -> ISS_PASSWORD in process memory",
     "single_pending_material_effect_per_game": true,
@@ -114,11 +117,12 @@
     "worker_transport_reconnect": true
   },
   "next_safe_actions": [
-    "Launch the clean isolated R7 external ISS gate epoch from a clean Git tree and dedicated R7 runtime/S3 namespace.",
-    "Do not reuse R1/R2/R3/R4/R5/R6 scored records in the R7 primary strength estimator.",
+    "Launch the clean isolated R8 external ISS gate epoch from a clean Git tree and dedicated R8 runtime/S3 namespace.",
+    "Do not reuse R1/R2/R3/R4/R5/R6/R7 scored records in the R8 primary strength estimator.",
+    "Verify the first R8 stack rotation actually destroys the departing table and creates the next frozen-priority opponent stack.",
     "Treat any active-game ISS table_error as PROTOCOL_FAILURE and stop fail-closed.",
-    "Preserve and mirror every R7 deployment-valid game before advancing the campaign.",
-    "Do not mutate main while an R7 active game is bound to the running source commit.",
+    "Preserve and mirror every R8 deployment-valid game before advancing the campaign.",
+    "Do not mutate main while an R8 active game is bound to the running source commit.",
     "Continue independent non-contaminating cardplay weakness research on the separate lab worktree.",
     "Resolve GitHub normal-transport authentication independently; do not reconstruct commits through GitHub API/file-by-file writes."
   ],
@@ -201,7 +205,7 @@
   "tests": {
     "environment": "/tmp/skatai-v2-dev",
     "pytest_failed": 0,
-    "pytest_passed": 270,
+    "pytest_passed": 271,
     "required_pythonpath": "/workspace/skatai-v2/src"
   }
 }
