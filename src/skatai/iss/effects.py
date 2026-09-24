@@ -343,6 +343,15 @@ class ISSEffectJournal:
             from skatai.iss.protocol import is_card
 
             return all(is_card(x) for x in ep) and all(is_card(x) for x in op[2:])
+        if len(ep) == 12 and len(op) == 22 and op[:12] == ep:
+            from skatai.iss.protocol import is_card
+
+            return (
+                all(is_card(x) for x in ep)
+                and all(is_card(x) for x in op[12:])
+                and len(set(ep)) == 12
+                and set(ep[2:]) == set(op[12:])
+            )
         return False
 
     def confirm_observed_action(

@@ -213,6 +213,22 @@ def classify_action(actor: str, action: str) -> tuple[str, object]:
     ):
         return "discard_only", tuple(parts)
 
+    # Live ISS can echo a split ouvert discard to the declarer as the
+    # 12-card private discard view followed by the same 10-card open hand
+    # again. The official client accepts this because, after a separate
+    # declaration half-move, only the first two cards are material discards
+    # for the declarer's view. Normalize the duplicated public hand away,
+    # but fail closed unless both 10-card hand views describe the same ten
+    # unique cards and the private 12-card prefix is itself unique.
+    if (
+        actor != WORLD_ACTOR
+        and len(parts) == 22
+        and all(is_card(x) for x in parts)
+        and len(set(parts[:12])) == 12
+        and set(parts[2:12]) == set(parts[12:22])
+    ):
+        return "discard_only", tuple(parts[:12])
+
     # Official 2019 defender-view code can render a split hidden discard as
     # "<card>.??.??" and append ten ouvert cards. Normalize away the leaked
     # first token: V2 must not treat it as legitimate private information.
