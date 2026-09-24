@@ -7,6 +7,14 @@
     "http_last_modified": "Sun, 20 Sep 2026 12:02:12 GMT",
     "refresh_observation": "Sunday refresh pattern observed; treat as dynamic evidence, not a contractual cadence"
   },
+  "rating_fields": {
+    "games": "sample size; use together with RC to judge rating stability",
+    "T": "tournament points per game",
+    "M": "money gained in points per game",
+    "R": "ELO rating taking strength of opposition into account",
+    "RC": "90% rating-confidence half-width",
+    "selection_rule": "Do not collapse these into one ad-hoc score. Use R/RC/Games for strength and confidence, M/T for payoff-oriented human utility, and declarer/defender rates for behavioral coverage."
+  },
   "primary_opponents": [
     {
       "name": "theCount",
@@ -14,8 +22,16 @@
       "program_status": "VERIFIED_PROGRAM",
       "rank": 3,
       "games": 40733,
+      "T": 27.66,
+      "M": 10.85,
       "elo": 1118.1,
-      "rating_confidence_90_half_width": 23.6
+      "rating_confidence_90_half_width": 23.6,
+      "declarer_pct": 34,
+      "declarer_win_pct": 83,
+      "declarer_loss_pct": 17,
+      "defender_pct": 66,
+      "defender_win_pct": 21,
+      "defender_loss_pct": 79
     },
     {
       "name": "zoot",
@@ -23,8 +39,16 @@
       "program_status": "VERIFIED_PROGRAM",
       "rank": 4,
       "games": 61511,
+      "T": 28.43,
+      "M": 11.52,
       "elo": 1113.1,
-      "rating_confidence_90_half_width": 22.2
+      "rating_confidence_90_half_width": 22.2,
+      "declarer_pct": 38,
+      "declarer_win_pct": 82,
+      "declarer_loss_pct": 18,
+      "defender_pct": 62,
+      "defender_win_pct": 20,
+      "defender_loss_pct": 80
     },
     {
       "name": "kermit",
@@ -32,8 +56,16 @@
       "program_status": "VERIFIED_PROGRAM",
       "rank": 6,
       "games": 31216,
+      "T": 30.79,
+      "M": 16.77,
       "elo": 1106.5,
-      "rating_confidence_90_half_width": 24.9
+      "rating_confidence_90_half_width": 24.9,
+      "declarer_pct": 33,
+      "declarer_win_pct": 87,
+      "declarer_loss_pct": 13,
+      "defender_pct": 67,
+      "defender_win_pct": 22,
+      "defender_loss_pct": 78
     }
   ],
   "verified_program_fillers": [
@@ -42,7 +74,10 @@
       "program_status": "VERIFIED_PROGRAM",
       "rank": 53,
       "games": 150990,
+      "T": 22.72,
+      "M": -4.30,
       "elo": 1000.0,
+      "rating_confidence_90_half_width": 0.0,
       "notes": "ISS reference program; useful diversity/fallback, not a primary strength anchor"
     },
     {
@@ -50,16 +85,32 @@
       "program_status": "VERIFIED_PROGRAM",
       "rank": 77,
       "games": 30808,
+      "T": 20.82,
+      "M": -8.76,
       "elo": 990.7,
       "rating_confidence_90_half_width": 20.0,
       "notes": "Verified Skat program; useful diversity/fallback"
     }
   ],
+  "human_product_evaluation": {
+    "principle": "Playing strength for the shipped Skat product is multi-dimensional. Do not optimize only win/loss or ELO.",
+    "required_metrics": [
+      "R with RC and Games for opponent-adjusted strength and confidence",
+      "M for payoff-oriented points gained per game",
+      "T for tournament-points efficiency",
+      "declarer/defender rates and win/loss rates for behavioral decomposition",
+      "contract-type, seat, declarer/defender, bidding, discard, and cardplay slices"
+    ],
+    "host_scoring_requirement": "ISS M is an external proxy. Before release acceptance, reproduce the same payoff analysis under the exact scoring/money convention used by the target Skat software and its human-facing game mode.",
+    "decision_rule": "Do not replace the scientific external strength gate with M alone. Require no material strength regression while separately preferring treatments that improve payoff-oriented utility under deployment-valid scoring.",
+    "training_use": "Use high-M/high-T opponent behavior as a valuable teacher/diagnostic signal, especially where it differs from pure ELO ordering, but preserve frozen evaluation separation."
+  },
   "dynamic_fillers": {
     "eligibility": [
       "online and accepts table invitations",
       "identity captured in raw ISS evidence",
-      "prefer higher current ISS rating with adequate sample/confidence",
+      "prefer Pareto-strong candidates across R, M, T, Games, and RC rather than rank alone",
+      "among similar R/RC candidates, prefer better M/T when the goal is human-facing payoff-quality data",
       "do not label an account as a bot/program unless independently verified",
       "do not let filler traffic displace the three primary opponents from core benchmark coverage"
     ],
@@ -68,6 +119,8 @@
         "name": "Klotho",
         "rank": 24,
         "games": 6475,
+        "T": 19.30,
+        "M": -16.21,
         "elo": 1046.2,
         "rating_confidence_90_half_width": 38.6,
         "program_status": "UNKNOWN"
@@ -76,6 +129,8 @@
         "name": "thresher",
         "rank": 25,
         "games": 3260,
+        "T": 23.13,
+        "M": -5.94,
         "elo": 1035.0,
         "rating_confidence_90_half_width": 48.8,
         "program_status": "UNKNOWN"
