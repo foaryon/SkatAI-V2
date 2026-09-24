@@ -5,14 +5,14 @@
     "scored_game": false,
     "status": "AUTHENTICATED"
   },
-  "campaign_epoch_commit": "0c1512e",
-  "captured_at": "2026-09-24T02:29:30Z",
-  "code_head": "6a5055c60d65f93cf0b6e8df0a4d04067b98d319",
+  "campaign_epoch_commit": "966c4c7bc2504f73a4a660e94aecc7bd7b07179c",
+  "captured_at": "2026-09-24T03:05:02Z",
+  "code_head": "ab72f447e82d516120a78018c96d606f7eb7a03b",
   "deployment_identity_arms": [
     "B0",
     "B1"
   ],
-  "gate_epoch": "post-mutable-mirror-snapshot-recovery-v1",
+  "gate_epoch": "post-overlapping-effect-and-table-error-recovery-v1",
   "interpretation": {
     "cross_epoch_table_authority_isolation_applied": true,
     "declaration_legality_regression_verified": true,
@@ -27,13 +27,17 @@
     "r3_closed_after_common_adapter_fix": true,
     "r4_closed_after_common_protocol_fix": true,
     "r5_closed_after_common_evidence_transport_fix": true,
+    "r6_closed_after_common_exactly_once_fix": true,
     "ready_for_authenticated_live_gate": true,
+    "single_pending_material_effect_per_game_verified": true,
+    "skip_inference_while_effect_pending_verified": true,
+    "table_error_fail_closed_verified": true,
     "terminal_sgf_parser_erratum_applied": true
   },
   "live_network_action_performed": false,
   "object_storage": {
     "ok": true,
-    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r6",
+    "remote_root": ":s3:skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r7",
     "returncode": 0
   },
   "readiness": {
@@ -103,7 +107,7 @@
     "ready": true,
     "schema": "skatai.v2.external-iss-readiness.v1"
   },
-  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r6",
-  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r6",
+  "runtime_root": "/workspace/skatai-v2-runtime/iss/external-gate-r7",
+  "s3_prefix": "s3://skatai-v2/evidence/V2-B1-bidding-linearish-full-v1/external-iss-gate-r7",
   "schema": "skatai.v2.external-iss-readiness-snapshot.v1"
 }

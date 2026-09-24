@@ -2,29 +2,38 @@
   "blockers": [
     {
       "does_not_block": [
-        "R6 ISS external gameplay gate",
+        "R7 ISS external gameplay gate",
         "Hetzner evidence persistence",
         "local V2 research",
-        "cardplay reconstruction research"
+        "cardplay reconstruction and weakness diagnostics"
       ],
-      "effect": "The intended foaryon/SkatAI-V2 remote is configured and reachable, but the RunPod host cannot push because normal HTTPS Git credentials are absent.",
+      "effect": "The intended foaryon/SkatAI-V2 repository exists and is public/empty, and the connected GitHub account has push/admin permission, but the RunPod host has neither usable HTTPS Git credentials nor a usable SSH key, so the existing local commit graph cannot yet be pushed through normal Git transport.",
       "id": "github-v2-normal-git-auth",
-      "required_resolution": "Authenticate normal Git transport on the RunPod control host, then push the existing clean main history. Do not recreate the existing commit graph through file-by-file API commits.",
+      "required_resolution": "Authenticate normal Git transport on the RunPod control host (HTTPS credential helper/token or authorized SSH key), then push the existing clean main history. Do not recreate the existing commit graph through GitHub API/file-by-file commits.",
       "scope": "Phase 1 clean V2 source authority",
       "status": "OPEN_EXTERNAL_ACTION",
       "verified_state": {
-        "local_head": "0c1512e",
+        "github_connector_admin_permission": true,
+        "github_connector_push_permission": true,
+        "local_head": "966c4c7bc2504f73a4a660e94aecc7bd7b07179c",
         "local_repo": "/workspace/skatai-v2",
         "normal_git_push_error": "could not read Username for https://github.com",
+        "normal_https_git_auth": false,
+        "normal_https_git_push_error": "could not read Username for https://github.com",
+        "normal_ssh_git_auth": false,
+        "normal_ssh_git_error": "Permission denied (publickey)",
+        "remote_empty": true,
         "remote_ls_remote_returncode": 0,
         "remote_present": true,
         "remote_refs_observed": 0,
-        "remote_url": "https://github.com/foaryon/SkatAI-V2.git"
+        "remote_size": 0,
+        "remote_url": "https://github.com/foaryon/SkatAI-V2.git",
+        "remote_visibility": "public"
       }
     }
   ],
-  "last_verified_at": "2026-09-24T02:29:30Z",
-  "latest_verified_code_head": "6a5055c60d65f93cf0b6e8df0a4d04067b98d319",
+  "last_verified_at": "2026-09-24T03:05:02Z",
+  "latest_verified_code_head": "ab72f447e82d516120a78018c96d606f7eb7a03b",
   "notes": [
     "Hetzner S3 remains authoritative persistent V2 storage and is healthy.",
     "ISS credentials are available only at runtime and authenticated gameplay can proceed independently of GitHub push authentication."
