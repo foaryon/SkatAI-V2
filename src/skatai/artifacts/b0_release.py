@@ -82,7 +82,7 @@ def build_b0_release(
             check=True,
         )
         metadata = {
-            "release_id": "V2-B0-package-v2",
+            "release_id": "V2-B0-package-v3",
             "release_status": "BASELINE_PACKAGE_STAGED",
             "source_commit": commit,
             "parent_lineage": {
@@ -112,6 +112,9 @@ def build_b0_release(
                 "device": "cpu",
                 "backend": "skatai.runtime.skatzero_backend",
                 "host_interface": "skatai.runtime.interface.SkatAI",
+                "host_service_module": "skatai.runtime.host_service",
+                "host_request_schema": "skatai.v2.host-request.v1",
+                "host_response_schema": "skatai.v2.host-response.v1",
             },
             "acceptance_evidence": [
                 {"kind": "baseline_reproduction", "sha256": sha256_file(reproduction_path)},

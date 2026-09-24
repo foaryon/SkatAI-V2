@@ -135,7 +135,7 @@ def load_model(
     validation = validate_release_package(package)
     manifest = validation["manifest"]
     if (
-        manifest["release_id"] not in {"V2-B0-package-v1", "V2-B0-package-v2"}
+        manifest["release_id"] not in {"V2-B0-package-v1", "V2-B0-package-v2", "V2-B0-package-v3"}
         or manifest.get("release_status") != "BASELINE_PACKAGE_STAGED"
     ):
         raise ReleasePackageError("UNSUPPORTED_RELEASE_IDENTITY")
