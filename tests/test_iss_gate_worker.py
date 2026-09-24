@@ -520,3 +520,82 @@ def test_upload_verified_uses_immutable_snapshot_for_mutable_source(tmp_path, mo
     assert source.read_bytes() != original
     assert result["sha256"] == hashlib.sha256(original).hexdigest()
     assert result["bytes"] == len(original)
+
+
+
+def test_active_table_error_is_persisted_as_protocol_failure_and_stops_worker(tmp_path):
+    import pytest
+    from types import SimpleNamespace
+
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from skatai.iss.gate_worker import (
+        ActiveGame,
+        ExternalGateWorker,
+        GameAssignment,
+        ISSGateWorkerError,
+    )
+    from test_iss_effects import request_result
+
+    calls = []
+    sent = []
+
+    class Evidence:
+        def append_failure_without_terminal(self, **kwargs):
+            calls.append(("append", kwargs))
+            return {"game_id": "failure-game"}
+
+        def persist_active_games(self, games, *, source_commit):
+            calls.append(("persist", dict(games), source_commit))
+
+        def mirror_game(self, game_id):
+            calls.append(("mirror", game_id))
+            return {"game_id": game_id}
+
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    req, result = request_result()
+    effect, _ = journal.begin(
+        req,
+        result,
+        external_state_hash="a" * 64,
+        table_id="T",
+        game_sequence=1,
+        protocol_sequence=4,
+        wire_action="18",
+        outbound_line="table T SkatAI play 18",
+    )
+    journal.mark_send_returned(effect.effect_id)
+
+    worker = object.__new__(ExternalGateWorker)
+    worker.source_commit = "abc1234"
+    worker.evidence = Evidence()
+    worker.effect_guard = ISSAuthorityGuard(journal)
+    worker.assignment_by_game = {
+        ("T", 1): ActiveGame(
+            assignment=GameAssignment("B0", "kermit+zoot", 0, 300, True),
+            protocol_offset=11,
+            effect_offset=22,
+        )
+    }
+    worker.client = SimpleNamespace(send_service_command=sent.append)
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+zoot"
+    worker._expected_new_table_id = None
+    worker._table_password = "ephemeral"
+
+    event = SimpleNamespace(fields={"text": "play : _you_do_not_have_card HT."})
+    table = SimpleNamespace(table_id="T", game_sequence=1, viewer_name="SkatAI")
+
+    with pytest.raises(ISSGateWorkerError, match="ISS_TABLE_ERROR_DURING_ACTIVE_GAME"):
+        worker._on_table_error(event, table)
+
+    append = next(row for row in calls if row[0] == "append")
+    assert append[1]["status"] == "PROTOCOL_FAILURE"
+    assert append[1]["failure_reason"].startswith("ISS_TABLE_ERROR:")
+    assert append[1]["protocol_offset"] == 11
+    assert append[1]["effect_offset"] == 22
+    assert journal.pending_for_game("T", 1) == []
+    assert worker.assignment_by_game == {}
+    assert any(row[0] == "persist" and row[1] == {} for row in calls)
+    assert ("mirror", "failure-game") in calls
+    assert sent == ["table T SkatAI leave"]
+    assert worker.table_id is None

@@ -1342,6 +1342,56 @@ class ExternalGateWorker:
         )
         return True
 
+    def _on_table_error(self, event, table) -> None:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+
+        key = (table.table_id, table.game_sequence)
+        active = self.assignment_by_game.get(key)
+        error_text = str(event.fields.get("text") or "").strip()
+        if active is None:
+            raise ISSGateWorkerError(
+                f"ISS_TABLE_ERROR_WITHOUT_ACTIVE_GAME:{table.table_id}:"
+                f"{table.game_sequence}:{error_text}"
+            )
+
+        reason = f"ISS_TABLE_ERROR:{error_text or 'UNSPECIFIED'}"
+        for state in self.effect_guard.journal.pending_for_game(
+            table.table_id, table.game_sequence
+        ):
+            self.effect_guard.journal.abort_stale(
+                state.effect_id,
+                reason=reason,
+            )
+
+        stored = self.evidence.append_failure_without_terminal(
+            assignment=active.assignment,
+            table_id=table.table_id,
+            game_sequence=table.game_sequence,
+            protocol_offset=active.protocol_offset,
+            effect_offset=active.effect_offset,
+            status="PROTOCOL_FAILURE",
+            failure_reason=reason,
+        )
+
+        # Remove authority before mirroring so authoritative current state
+        # cannot claim that a failed game is still active after this point.
+        self.assignment_by_game.pop(key, None)
+        self._persist_active_game_authority()
+        self.table_id = None
+        self.desired_stack = None
+        self._expected_new_table_id = None
+        self._table_password = None
+
+        self.evidence.mirror_game(stored["game_id"])
+        self.client.send_service_command(
+            command_leave(table.table_id, table.viewer_name)
+        )
+        raise ISSGateWorkerError(
+            f"ISS_TABLE_ERROR_DURING_ACTIVE_GAME:{table.table_id}:"
+            f"{table.game_sequence}:{error_text}"
+        )
+
     def _run_connected_session(
         self,
         *,
@@ -1413,6 +1463,9 @@ class ExternalGateWorker:
                 event = client.handle_line(line)
                 if event.kind == "create":
                     self._on_create(event)
+                elif event.kind == "table_error":
+                    table = client.state.tables[str(event.fields["table_id"])]
+                    self._on_table_error(event, table)
                 elif event.kind == "table_end":
                     table = client.state.tables[str(event.fields["table_id"])]
                     keep_running = self._on_end(event, table)
