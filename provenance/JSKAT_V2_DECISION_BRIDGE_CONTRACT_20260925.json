@@ -1,5 +1,15 @@
 {
-  "captured_at": "2026-09-25T12:05:48.342692+00:00",
+  "captured_at": "2026-09-25T12:06:10.394593+00:00",
+  "confirmed_engine_order": {
+    "additional_rule_note": "Normal discard permits Jacks; no-Jack restriction at lines 527-529 is only SCHIEBERAMSCH option",
+    "declaration_lines": "537-548: announceGame called after discard and GameContract checked weakly with TODO",
+    "discard_lines": "477-506: takeSkat(two cards) precedes discardSkat; state moves to DECLARING only after discard",
+    "evidence_sha256": "95e83be13e70824be59be4668aab03b1aed955d3dc8d42316962fd88e13bfc20",
+    "file": "jskat-base/src/main/java/org/jskat/control/SkatGame.java",
+    "sequence": "BIDDING -> PICKING_UP_SKAT -> (DISCARDING if picked up) -> DECLARING -> TRICK_PLAYING",
+    "state_machine_lines": "156-174",
+    "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7"
+  },
   "identity": {
     "cards": "JSkat Card enum names are suit C/S/H/D plus rank A/T/K/Q/J/9/8/7, matching V2 two-character tokens; require 32-card bijection test",
     "game_id": "Stable host table plus local game identity, never card or wall-clock-derived only",
@@ -37,7 +47,7 @@
       "v2_phase": "DISCARD"
     },
     {
-      "gap": "Confirm engine order. If announceGame follows discard, original 12-card decision observation must be retained immutably with exact game identity; no post-hoc restoration using host hidden state.",
+      "gap": "CONFIRMED: announceGame follows discard. Retain the immutable pre-discard 12-card snapshot plus selected discard and exact game identity; V2 declaration must use pre-discard 12-card observation while deriving legal contracts from the post-discard 10-card hand and selected skat. Validate this semantics before implementation.",
       "jskat_callback": "announceGame()",
       "mapping": "Map reviewed legal contract set and V2 action to JSkat GameContract",
       "required_inputs": "10 cards for hand or 12 cards for pickup per V2 observation; JSkat may already have discarded to 10",
@@ -63,7 +73,7 @@
     "special": "JSkat ImmutablePlayerKnowledge.getSkat and getDeclarerPlayerCards are conditional; permit only after lawful revelation to this seat. Recompute and compare legal card set against independent V2 rules before requesting play."
   },
   "required_validation": [
-    "Exact JSkat callback order and information timing across pickup/hand/announce/discard, with an independently reproduced local game",
+    "Confirmed static callback order; reproduce one local pickup and one hand game to verify exact information timing and snapshot semantics",
     "Bid schedule and bid_index parity",
     "32-card and contract bijection, with flags hand/Schneider/Schwarz/ouvert/Null",
     "Legal action and scoring parity on independently generated edge cases",
@@ -85,6 +95,6 @@
     "v2_host_request": "skatai.v2.host-request.v1",
     "v2_interface": "skatai.v2.product-interface.v1"
   },
-  "status": "DESIGN_ONLY_BLOCKED_ON_LIFECYCLE_AND_RULE_VALIDATION",
+  "status": "DESIGN_ONLY_LIFECYCLE_ORDER_CONFIRMED_PICKUP_ACTION_GAP",
   "third_party_code_imported": false
 }

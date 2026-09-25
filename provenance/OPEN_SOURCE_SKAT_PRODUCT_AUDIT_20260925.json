@@ -34,6 +34,10 @@
         {
           "path": ".github/workflows/ci.yml",
           "sha256": "91a1698ff0f70ce4a389bc0fa1b6cd9e7b748f09b863c6426e4661cbafae3374"
+        },
+        {
+          "path": "jskat-base/src/main/java/org/jskat/control/SkatGame.java",
+          "sha256": "95e83be13e70824be59be4668aab03b1aed955d3dc8d42316962fd88e13bfc20"
         }
       ],
       "integration_risks": [
@@ -42,7 +46,8 @@
         "Static AI registration needs a small reviewed adapter hook",
         "Replace or individually clear bundled images and icons before distributing a derivative",
         "Independent rule parity on announced, ouvert, null, scoring and edge cases remains required",
-        "Windows 11 native package and current UX remain unverified"
+        "Windows 11 native package and current UX remain unverified",
+        "SkatGame confirms pickup -> discard -> announce order; V2 declaration requires retained 12-card pre-discard snapshot and separate pickup decision protocol"
       ],
       "license": "Apache-2.0 for code; bundled image rights require separate audit",
       "repo": "b0n541/jskat",

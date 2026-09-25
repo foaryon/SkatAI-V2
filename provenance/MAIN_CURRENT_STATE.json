@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:05:48.342692+00:00",
+  "captured_at": "2026-09-25T12:06:10.394593+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -53,7 +53,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "R9 under independent fail-closed supervisor until clean gate; stage measured 1->2->4 epochs at boundary. Advance independent JSkat bridge/rules/asset validation for Windows host; actual user-host integration still awaits source.",
+  "next_action": "R9 stays independent until clean gate. Product path: design versioned pickup/hand decision protocol and local JSkat lifecycle/rule smoke; do not vendor/fork before remaining audit gates.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -68,7 +68,7 @@
     "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
-    "next_gate": "JSkat lifecycle/rule validation, then licensed assets and Windows build",
+    "next_gate": "Resolve missing V2 pickup action protocol; validate retained pre-discard declaration snapshot, then rules/assets/Windows build",
     "no_vendor_or_fork": true,
     "status": "CONDITIONAL_JSKAT_PREFERENCE_NO_ADOPTION"
   },
