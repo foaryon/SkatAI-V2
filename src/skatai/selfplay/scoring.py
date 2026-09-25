@@ -193,10 +193,14 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or play.declarer_final_points + play.defender_trick_points != 120):
         raise ValueError("EPISODE_REPLAY_OR_POINT_MISMATCH")
     declarer_tricks = sum(w == play.declarer for w in winners)
-    expected_play_win = (
-        declarer_tricks == 0 if game_type == "NULL"
-        else play.declarer_final_points >= 61
-    )
+    if game_type == "NULL":
+        expected_play_win = declarer_tricks == 0
+    elif "O" in play.contract[1:] or "Z" in play.contract[1:]:
+        expected_play_win = declarer_tricks == 10
+    elif "S" in play.contract[1:]:
+        expected_play_win = play.declarer_final_points >= 90
+    else:
+        expected_play_win = play.declarer_final_points >= 61
     if play.declarer_won != expected_play_win:
         raise ValueError("EPISODE_PLAY_WIN_FLAG_MISMATCH")
     return score_basic_game(

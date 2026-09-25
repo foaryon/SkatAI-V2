@@ -196,3 +196,36 @@ def test_declaration_rejects_wrong_mode_and_null_bid():
     with pytest.raises(ValueError, match="CONTRACT_NOT_LEGAL_AT_WINNING_BID"):
         run_declaration(**(kwargs | {"winning_bid": 24}), legal_contracts=("N",),
                         declaration_policy=Choose("PICKUP"))
+
+
+@pytest.mark.parametrize(
+    "contract,scorer_gate",
+    [("GHS", "ANNOUNCED_SCHNEIDER_REQUIRES_RESEARCH_GATE"),
+     ("GHZ", "UNSUPPORTED_BASIC_CONTRACT"),
+     ("GHO", "UNSUPPORTED_BASIC_CONTRACT")],
+)
+def test_announced_episode_win_flag_uses_declared_condition(contract, scorer_gate):
+    class Choose:
+        def choose_contract(self, view):
+            return contract
+
+    seed = 10
+    deal = make_deal(seed)
+    episode = run_game(
+        seed,
+        bidding_policies=[BidPolicy(hand, 18) for hand in deal.hands],
+        declaration_policies=[Choose() for _ in range(3)],
+        discard_policies=[DiscardPolicy() for _ in range(3)],
+        cardplay_policies=[RandomLegalPolicy(30 + seat) for seat in range(3)],
+        legal_contracts=(contract,),
+    )
+    assert episode.cardplay is not None
+    assert episode.cardplay.declarer_final_points == 63
+    assert episode.cardplay.trick_winners.count(episode.cardplay.declarer) == 7
+    assert episode.cardplay.declarer_won is False
+    with pytest.raises(ValueError, match=scorer_gate):
+        score_basic_episode(episode)
+    with pytest.raises(ValueError, match="EPISODE_PLAY_WIN_FLAG_MISMATCH"):
+        score_basic_episode(replace(
+            episode, cardplay=replace(episode.cardplay, declarer_won=True),
+        ))
