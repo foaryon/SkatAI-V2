@@ -245,6 +245,18 @@ def supervise(
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
+            while proc.poll() is None:
+                child_state = evaluate_restart_state(runtime=runtime, frozen_repo=frozen_repo)
+                # The owned child is still alive even if process discovery has not
+                # observed its worker or launcher command line yet.
+                if child_state["state"] not in {"RUNNING", "MANUAL_HOLD"}:
+                    child_state["state"] = "BOOTSTRAPPING"
+                    child_state["launcher_pids"] = sorted(
+                        set(child_state["launcher_pids"]) | {proc.pid}
+                    )
+                child_state["captured_unix_ns"] = time.time_ns()
+                _atomic_json(status_path, child_state)
+                time.sleep(poll_s)
             rc = proc.wait()
         failures += 1
         _atomic_json(

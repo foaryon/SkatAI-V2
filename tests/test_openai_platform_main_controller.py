@@ -468,10 +468,18 @@ def test_agent_preferences_are_explicit_and_cost_disciplined():
     assert tier == "flex"
 
 
-def test_serial_tool_round_budget_stops_reconnaissance_loop():
+def test_serial_tool_round_budget_allows_one_terminal_grace(tmp_path, monkeypatch):
     mod = _load_controller()
     gov = _governor()
-    state = {"turn_tool_rounds": gov["tool_budget"]["max_tool_rounds_per_turn"]}
+    mod.STATE = tmp_path / "state.json"
+    mod.LOG = tmp_path / "controller.log"
+    posted = []
+    monkeypatch.setattr(mod, "api", lambda method, path, body=None, extra_headers=None: posted.append((method, path, body)) or {})
+    state = {
+        "turn_tool_rounds": gov["tool_budget"]["max_tool_rounds_per_turn"],
+        "turn_tool_calls": 12,
+        "turn_side_effect_calls": 3,
+    }
     session = {
         "required_actions": [{
             "type": "function_call",
@@ -481,12 +489,67 @@ def test_serial_tool_round_budget_stops_reconnaissance_loop():
             "arguments": {},
         }]
     }
+    mod.handle_required_actions("sess_test", session, state, gov)
+    assert state["turn_terminal_grace_used"] is True
+    assert state["turn_tool_rounds"] == gov["tool_budget"]["max_tool_rounds_per_turn"]
+    assert state["turn_tool_calls"] == 13
+    event = posted[-1][2]["events"][0]
+    assert event["success"] is False
+    assert "record_turn_outcome" in event["output"]
+
     try:
         mod.handle_required_actions("sess_test", session, state, gov)
     except RuntimeError as exc:
         assert "TOOL_ROUND_BUDGET_EXCEEDED" in str(exc)
     else:
-        raise AssertionError("serial tool round cap was not enforced")
+        raise AssertionError("second over-budget work request was not rejected")
+
+
+def test_abort_usage_settlement_uses_actual_usage(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    mod.STATE = tmp_path / "state.json"
+    mod.LOG = tmp_path / "controller.log"
+    monkeypatch.setattr(mod, "retrieve_session", lambda _sid: {"usage": {"total_tokens": 216678}})
+    state = {
+        "turn_token_reservation": 250000,
+        "turn_token_reservation_day": "2026-09-25",
+        "reserved_total_tokens_today": 250000,
+        "permit_reserved_total_tokens": 250000,
+        "actual_total_tokens_today": 0,
+        "permit_actual_total_tokens": 0,
+        "session_usage_accounted_total_tokens": 0,
+        "usage_pending_since": 1,
+    }
+    permit = {"max_total_tokens": 750000}
+    settled, reason = mod.settle_usage_after_abort(state, gov, permit, "sess_test")
+    assert settled and reason is None
+    assert state["permit_actual_total_tokens"] == 216678
+    assert state["turn_token_reservation"] == 0
+    assert state["permit_reserved_total_tokens"] == 0
+
+
+def test_abort_usage_settlement_conservatively_charges_missing_usage(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    mod.STATE = tmp_path / "state.json"
+    mod.LOG = tmp_path / "controller.log"
+    monkeypatch.setattr(mod, "retrieve_session", lambda _sid: {"usage": None})
+    state = {
+        "turn_token_reservation": 250000,
+        "turn_token_reservation_day": "2026-09-25",
+        "reserved_total_tokens_today": 250000,
+        "permit_reserved_total_tokens": 250000,
+        "actual_total_tokens_today": 0,
+        "permit_actual_total_tokens": 0,
+        "session_usage_accounted_total_tokens": 0,
+        "usage_pending_since": 1,
+    }
+    permit = {"max_total_tokens": 750000}
+    settled, reason = mod.settle_usage_after_abort(state, gov, permit, "sess_test")
+    assert settled and reason is None
+    assert state["permit_actual_total_tokens"] == 250000
+    assert state["turn_token_reservation"] == 0
 
 
 def test_apply_patch_rejects_begin_patch_format_explicitly():

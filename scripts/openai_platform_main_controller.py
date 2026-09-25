@@ -817,6 +817,32 @@ def settle_session_usage(state, session, governor, permit, now=None):
         return False, "work_permit_token_cap_exceeded"
     return True, None
 
+def settle_usage_after_abort(state, governor, permit, session_id):
+    """Settle an aborted turn before hard-disable.
+
+    Prefer actual cumulative Agents usage. If usage is unavailable after the
+    abort, charge the full reservation immediately instead of leaving a zero
+    actual-token counter behind.
+    """
+    session = {}
+    try:
+        session = retrieve_session(session_id)
+    except Exception as exc:
+        log("abort_usage_retrieve_failed=" + repr(exc)[:300])
+    now = time.time()
+    usage = session.get("usage") if isinstance(session, dict) else None
+    if not isinstance(usage, dict) or usage.get("total_tokens") is None:
+        pending_since = float(state.get("usage_pending_since") or now)
+        now = max(now, pending_since + 121.0)
+    settled, reason = settle_session_usage(state, session or {}, governor, permit, now=now)
+    atomic_json(STATE, state)
+    log(
+        "abort_usage_settlement "
+        f"settled={settled} reason={reason} "
+        f"permit_actual_tokens={int(state.get('permit_actual_total_tokens') or 0)}"
+    )
+    return settled, reason
+
 def turn_nonce(session_id, state):
     raw = f"{POLICY_EPOCH}\n{session_id}\n{int(state.get('session_submit_count') or 0)}\n{time.time_ns()}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
@@ -1474,7 +1500,62 @@ def handle_required_actions(session_id, session, state, governor):
         for action in actions
     )
     if round_count >= max_rounds and not terminal_outcome_only:
-        raise RuntimeError("TOOL_ROUND_BUDGET_EXCEEDED")
+        if bool(state.get("turn_terminal_grace_used")):
+            raise RuntimeError("TOOL_ROUND_BUDGET_EXCEEDED")
+        events = []
+        for action in actions:
+            if action.get("type") != "function_call":
+                raise RuntimeError("UNEXPECTED_REQUIRED_ACTION_TYPE:" + str(action.get("type")))
+            if call_count >= max_calls:
+                raise RuntimeError("TOOL_CALL_BUDGET_EXCEEDED")
+            turn_id = _safe_action_id(action.get("turn_id"))
+            call_id = _safe_action_id(action.get("call_id"))
+            if state.get("active_turn_id") not in {None, turn_id}:
+                raise RuntimeError("MULTIPLE_ACTIVE_TURN_IDS")
+            state["active_turn_id"] = turn_id
+            output = json.dumps(
+                {
+                    "error": "TOOL_ROUND_BUDGET_REACHED",
+                    "message": (
+                        "No further work tools are authorized in this turn. "
+                        "Use record_turn_outcome as the sole next action with the evidence already gathered; "
+                        "classify incomplete work truthfully rather than performing more inspection or edits."
+                    ),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            events.append({
+                "type": "agent.session.input.tool_result",
+                "turn_id": turn_id,
+                "call_id": call_id,
+                "success": False,
+                "output": output,
+            })
+            call_count += 1
+        idem = hashlib.sha256(
+            (
+                "terminal-grace\n" + session_id + "\n"
+                + "\n".join(str(e["call_id"]) for e in events)
+            ).encode()
+        ).hexdigest()
+        api(
+            "POST",
+            f"/agents/sessions/{session_id}/events",
+            {"events": events},
+            extra_headers={"Idempotency-Key": idem},
+        )
+        state["turn_terminal_grace_used"] = True
+        state["turn_tool_calls"] = call_count
+        state["turn_tool_rounds"] = round_count
+        state["turn_side_effect_calls"] = effect_count
+        state["turn_tool_signature_counts"] = signatures
+        atomic_json(STATE, state)
+        log(
+            f"terminal_outcome_grace session={session_id} rejected={len(events)} "
+            f"turn_calls={call_count} tool_rounds={round_count}"
+        )
+        return state
     if not (round_count >= max_rounds and terminal_outcome_only):
         round_count += 1
     events = []
@@ -1616,6 +1697,7 @@ def _begin_turn_state(state, prepared, turn_lock):
     state["autonomy_hold_reason"] = None
     state["turn_tool_calls"] = 0
     state["turn_tool_rounds"] = 0
+    state["turn_terminal_grace_used"] = False
     state["turn_side_effect_calls"] = 0
     state["turn_tool_signature_counts"] = {}
     state["active_turn_id"] = None
@@ -1703,6 +1785,7 @@ def main():
                 state["autonomy_hold_reason"] = "fresh_work_permit_session_required"
                 state["turn_tool_calls"] = 0
                 state["turn_tool_rounds"] = 0
+                state["turn_terminal_grace_used"] = False
                 state["turn_side_effect_calls"] = 0
                 state["turn_tool_signature_counts"] = {}
                 state["active_turn_id"] = None
@@ -1736,6 +1819,7 @@ def main():
                     state["autonomy_hold_reason"] = "turn_timeout"
                     atomic_json(STATE, state)
                     cancel_turn(state["session_id"], "turn_timeout")
+                    settle_usage_after_abort(state, governor, permit, state["session_id"])
                     trip_hard_disable(f"turn_timeout_over_{max_turn}s")
                     return
                 time.sleep(5)
@@ -1746,6 +1830,7 @@ def main():
                 max_turn = int(governor["autonomous_budget"]["max_turn_seconds"])
                 if started and time.time() - started > max_turn:
                     cancel_turn(state["session_id"], "turn_timeout_during_tool")
+                    settle_usage_after_abort(state, governor, permit, state["session_id"])
                     trip_hard_disable(f"turn_timeout_over_{max_turn}s")
                     return
                 try:
@@ -1755,6 +1840,7 @@ def main():
                     state["autonomy_hold_reason"] = reason
                     atomic_json(STATE, state)
                     cancel_turn(state["session_id"], reason)
+                    settle_usage_after_abort(state, governor, permit, state["session_id"])
                     trip_hard_disable(reason)
                     return
                 time.sleep(2)
@@ -1765,6 +1851,7 @@ def main():
                 state["autonomy_followup_authorized"] = False
                 state["autonomy_hold_reason"] = "session_failed"
                 atomic_json(STATE, state)
+                settle_usage_after_abort(state, governor, permit, state["session_id"])
                 trip_hard_disable("session_failed:" + str(err)[:300])
                 return
 

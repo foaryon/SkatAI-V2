@@ -138,3 +138,89 @@ def test_runtime_env_rejects_secret_value_key(tmp_path):
 def test_process_scan_never_counts_the_supervisor_itself():
     mod = _load()
     assert mod.os.getpid() not in mod._processes_containing("test_supervise_frozen_r9.py")
+
+
+@pytest.mark.parametrize("discovered", [False, True])
+def test_supervisor_refreshes_live_child_and_records_exit(tmp_path, monkeypatch, discovered):
+    mod = _load()
+    runtime = _runtime(tmp_path)
+    statuses = []
+    original_write = mod._atomic_json
+
+    def capture_status(path, payload):
+        original_write(path, payload)
+        statuses.append(json.loads(path.read_text(encoding="utf-8")))
+
+    class FakeChild:
+        pid = 4321
+        polls = iter([None, None, 0])
+
+        def poll(self):
+            return next(self.polls)
+
+        def wait(self):
+            return 7
+
+    launches = []
+
+    def fake_launch(*args, **kwargs):
+        launches.append((args, kwargs))
+        return FakeChild()
+
+    observations = iter(["SAFE_TO_RESTART"] + ["RUNNING" if discovered else "SAFE_TO_RESTART"] * 2)
+
+    def fake_state(**kwargs):
+        state = next(observations)
+        return {
+            "schema": mod.SCHEMA,
+            "state": state,
+            "worker_pids": [4321] if state == "RUNNING" else [],
+            "launcher_pids": [],
+        }
+
+    def fake_sleep(_seconds):
+        if len(statuses) == 4:
+            raise StopIteration("stop after exit status")
+
+    monkeypatch.setattr(mod, "evaluate_restart_state", fake_state)
+    monkeypatch.setattr(mod, "_atomic_json", capture_status)
+    monkeypatch.setattr(mod, "_verify_frozen_identity", lambda *args: None)
+    monkeypatch.setattr(mod, "load_runtime_env", lambda *args: {})
+    monkeypatch.setattr(mod.subprocess, "Popen", fake_launch)
+    monkeypatch.setattr(mod.time, "sleep", fake_sleep)
+
+    with pytest.raises(StopIteration, match="stop after exit status"):
+        mod.supervise(runtime=runtime, frozen_repo=tmp_path, launcher=tmp_path / "launcher", env_file=tmp_path / "env")
+
+    assert len(launches) == 1
+    assert [item["state"] for item in statuses] == [
+        "SAFE_TO_RESTART",
+        "RUNNING" if discovered else "BOOTSTRAPPING",
+        "RUNNING" if discovered else "BOOTSTRAPPING",
+        "WORKER_EXITED",
+    ]
+    assert statuses[1]["worker_pids" if discovered else "launcher_pids"] == [4321]
+    assert statuses[2]["captured_unix_ns"] >= statuses[1]["captured_unix_ns"]
+    assert statuses[3]["exit_code"] == 7
+    assert statuses[3]["failure_streak"] == 1
+
+
+def test_supervisor_does_not_launch_while_reconciliation_blocked(tmp_path, monkeypatch):
+    mod = _load()
+    runtime = _runtime(tmp_path, active=1)
+    monkeypatch.setattr(mod, "_pending_effects", lambda *args: 0)
+    monkeypatch.setattr(mod, "_processes_containing", lambda *args: [])
+    monkeypatch.setattr(mod.subprocess, "Popen", lambda *args, **kwargs: pytest.fail("unexpected launch"))
+    monkeypatch.setattr(mod.time, "sleep", lambda *args: (_ for _ in ()).throw(StopIteration("blocked")))
+    with pytest.raises(StopIteration, match="blocked"):
+        mod.supervise(runtime=runtime, frozen_repo=tmp_path, launcher=tmp_path / "launcher", env_file=tmp_path / "env")
+    assert json.loads((runtime / "supervisor-status.json").read_text())["state"] == "BLOCKED_RECONCILIATION"
+
+
+def test_second_supervisor_cannot_launch(tmp_path, monkeypatch):
+    mod = _load()
+    runtime = _runtime(tmp_path)
+    monkeypatch.setattr(mod.fcntl, "flock", lambda *args: (_ for _ in ()).throw(BlockingIOError()))
+    monkeypatch.setattr(mod.subprocess, "Popen", lambda *args, **kwargs: pytest.fail("unexpected launch"))
+    with pytest.raises(SystemExit, match="R9_SUPERVISOR_ALREADY_RUNNING"):
+        mod.supervise(runtime=runtime, frozen_repo=tmp_path, launcher=tmp_path / "launcher", env_file=tmp_path / "env")

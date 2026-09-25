@@ -2,7 +2,7 @@
   "schema": "skatai.v2.r9-supervisor-status-heartbeat.v1",
   "captured_at": "2026-09-25T21:51:00Z",
   "task_id": "R9_SUPERVISOR_STATUS_HEARTBEAT",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "scope": "Supervisor observability only; frozen R9 worker/treatment/gameplay/evidence are immutable for this gate.",
   "observation": "The independent supervisor process remains alive with a long-lived gate_worker child, and worker status advances, but supervisor-status.json remains at the pre-launch SAFE_TO_RESTART snapshot because supervise() blocks in proc.wait() until the child exits.",
   "verified_live_evidence": {
@@ -22,6 +22,10 @@
     "Preserve fail-closed duplicate-supervisor and restart safety.",
     "Status publication must remain atomic and deterministic."
   ],
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "intervention": "While the supervisor-owned child is alive, atomically refresh supervisor-status.json on each poll with a new capture timestamp and observed worker PID. If process discovery has not observed the child yet, publish BOOTSTRAPPING with the owned PID so the status cannot imply safe restart. Retain the lock, prelaunch restart checks, exit status, and backoff.",
+  "input_identity": "Frozen R9 worker source commit 5c4b6f977ebdf883e836e95eb0530121b99394e7; live worker PID 133145 and supervisor PID 133139 were pre-existing and untouched.",
+  "resource_bound": "Local text changes and one preauthorized focused test command; no ISS launch, worker signal, restart, treatment change, or runtime write.",
+  "decided_at": "2026-09-25T21:57:35Z",
+  "verification": "test_r9_supervisor_observability (pinned runner sha256 dc96473f4f19cef353804b1dfafb0c82e1893592c422cdd5e0fe54d9cec98e0e) returned 0: 12 passed in 0.36s. Fake-child tests covered two live RUNNING refreshes with PID 4321, BOOTSTRAPPING during process discovery lag, WORKER_EXITED with exit code and failure streak, blocked reconciliation, and duplicate-supervisor rejection. Exact source/test diff inspected. No live worker or treatment mutation occurred; no runtime heartbeat from a deployed build is claimed.",
+  "decision": "ACCEPT the local supervisor observability fix and focused test evidence for this code gate. Host deployment or live runtime behavior requires a separately authorized integration gate."
 }
