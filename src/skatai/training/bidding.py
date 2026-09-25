@@ -6,7 +6,7 @@ import json
 import random
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Sequence
 
 import numpy as np
 import pyarrow.parquet as pq
@@ -14,6 +14,7 @@ import torch
 from torch.nn import functional as F
 
 from skatai.data.bidding_features import FEATURE_SCHEMA
+from skatai.data.bidding_parquet import DATASET_SCHEMA, SPLITS
 from skatai.models.bidding import BiddingMLP, BiddingModelConfig, dense_features
 
 TRAINING_SCHEMA = "skatai.v2.bidding-training.v1"
@@ -43,6 +44,46 @@ def dataset_manifest_identity(dataset_root: Path) -> str:
     return sha256_file(manifest)
 
 
+def verified_split_shards(
+    dataset_root: Path, split: str, *, expected_manifest_sha256: str | None = None,
+) -> list[Path]:
+    """Bind a read split to the manifest's exact shard set and content."""
+    if split not in SPLITS:
+        raise ValueError(f"UNKNOWN_DATASET_SPLIT:{split}")
+    manifest_path = dataset_root / "manifest.json"
+    raw = manifest_path.read_bytes()
+    if (expected_manifest_sha256 is not None
+            and hashlib.sha256(raw).hexdigest() != expected_manifest_sha256):
+        raise ValueError("DATASET_MANIFEST_CHANGED_DURING_PREFLIGHT")
+    manifest = json.loads(raw)
+    if (manifest.get("dataset_schema") != DATASET_SCHEMA
+            or manifest.get("feature_schema") != FEATURE_SCHEMA
+            or not isinstance(manifest.get("shards"), list)):
+        raise ValueError("DATASET_MANIFEST_SCHEMA_INVALID")
+    entries = [entry for entry in manifest["shards"] if entry.get("split") == split]
+    if not entries:
+        raise FileNotFoundError(f"NO_PARQUET_SHARDS:{dataset_root / split}")
+    listed: dict[Path, dict] = {}
+    for entry in entries:
+        relative = Path(entry["path"])
+        if (len(relative.parts) != 2 or relative.parts[0] != split
+                or relative.suffix != ".parquet" or relative in listed):
+            raise ValueError("DATASET_SHARD_PATH_INVALID_OR_DUPLICATE")
+        listed[relative] = entry
+    physical = {path.relative_to(dataset_root) for path in (dataset_root / split).glob("*.parquet")}
+    if physical != set(listed):
+        raise ValueError("DATASET_SHARD_SET_MISMATCH")
+    files = []
+    for relative, entry in sorted(listed.items()):
+        path = dataset_root / relative
+        if path.stat().st_size != entry["bytes"]:
+            raise ValueError(f"DATASET_SHARD_SIZE_MISMATCH:{relative}")
+        if sha256_file(path) != entry["sha256"]:
+            raise ValueError(f"DATASET_SHARD_HASH_MISMATCH:{relative}")
+        files.append(path)
+    return files
+
+
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -56,10 +97,9 @@ def parquet_batches(
     batch_size: int,
     seed: int,
     shuffle_files: bool,
+    verified_files: Sequence[Path] | None = None,
 ) -> Iterator[dict[str, torch.Tensor]]:
-    files = sorted((dataset_root / split).glob("*.parquet"))
-    if not files:
-        raise FileNotFoundError(f"NO_PARQUET_SHARDS:{dataset_root / split}")
+    files = list(verified_files) if verified_files is not None else verified_split_shards(dataset_root, split)
     if shuffle_files:
         rng = random.Random(seed)
         rng.shuffle(files)
@@ -170,6 +210,9 @@ def train(
     resume_from: Path | None = None,
 ) -> dict:
     dataset_id = dataset_manifest_identity(dataset_root)
+    train_files = verified_split_shards(
+        dataset_root, "train", expected_manifest_sha256=dataset_id,
+    )
     seed_everything(seed)
     dev = torch.device(device)
     model = BiddingMLP(config).to(dev)
@@ -228,6 +271,7 @@ def train(
                 batch_size=batch_size,
                 seed=seed + epoch,
                 shuffle_files=True,
+                verified_files=train_files,
             )
         ):
             if max_batches is not None and batch_i >= max_batches:
