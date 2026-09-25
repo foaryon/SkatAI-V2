@@ -47,6 +47,58 @@ def _pending_effects(runtime: Path) -> int:
     return len(ISSEffectJournal(path).pending())
 
 
+def _table_slots(runtime: Path) -> int:
+    path = runtime / "table-slots.json"
+    if not path.is_file():
+        return 0
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    slots = raw.get("slots")
+    if not isinstance(slots, list):
+        raise RuntimeError("TABLE_SLOTS_NOT_LIST")
+    return len(slots)
+
+
+def _unresolved_departures(runtime: Path) -> int:
+    directory = runtime / "table-departures"
+    if not directory.is_dir():
+        return 0
+    return sum(
+        1
+        for path in directory.glob("*.json")
+        if not path.name.startswith("reconciliation-")
+    )
+
+
+def _other_candidate_epoch_reasons(candidate_runtime: Path) -> list[str]:
+    parent = candidate_runtime.parent
+    reasons: list[str] = []
+    if not parent.is_dir():
+        return reasons
+    for sibling in sorted(parent.glob("throughput-candidate-t*-w*-v*")):
+        if sibling.resolve() == candidate_runtime.resolve():
+            continue
+        if not sibling.is_dir():
+            continue
+        try:
+            active = _active_games(sibling)
+            pending = _pending_effects(sibling)
+            slots = _table_slots(sibling)
+            departures = _unresolved_departures(sibling)
+        except Exception as exc:
+            reasons.append(
+                "OTHER_CANDIDATE_STATE_UNREADABLE:"
+                f"{sibling.name}:{type(exc).__name__}"
+            )
+            continue
+        if active or pending or slots or departures:
+            reasons.append(
+                "OTHER_CANDIDATE_UNRESOLVED:"
+                f"{sibling.name}:active={active}:pending={pending}:"
+                f"slots={slots}:departures={departures}"
+            )
+    return reasons
+
+
 def _scored_arm_counts(runtime: Path) -> dict[str, int]:
     path = runtime / "gate-ledger.jsonl"
     counts = {"B0": 0, "B1": 0}
@@ -230,6 +282,7 @@ def evaluate(
         workers=workers,
     )
     reasons.extend(epoch_reasons)
+    reasons.extend(_other_candidate_epoch_reasons(candidate_runtime))
 
     secret_ok = (
         iss_password_file.is_file()

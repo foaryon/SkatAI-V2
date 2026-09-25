@@ -44,6 +44,17 @@ def _percentile(values: Iterable[float], p: float) -> float | None:
     return xs[lo] * (1.0 - frac) + xs[hi] * frac
 
 
+def _effect_game_id(event: dict[str, Any]) -> str | None:
+    direct = event.get("game_id")
+    if direct:
+        return str(direct)
+    table_id = event.get("table_id")
+    game_sequence = event.get("game_sequence")
+    if table_id is None or not isinstance(game_sequence, (int, float)):
+        return None
+    return f"iss:{table_id}:{int(game_sequence)}"
+
+
 def _summary(values: Iterable[float]) -> dict[str, float | int | None]:
     xs = [float(x) for x in values]
     return {
@@ -121,6 +132,29 @@ def collect(runtime: Path, *, recent_games: int = 50) -> dict[str, Any]:
             effect_error = f"{type(exc).__name__}:{exc}"
 
     latencies: dict[str, list[float]] = {}
+    recent_latencies: dict[str, list[float]] = {}
+    recent_game_keys: set[tuple[str, int]] = set()
+    recent_game_ids = {
+        str(row.get("game_id")) for row in recent if row.get("game_id")
+    }
+    recent_evidence_missing = 0
+    for row in recent:
+        game_id = row.get("game_id")
+        if not game_id:
+            continue
+        evidence_path = runtime / "games" / f"{game_id}.evidence.json"
+        if evidence_path.is_file():
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+            table_id = evidence.get("table_id")
+            game_sequence = evidence.get("server_game_num")
+            if table_id is not None and isinstance(game_sequence, int):
+                recent_game_keys.add((str(table_id), int(game_sequence)))
+                continue
+        # Legacy R9 does not always have the newer per-game evidence file.
+        # Its canonical game id already contains the same table/sequence
+        # authority, so preserve a safe fallback instead of dropping latency.
+        recent_evidence_missing += 1
+
     for event in effect_events:
         if event.get("event") != "INTENT":
             continue
@@ -129,6 +163,19 @@ def collect(runtime: Path, *, recent_games: int = 50) -> dict[str, Any]:
             continue
         decision_type = str(event.get("decision_type") or "UNKNOWN")
         latencies.setdefault(decision_type, []).append(float(latency))
+        event_key = (
+            str(event.get("table_id") or ""),
+            int(event.get("game_sequence"))
+            if isinstance(event.get("game_sequence"), int)
+            else -1,
+        )
+        if (
+            event_key in recent_game_keys
+            or _effect_game_id(event) in recent_game_ids
+        ):
+            recent_latencies.setdefault(decision_type, []).append(
+                float(latency)
+            )
 
     receipts: list[dict[str, Any]] = []
     receipt_dir = runtime / "mirror-receipts"
@@ -202,6 +249,14 @@ def collect(runtime: Path, *, recent_games: int = 50) -> dict[str, Any]:
         },
         "decision_latency_ms": {
             key: _summary(values) for key, values in sorted(latencies.items())
+        },
+        "recent_decision_latency_ms": {
+            "recent_game_keys": len(recent_game_keys),
+            "recent_evidence_missing": recent_evidence_missing,
+            "by_type": {
+                key: _summary(values)
+                for key, values in sorted(recent_latencies.items())
+            },
         },
         "effects": {
             "chain_valid": effect_chain_valid,

@@ -319,3 +319,81 @@ def test_initialize_candidate_epoch_refuses_mismatch(tmp_path):
             workers=2,
             parent_r9_runtime=tmp_path / "r9",
         )
+
+
+def test_other_unresolved_candidate_epoch_blocks_new_ladder_step(monkeypatch, tmp_path):
+    mod = _load()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    r9 = tmp_path / "r9"
+    parent = tmp_path / "iss"
+    candidate = parent / "throughput-candidate-t2-w2-v1"
+    sibling = parent / "throughput-candidate-t1-w1-v1"
+    candidate.mkdir(parents=True)
+    sibling.mkdir(parents=True)
+    secret = tmp_path / "iss_password"
+    secret.write_text("x", encoding="utf-8")
+    _write_gate(r9, b0=300, b1=300)
+
+    (sibling / "table-slots.json").write_text(
+        json.dumps({"slots": [{"table_id": "T-old"}]}),
+        encoding="utf-8",
+    )
+    departures = sibling / "table-departures"
+    departures.mkdir()
+    (departures / "T-old.json").write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "_repo_state", lambda repo: ("abc", False))
+    monkeypatch.setattr(mod, "_gate_worker_processes", lambda: [])
+    monkeypatch.setattr(mod, "_pending_effects", lambda runtime: 0)
+
+    result = mod.evaluate(
+        repo=repo,
+        expected_commit="abc",
+        r9_runtime=r9,
+        candidate_runtime=candidate,
+        iss_password_file=secret,
+        tables=2,
+        workers=2,
+    )
+    assert result["ready"] is False
+    assert any(
+        x.startswith("OTHER_CANDIDATE_UNRESOLVED:")
+        for x in result["reasons"]
+    )
+
+
+def test_quiescent_other_candidate_epoch_does_not_block(monkeypatch, tmp_path):
+    mod = _load()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    r9 = tmp_path / "r9"
+    parent = tmp_path / "iss"
+    candidate = parent / "throughput-candidate-t2-w2-v1"
+    sibling = parent / "throughput-candidate-t1-w1-v1"
+    candidate.mkdir(parents=True)
+    sibling.mkdir(parents=True)
+    secret = tmp_path / "iss_password"
+    secret.write_text("x", encoding="utf-8")
+    _write_gate(r9, b0=300, b1=300)
+    (sibling / "active-games.json").write_text(
+        json.dumps({"games": []}), encoding="utf-8"
+    )
+    (sibling / "table-slots.json").write_text(
+        json.dumps({"slots": []}), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(mod, "_repo_state", lambda repo: ("abc", False))
+    monkeypatch.setattr(mod, "_gate_worker_processes", lambda: [])
+    monkeypatch.setattr(mod, "_pending_effects", lambda runtime: 0)
+
+    result = mod.evaluate(
+        repo=repo,
+        expected_commit="abc",
+        r9_runtime=r9,
+        candidate_runtime=candidate,
+        iss_password_file=secret,
+        tables=2,
+        workers=2,
+    )
+    assert result["ready"] is True

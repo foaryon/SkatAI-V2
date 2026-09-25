@@ -121,3 +121,48 @@ def test_collect_does_not_call_legacy_runtime_unmirrored_without_receipt_schema(
     assert result["mirror"]["receipt_tracking_present"] is False
     assert result["mirror"]["receipts"] == 0
     assert result["mirror"]["scored_games_without_receipt"] is None
+
+
+def test_recent_latency_falls_back_to_canonical_table_sequence_when_evidence_missing(
+    monkeypatch, tmp_path
+):
+    mod = _load()
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "gate-ledger.jsonl").write_text(
+        json.dumps(
+            {
+                "status": "SCORED",
+                "arm": "B0",
+                "game_id": "iss:T1:7",
+                "recorded_unix_ns": 1,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (runtime / "effects.jsonl").write_text("{}\n", encoding="utf-8")
+
+    class FakeJournal:
+        def __init__(self, path):
+            self.path = path
+        def events(self):
+            return [
+                {
+                    "event": "INTENT",
+                    "table_id": "T1",
+                    "game_sequence": 7,
+                    "decision_type": "BID",
+                    "latency_ms": 123.0,
+                }
+            ]
+        def pending(self):
+            return []
+
+    monkeypatch.setattr(mod, "ISSEffectJournal", FakeJournal)
+    result = mod.collect(runtime, recent_games=1)
+
+    by_type = result["recent_decision_latency_ms"]["by_type"]
+    assert by_type["BID"]["n"] == 1
+    assert by_type["BID"]["median"] == 123.0
+    assert result["recent_decision_latency_ms"]["recent_evidence_missing"] == 1
