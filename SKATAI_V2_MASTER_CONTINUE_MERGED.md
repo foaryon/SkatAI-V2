@@ -705,6 +705,25 @@ During active ISS campaigns, maximize **valid completed games per wall-clock hou
 
 This is a product-science throughput requirement, not permission to discard provenance. Prefer a measured, minimal decoupling fix to a broad new orchestration subsystem. Note: `rclone copy` does not delete destination-only files; `rclone sync` can, so use delete-capable synchronization only with explicit scope and safeguards.
 
+### 8.2 Multi-table ISS runtime and warm inference
+
+The production ISS path should support **multiple concurrent tables** when current ISS behavior permits it and measurement shows that concurrency increases valid completed games/hour without harming correctness, evidence durability, responsiveness, or opponent/server etiquette. Single-table operation is a baseline and recovery mode, not the intended throughput ceiling.
+
+- Prefer one coherent ISS adapter/session with independent per-table state machines over unmanaged duplicate workers. Every material table/game state must be keyed by stable table and game identity. Arm/treatment assignment, decision authority, pending effects, recovery state, table lifecycle, and evidence ownership must remain table/game scoped.
+- Never let slow inference on one table block the ISS network/event loop for other tables. Expensive decisions should execute outside the network loop through a bounded scheduler. Before sending a completed asynchronous decision, revalidate that the external table state still matches the exact state for which the decision was computed; stale results are discarded, never sent.
+- Reuse immutable model weights and other expensive inference setup through a bounded warm worker pool where equivalence is established. Keep mutable game state request-local. Prefer inter-process worker parallelism when measurement shows intra-process thread fan-out hurts latency or throughput.
+- Move safe deterministic preparation into otherwise idle opponent/network time where useful. Cache/deduplicate repeated calculations only when their inputs fully determine the result. Do **not** parallelize or rewrite a stateful/stochastic sequential policy merely for speed unless equivalence is demonstrated; otherwise treat it as a new documented experiment.
+- Keep local durable game closure and remote evidence transfer decoupled. Multi-table concurrency must share bounded write-behind/backpressure machinery rather than multiplying synchronous rclone/readback work per table.
+- Quota/gate accounting must reserve in-flight primary work so concurrent tables cannot overfill the same scientific stratum. In-flight reservations are scheduling authority only; they do not count as completed scientific evidence.
+- Scale concurrency in **separate deployment epochs**, beginning from a deployment-matched single-table candidate and then increasing conservatively (normally 1 → 2 → 4 tables on the current 8-vCPU class unless measurement justifies a different ladder). Bind each epoch to source/config identity and a separate runtime root. Do not mix evidence from different throughput treatments into one unlabeled epoch.
+- Compare epochs using the same machine-readable metrics: valid completed games/hour, completion-gap distribution, recent decision p50/p95/p99 by type, timeout/protocol/infra failures, duplicate game IDs/effects, CPU/memory/PSI where relevant, local outbox depth/age, mirror lag, and recovery behavior. More tables are useful only if end-to-end valid throughput improves while integrity gates remain satisfied.
+- Test worker crash, reconnect, stale-result rejection, storage outage, backpressure, restart, and unknown table/effect outcomes before widening concurrency. A table-local failure should not kill unrelated healthy tables unless shared authority or protocol integrity is uncertain.
+- Frozen scientifically relevant campaigns remain frozen. Do not retrofit multi-table/warm/write-behind changes into an active treatment. Finish or safely conclude the frozen epoch, then deploy the new runtime as a separately identified epoch with rollback.
+- Long-running frozen ISS work must not depend on the MAIN agent/control-plane process staying alive. Use an independent fail-closed supervisor: automatic restart is allowed only at a proven clean external boundary with no active game and no pending/unknown material effect. Otherwise preserve evidence and block for reconciliation.
+- MAIN must not spend model tokens continuously polling healthy ISS games. Use durable metrics, event-driven/watchdog signals, gate transitions, and anomalies as triggers; advance independent Big-Prompt work while external games run.
+
+The target is not a fixed table count. The target is the highest **scientifically valid, deployment-safe games/hour** sustainable by the current compute, ISS behavior, evidence pipeline, and recovery guarantees.
+
 ---
 
 ## 9. Product, Integration, and Release
@@ -912,7 +931,8 @@ real bounded challenger decisions, including learned bidding gameplay decision
 continued RL/self-play capability
 belief/search/strength-treatment capability
 population/league capability where required
-production-valid ISS path and diverse external validation
+production-valid ISS path with measured adaptive multi-table operation, warm reusable inference, durable asynchronous evidence transfer, and fail-closed recovery
+diverse external validation
 external failure-mining loop
 automated experiment selection/execution/evaluation
 atomic promotion/rejection/rollback

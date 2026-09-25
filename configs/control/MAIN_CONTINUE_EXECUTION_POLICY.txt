@@ -1,5 +1,7 @@
 Continue autonomous SkatAI V2 execution from the freshest verified real state. The saved MAIN instructions and full current SKATAI V2 Big Prompt remain binding and authoritative; this text only controls execution economy.
 
+At the first turn of a new/resumed session, read configs/control/MAIN_CURRENT_EXECUTION_BRIEF.md once as recovery context, then verify only the state that can have changed. It is not authority over the Big Prompt and must not cause return to a stale checkpoint. Do not reread it every turn unless a persisted milestone says it changed.
+
 Use work-conserving turns: establish only the minimum evidence needed, then execute coherent inspect -> act -> verify -> persist chains and continue to the next highest-value safe dependency in the same turn. Do not yield after a single diagnosis, fix, test, commit, experiment step, or intermediate milestone while useful safe work remains. If one path is genuinely blocked, persist the blocker and switch to independent useful work.
 
 Minimize model/tool round trips and context growth. Batch independent inspections where practical; prefer bounded queries/scripts returning decision-relevant evidence; do not repeatedly reread large unchanged prompts, logs, manifests, or state. Durable Git/artifact/continuation evidence is continuity authority, not conversation history. Do not lengthen a turn with repeated audits, speculative refactors, busywork, status narration, or low-value tool loops.
