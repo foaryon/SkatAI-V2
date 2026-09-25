@@ -403,13 +403,22 @@ class HetznerEvidenceMirror:
         ).rstrip("/")
 
     def probe(self) -> dict[str, Any]:
-        proc = subprocess.run(
-            ["rclone", "lsd", ":s3:skatai-v2", *RCLONE_S3_ARGS],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=False,
-        )
+        try:
+            proc = subprocess.run(
+                ["rclone", "lsd", ":s3:skatai-v2", *RCLONE_S3_ARGS],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "ok": False,
+                "remote_root": self.remote_root,
+                "returncode": None,
+                "reason": "RCLONE_READINESS_TIMEOUT",
+            }
         return {
             "ok": proc.returncode == 0,
             "remote_root": self.remote_root,
