@@ -53,6 +53,7 @@ def _governor():
         "tool_budget": {
             "max_tool_calls_per_turn": 40,
             "max_tool_rounds_per_turn": 12,
+            "max_recon_tool_calls_per_turn": 6,
             "max_side_effect_calls_per_turn": 8,
             "max_identical_tool_calls_per_turn": 3,
             "max_tool_output_bytes": 60000,
@@ -736,3 +737,57 @@ def test_work_permit_rejects_lock_outside_authorized_gate_queue(tmp_path, monkey
     checked, reason = mod.work_permit_valid()
     assert checked is None
     assert reason == "work_permit_active_gate_not_authorized"
+
+
+def test_reconnaissance_budget_soft_denies_extra_reads(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    gov["tool_budget"]["max_recon_tool_calls_per_turn"] = 1
+    mod.STATE = tmp_path / "state.json"
+    mod.LOG = tmp_path / "controller.log"
+    mod.TOOL_RESULT_DIR = tmp_path / "tool-results"
+    mod.TOOL_RESULT_DIR.mkdir()
+    posted = []
+    monkeypatch.setattr(
+        mod,
+        "api",
+        lambda method, path, body=None, extra_headers=None: posted.append(body) or {},
+    )
+
+    class FakeGateway:
+        def __init__(self):
+            self.calls = 0
+        def dispatch(self, name, args, state):
+            self.calls += 1
+            return {"name": name, "ok": True}
+
+    fake = FakeGateway()
+    monkeypatch.setattr(mod, "tool_gateway", lambda: fake)
+    state = {}
+    first = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "read_text",
+            "turn_id": "turn_recon",
+            "call_id": "call_1",
+            "arguments": {"path": "README.md"},
+        }]
+    }
+    second = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "search_text",
+            "turn_id": "turn_recon",
+            "call_id": "call_2",
+            "arguments": {"path": ".", "pattern": "x"},
+        }]
+    }
+    mod.handle_required_actions("sess_recon", first, state, gov)
+    assert state["turn_recon_tool_calls"] == 1
+    assert fake.calls == 1
+    mod.handle_required_actions("sess_recon", second, state, gov)
+    assert state["turn_recon_tool_calls"] == 1
+    assert fake.calls == 1
+    event = posted[-1]["events"][0]
+    assert event["success"] is False
+    assert "RECONNAISSANCE_BUDGET_REACHED" in event["output"]

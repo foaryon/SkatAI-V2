@@ -66,6 +66,9 @@ def main() -> int:
     require(float(budget["max_estimated_cost_usd_per_utc_day"]) <= 5.0, "DAILY_COST_CAP_TOO_HIGH")
     require(int(budget["min_seconds_between_submits"]) >= 120, "SUBMIT_INTERVAL_TOO_LOW")
     require(int(budget["max_consecutive_no_material_progress"]) == 0, "NO_PROGRESS_BUDGET_NONZERO")
+    tool_budget = governor["tool_budget"]
+    require(1 <= int(tool_budget["max_recon_tool_calls_per_turn"]) <= 8, "RECON_TOOL_CAP_OUT_OF_RANGE")
+    require(int(tool_budget["max_recon_tool_calls_per_turn"]) < int(tool_budget["max_tool_calls_per_turn"]), "RECON_TOOL_CAP_NOT_STRICTER")
 
     active_lock = CONTROL / "EXECUTION_LOCK.json"
     trusted_lock = TRUST / "config/INITIAL_EXECUTION_LOCK.json"

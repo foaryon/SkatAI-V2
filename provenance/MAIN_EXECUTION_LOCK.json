@@ -53,7 +53,23 @@
       "Scorecard no longer describes D3/B0/controller budget-recovery facts using superseded pre-fix reasons.",
       "R9 remains background-only and unmodified."
     ],
-    "next_action": "Call get_active_lease first. Reconcile only the listed state/provenance evidence. Update the two global state files conservatively, record ACCEPT/REJECT/INCONCLUSIVE in the reconciliation provenance, then record_turn_outcome and yield."
+    "next_action": "Call get_active_lease first. Treat decisive_facts/evidence_identities as controller-bound; do not reread those source provenances absent a concrete contradiction. Read only MAIN_CURRENT_STATE, MAIN_END_STATE_SCORECARD, and the OPEN reconciliation provenance (plus at most one git_query for current Git identity). Reconcile the two global files conservatively, make the reconciliation provenance terminal, then record_turn_outcome and yield.",
+    "evidence_identities": {
+      "d3_correction_sha256": "5ea5be4b3bc0a3c0d3d89cf0590ff37aaab7609e55992ac65d74b74231b96b75",
+      "b0_acceptance_sha256": "d13487d1e50e1dd296398a5465743d56b4eedd08db080a6b93ab4f08b70cc74f",
+      "turn_closure_recovery_sha256": "9e3efa8aebf281c450f90d54e45e922dc9eea90ebfcdfaf0b573d50cd4183516",
+      "pre_reconciliation_current_state_sha256": "7587456ca5d4d927e65812a942e336957deb563d30dc910537c6c2ab10bb6a6f",
+      "pre_reconciliation_scorecard_sha256": "1f4e0775ed15a14cd055a4a84f84987de8c5f25f41795b8c233708d5ceb7908e",
+      "r9_status_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7",
+      "r9_status_scored_games_observed": 541
+    },
+    "decisive_facts": [
+      "D3 correction classification is PASS_FALSE_POSITIVE_RECONCILED. Exact published manifest and all 72 listed shards verified; actor-role, feature-target, invalid-calendar-date and split mismatches are all 0. No B1 retraining or promotion is authorized by that correction alone.",
+      "B0 reproducibility classification is ACCEPT. The immutable original SkatZero V2-B0 identity, pinned environment, nine pretrained agents, API smoke, cardplay benchmark and determinism recheck are recorded as reproduced; this is not a relative-strength claim.",
+      "MAIN turn-closure recovery classification is ACCEPT. 21 focused controller tests and controller validation passed; three cancelled sessions were reconciled to 185916, 109757 and 216678 actual tokens (512351 total) and 750000 stale reserved tokens were cleared without new inference.",
+      "R9 is independent background work; latest observed status has 541 scored games, gate=null, next_per_arm_target=300, source commit 5c4b6f977ebdf883e836e95eb0530121b99394e7. This gate must not mutate R9.",
+      "MAIN_CURRENT_STATE and MAIN_END_STATE_SCORECARD predate the accepted D3/B0/controller-recovery evidence and therefore contain stale descriptions that must be reconciled conservatively."
+    ]
   },
   "secondary": null,
   "external_dependencies": [

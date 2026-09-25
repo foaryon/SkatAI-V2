@@ -50,7 +50,20 @@
       "Scorecard is updated only to the supported status.",
       "No V1 artifact is promoted merely because it exists."
     ],
-    "next_action": "Call get_active_lease first. Inspect only current V2 source/runtime references needed for the anti-Pseudo-V2 test. Decide ACCEPT/REJECT/INCONCLUSIVE, update provenance and scorecard, record_turn_outcome, and yield."
+    "next_action": "Call get_active_lease first. Use decisive_facts/evidence_identities. Perform a narrow search for active V1 runtime/state/authority dependencies in current V2 source/control paths; do not perform a repository-wide archaeology exercise. Read the OPEN anti-Pseudo-V2 provenance and scorecard for exact edits. Decide ACCEPT/REJECT/INCONCLUSIVE, name any concrete active dependency, update provenance/scorecard, record_turn_outcome, yield.",
+    "evidence_identities": {
+      "founding_spec_sha256": "d4a4315325f7b16f528c1475c5490c4e6bef31cebcce2dd744d300bd07ebfdee",
+      "work_prompt_sha256": "a440b349adbcf9cef547cc19cd1bdea6531686d6a8361b117c7da2b1e25f99ea",
+      "controller_sha256": "9f74a0ccce047e848cc32edd6464a29764b34c95bf18625748b202fcd02c3e17",
+      "gateway_sha256": "406ff0b83be74a0f8004ee0a43f37619e3b26523a0d106f7918bd83a222fc2ef"
+    },
+    "decisive_facts": [
+      "The founding acceptance test requires V2 to remain independently operable without depending on V1 runtime, V1 state, or V1 authority merely because legacy material exists.",
+      "Current MAIN authority is the V2 founding/work prompt plus root-owned trusted controller/gateway and the hash-bound V2 gate queue; the model cannot import authority from workspace logs or legacy state.",
+      "Historical or utility paths containing '/workspace/skatai/' are not automatically a failure; only an active correctness/runtime/authority dependency on V1 counts. Inspect concrete active dependencies rather than labels.",
+      "The current controller/readiness/test tooling has historically referenced a test virtualenv under /workspace/skatai/ops/skatai-autonomy-platform-v1; determine whether that is merely replaceable test infrastructure or an active V2 operability dependency before deciding.",
+      "No V1 model/checkpoint/dataset may be treated as accepted V2 merely from presence or naming."
+    ]
   },
   "secondary": null,
   "external_dependencies": [

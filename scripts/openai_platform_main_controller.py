@@ -1618,6 +1618,7 @@ def send_prepared_input(session_id, state, prepared):
     return state
 
 _SIDE_EFFECT_TOOLS = {"apply_patch", "run_authorized_command", "record_turn_outcome"}
+_RECON_TOOLS = {"get_active_lease", "read_text", "search_text", "list_paths", "git_query"}
 
 def _safe_action_id(raw):
     value = str(raw or "")
@@ -1646,11 +1647,13 @@ def handle_required_actions(session_id, session, state, governor):
     tool_budget = governor.get("tool_budget") or {}
     max_calls = int(tool_budget.get("max_tool_calls_per_turn") or 40)
     max_rounds = int(tool_budget.get("max_tool_rounds_per_turn") or 12)
+    max_recon = int(tool_budget.get("max_recon_tool_calls_per_turn") or 8)
     max_effects = int(tool_budget.get("max_side_effect_calls_per_turn") or 8)
     max_identical = int(tool_budget.get("max_identical_tool_calls_per_turn") or 3)
     call_count = int(state.get("turn_tool_calls") or 0)
     round_count = int(state.get("turn_tool_rounds") or 0)
     effect_count = int(state.get("turn_side_effect_calls") or 0)
+    recon_count = int(state.get("turn_recon_tool_calls") or 0)
     signatures = dict(state.get("turn_tool_signature_counts") or {})
     terminal_outcome_only = all(
         action.get("type") == "function_call"
@@ -1707,6 +1710,7 @@ def handle_required_actions(session_id, session, state, governor):
         state["turn_tool_calls"] = call_count
         state["turn_tool_rounds"] = round_count
         state["turn_side_effect_calls"] = effect_count
+        state["turn_recon_tool_calls"] = recon_count
         state["turn_tool_signature_counts"] = signatures
         atomic_json(STATE, state)
         log(
@@ -1739,6 +1743,7 @@ def handle_required_actions(session_id, session, state, governor):
             raise RuntimeError("REPEATED_IDENTICAL_TOOL_CALL_LIMIT")
 
         is_effect = name in _SIDE_EFFECT_TOOLS
+        is_recon = name in _RECON_TOOLS
         if is_effect and effect_count >= max_effects:
             raise RuntimeError("SIDE_EFFECT_TOOL_BUDGET_EXCEEDED")
         result_path = _tool_result_path(session_id, turn_id, call_id)
@@ -1748,9 +1753,24 @@ def handle_required_actions(session_id, session, state, governor):
             output = str(saved["output"])
         else:
             try:
-                payload = gateway.dispatch(name, args, state)
-                success = True
-                output = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+                if is_recon and recon_count >= max_recon:
+                    success = False
+                    output = json.dumps(
+                        {
+                            "error": "RECONNAISSANCE_BUDGET_REACHED",
+                            "message": (
+                                "No further reconnaissance tools are authorized in this turn. "
+                                "Use the controller-bound decisive_facts/evidence_identities and evidence already gathered; "
+                                "proceed to the authorized effect/verification or record_turn_outcome truthfully."
+                            ),
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                else:
+                    payload = gateway.dispatch(name, args, state)
+                    success = True
+                    output = json.dumps(payload, sort_keys=True, separators=(",", ":"))
             except Exception as exc:
                 success = False
                 output = json.dumps(
@@ -1779,6 +1799,8 @@ def handle_required_actions(session_id, session, state, governor):
         call_count += 1
         if is_effect:
             effect_count += 1
+        if is_recon and success:
+            recon_count += 1
 
     idem = hashlib.sha256(
         (
@@ -1795,11 +1817,12 @@ def handle_required_actions(session_id, session, state, governor):
     state["turn_tool_calls"] = call_count
     state["turn_tool_rounds"] = round_count
     state["turn_side_effect_calls"] = effect_count
+    state["turn_recon_tool_calls"] = recon_count
     state["turn_tool_signature_counts"] = signatures
     atomic_json(STATE, state)
     log(
         f"function_tools_resolved session={session_id} count={len(events)} "
-        f"turn_calls={call_count} tool_rounds={round_count} side_effects={effect_count}"
+        f"turn_calls={call_count} tool_rounds={round_count} recon={recon_count} side_effects={effect_count}"
     )
     return state
 
@@ -1856,6 +1879,7 @@ def _begin_turn_state(state, prepared, turn_lock):
     state["turn_tool_calls"] = 0
     state["turn_tool_rounds"] = 0
     state["turn_terminal_grace_used"] = False
+    state["turn_recon_tool_calls"] = 0
     state["turn_side_effect_calls"] = 0
     state["turn_tool_signature_counts"] = {}
     state["active_turn_id"] = None
@@ -1946,6 +1970,7 @@ def main():
                 state["turn_tool_calls"] = 0
                 state["turn_tool_rounds"] = 0
                 state["turn_terminal_grace_used"] = False
+                state["turn_recon_tool_calls"] = 0
                 state["turn_side_effect_calls"] = 0
                 state["turn_tool_signature_counts"] = {}
                 state["active_turn_id"] = None

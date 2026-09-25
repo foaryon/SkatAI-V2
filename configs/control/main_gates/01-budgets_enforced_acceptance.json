@@ -50,7 +50,19 @@
       "Scorecard is updated only if the evidence supports the stated acceptance level.",
       "No budget or permit limits are increased."
     ],
-    "next_action": "Call get_active_lease first. Verify only the listed governor/controller/recovery evidence. Decide ACCEPT/REJECT/INCONCLUSIVE, update the budget provenance and scorecard consistently, record_turn_outcome, and yield."
+    "next_action": "Call get_active_lease first. Use decisive_facts/evidence_identities as controller-bound and avoid rereading incident/recovery/governor files unless contradictory evidence appears. Read only the OPEN budget provenance and current scorecard needed for exact edits. Decide ACCEPT/REJECT/INCONCLUSIVE for controller-level BUDGETS_ENFORCED, explicitly distinguishing it from any unverified provider billing ceiling; update provenance/scorecard, record_turn_outcome, yield.",
+    "evidence_identities": {
+      "cost_incident_sha256": "11e58bcb8496e8d1b6f63bac9008b52a0ee23286c7fa1721c2ced1620af09058",
+      "turn_closure_recovery_sha256": "9e3efa8aebf281c450f90d54e45e922dc9eea90ebfcdfaf0b573d50cd4183516",
+      "governor_sha256": "bd163308f1adff3715a14cbde8c3d77d80c466b141c3276030a81e71a24802c2"
+    },
+    "decisive_facts": [
+      "The 2026-09-25 incident recorded 2999 model requests, 335157288 input tokens, 1045759 output tokens and $42.23721065 cost; root cause included idle-driven resubmission plus commit-sensitive progress.",
+      "Current governor forbids idle-triggered submits; hard caps are 10 submits/day, 2500000 tokens/day, 250000-token reservation/turn and $7 incident-cost proxy/day; autonomous caps are 8 submits/day and $5 proxy/day. Explicit user input cannot bypass hard totals.",
+      "MAIN turn-closure recovery is ACCEPT and verifies terminal-outcome grace, actual-usage settlement, conservative reservation fallback, no-idle-submit behavior and bounded controller enforcement.",
+      "The recovery reconciled 512351 actual tokens from three cancelled sessions and cleared 750000 stale reserved tokens without inference.",
+      "A separate OpenAI account/project billing hard ceiling has not been independently verified; do not claim one. Decide only whether the SkatAI controller/governor criterion is enforced and state this limitation explicitly."
+    ]
   },
   "secondary": null,
   "external_dependencies": [
