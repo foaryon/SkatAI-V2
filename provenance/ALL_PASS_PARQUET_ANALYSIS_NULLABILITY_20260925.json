@@ -1,0 +1,16 @@
+{
+  "schema": "skatai.v2.all-pass-parquet-analysis-nullability.v1",
+  "captured_at": "2026-09-25T21:28:00Z",
+  "task_id": "ALL_PASS_PARQUET_ANALYSIS_NULLABILITY",
+  "classification": "OPEN",
+  "scope": "Future refreshed bidding datasets only; historical B1-v1 is immutable.",
+  "observation": "VERIFIED_ALL_PASS records have no declarer, bid_level, or game-outcome fields, while bidding-parquet-v1 stores those analysis-only columns as non-null and parquet_row indexes declarer/bid_level directly.",
+  "invariants": [
+    "Do not mutate bidding-parquet-v1 semantics or historical B1-v1 artifacts.",
+    "B1 feature and target columns remain unchanged and cannot consume post-auction analysis fields.",
+    "Any nullable representation is versioned for future refreshed datasets.",
+    "No holdout content, training, promotion, or R9 treatment change is authorized by this gate."
+  ],
+  "verification": "PENDING",
+  "decision": "PENDING"
+}

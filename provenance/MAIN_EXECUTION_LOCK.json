@@ -1,88 +1,85 @@
 {
-  "captured_at": "2026-09-25T20:46:08Z",
+  "captured_at": "2026-09-25T21:28:56Z",
   "external_dependencies": [
     {
+      "gate_id": "B1_EXTERNAL_ISS_R9",
+      "goal_path_id": "G4_CONTROLLED_EVALUATION",
+      "owner": "independent fail-closed supervisor",
+      "status": "WAITING_EXTERNAL",
+      "rule": "Do not poll with model tokens; react only to campaign gate transition/anomaly.",
       "event_watch": {
         "type": "R9_GATE",
         "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
         "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
         "expected_next_per_arm_target": 300,
-        "expected_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1"
-      },
-      "gate_id": "B1_EXTERNAL_ISS_R9",
-      "goal_path_id": "G4_CONTROLLED_EVALUATION",
-      "owner": "independent fail-closed supervisor",
-      "rule": "Do not poll with model tokens; react only to campaign gate transition/anomaly.",
-      "status": "WAITING_EXTERNAL"
+        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+      }
     }
   ],
   "primary": {
-    "gate_id": "BIDDING_D3_CORRECTION_RECONCILE",
+    "gate_id": "ALL_PASS_PARQUET_ANALYSIS_NULLABILITY",
     "status": "EXECUTABLE",
     "goal_path_id": "G1_TRUSTED_EVIDENCE",
-    "objective": "Reconcile the stale D3 integrity-blocker provenance against the already-verified exact-manifest correction; do not rerun the dataset audit.",
-    "end_state_contribution": "Close a stale trusted-data integrity blocker using preserved exact-manifest evidence so later B1 decisions use the corrected D3 status without resetting or reinterpreting R9.",
-    "selection_basis": "The exact 72-shard manifest has already been re-audited successfully and the validator fix is integrated; repeating the scan would waste compute and model/tool budget, while stale provenance still incorrectly says impact UNKNOWN.",
+    "objective": "Design and verify a separately versioned future bidding Parquet schema path that can represent VERIFIED_ALL_PASS records without inventing post-auction fields or mutating bidding-parquet-v1.",
+    "end_state_contribution": "Make refreshed bidding evidence complete and schema-valid for all-pass games while preserving the frozen historical B1-v1 identity and preventing fabricated declarer/outcome analysis values.",
+    "selection_basis": "The D3 blocker is concluded and R9 is independently supervised; this is a documented trusted-data gap that blocks future refreshed bidding materialization but can be solved locally without touching the frozen experiment.",
     "selection_evidence": [
       "provenance/BIDDING_D3_SELF_OFFER_AUDIT_CORRECTION_20260925.json",
-      "provenance/DATA_REGISTRY.json",
-      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_PUBLISHED_ARTIFACT_AUDIT_CORRECTED_20260925.json",
-      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_ACTOR_ROLE_IMPACT_20260925.json"
+      "provenance/ALL_PASS_PARQUET_ANALYSIS_NULLABILITY_20260925.json",
+      "src/skatai/data/bidding_parquet.py"
     ],
     "evidence": [
-      "provenance/BIDDING_D3_SELF_OFFER_AUDIT_CORRECTION_20260925.json",
-      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
-      "provenance/MAIN_CURRENT_STATE.json",
-      "provenance/DATA_REGISTRY.json",
-      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_PUBLISHED_ARTIFACT_AUDIT_CORRECTED_20260925.json",
-      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_ACTOR_ROLE_IMPACT_20260925.json"
-    ],
-    "evidence_identities": {
-      "published_manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
-      "correction_provenance_sha256": "b043354d396edae5b7830d4d955c86941799b334a68bfba349d5f56e634350cb",
-      "corrected_audit_sha256": "fa77a685845bb5b60b9e43e12aeee411f5e29555363b8ede423c9b23d9aebc90",
-      "actor_role_impact_sha256": "fdb0079992a2f44ac07d3226d01b379d95915902979b07b152077def8ae67dbe",
-      "integrated_fix_commits": [
-        "c0730e7",
-        "229d701",
-        "a4b11ed"
-      ]
-    },
-    "decisive_facts": [
-      "72 manifest-listed shards verified for the exact published manifest.",
-      "Corrected exact-manifest audit status PASS: actor-role=0, feature-target=0, invalid-calendar-date=0, split-mismatch=0.",
-      "All 1,403,419 rows flagged by the superseded strict audit are protocol-legal Forehand self-offer states; residual mismatch after the legal exception is 0.",
-      "This finding does not require B1 retraining and does not authorize B1 promotion.",
-      "Frozen R9 evidence and treatment continue unchanged; promotion still depends on the preregistered R9 gameplay gate and independent acceptance requirements."
+      "provenance/ALL_PASS_PARQUET_ANALYSIS_NULLABILITY_20260925.json",
+      "src/skatai/data/bidding_parquet.py",
+      "tests/test_bidding_parquet.py",
+      "tests/test_sgf.py"
     ],
     "model_tier": "VERIFIED_CURRENT",
-    "model_reason": "Use the currently verified saved Agents model and pinned medium-reasoning/low-verbosity/Flex policy; deterministic evidence is already available and no broader model exploration is justified.",
+    "model_reason": "Use the verified saved Agent with medium reasoning/low verbosity/Flex; the task is bounded code/schema reasoning plus deterministic local tests, not open-ended research.",
     "allowed_material_effects": [
       "READ_ONLY_INSPECTION",
-      "PROVENANCE_WRITE"
+      "LOCAL_DETERMINISTIC_ANALYSIS",
+      "PROVENANCE_WRITE",
+      "LOCAL_GIT_CHANGE",
+      "BOUNDED_TEST_EXECUTION"
     ],
     "executor_capabilities": [],
     "progress_contract": {
       "kind": "JSON_FIELD_TRANSITION",
-      "path": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
-      "field": "published_dataset_impact",
-      "before_prefix": "UNKNOWN",
-      "after_forbid_prefix": "UNKNOWN"
+      "path": "provenance/ALL_PASS_PARQUET_ANALYSIS_NULLABILITY_20260925.json",
+      "field": "classification",
+      "before_prefix": "OPEN",
+      "after_forbid_prefix": "OPEN"
     },
-    "authorized_commands": [],
+    "authorized_commands": [
+      {
+        "id": "test_all_pass_parquet_schema",
+        "argv_prefix": [
+          "/usr/bin/python3",
+          "/workspace/skatai-v2/scripts/run_bidding_parquet_gate_tests.py"
+        ],
+        "script": "scripts/run_bidding_parquet_gate_tests.py",
+        "script_sha256": "6117aa815c8b360e3c1d7320f986491419cb19ef1d9cadda63d7df4b06709a98",
+        "timeout_seconds": 240,
+        "arg_schema": {}
+      }
+    ],
     "writable_files": [
-      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
-      "provenance/MAIN_CURRENT_STATE.json"
+      "src/skatai/data/bidding_parquet.py",
+      "tests/test_bidding_parquet.py",
+      "provenance/ALL_PASS_PARQUET_ANALYSIS_NULLABILITY_20260925.json"
     ],
     "completion": [
-      "published_dataset_impact no longer begins UNKNOWN and is bound to the exact corrected audit evidence",
-      "MAIN_CURRENT_STATE no longer lists this D3 integrity issue as an open blocker or suspended D3 claim",
-      "Disposition explicitly preserves no-retrain-from-this-finding, no-promotion-from-this-correction-alone, and unchanged R9 evidence"
+      "Historical bidding-parquet-v1 schema and B1 feature/target contract remain unchanged.",
+      "A separately versioned future schema path represents missing post-auction analysis values as explicit nulls rather than fabricated values.",
+      "A VERIFIED_ALL_PASS regression fixture materializes through the new path without KeyError and asserts the intended nullability.",
+      "The bounded offline bidding Parquet/SGF test command passes.",
+      "Provenance records ACCEPT, REJECT, or INCONCLUSIVE with exact verification evidence and no R9/training/promotion effect."
     ],
-    "next_action": "Call get_active_lease. Treat decisive_facts and evidence_identities as controller-bound. Read only the two writable target files plus the correction provenance once; do not reread runtime audit/impact reports unless a concrete identity conflict appears. Then update the two authorized provenance files with apply_patch.replacements using exact old_text/new_text, reflecting PASS_FALSE_POSITIVE_RECONCILED / D3_SEMANTICALLY_VALID while preserving R9 unchanged and promotion still gated. Do not run an audit, search alternate manifests, or broaden scope. Verify with git diff plus bounded reread/strict-JSON semantics, then record the terminal turn outcome."
+    "next_action": "Call get_active_lease, inspect only bidding_parquet.py, the existing bidding Parquet tests, the All-Pass parser fixture, and the gate provenance. Implement the smallest separately versioned schema/materialization path in the existing module; do not alter bidding-parquet-v1 semantics or historical artifacts. Add a focused VERIFIED_ALL_PASS regression, run test_all_pass_parquet_schema, verify the diff, persist the gate decision, record_turn_outcome, and yield."
   },
-  "reason": "Fresh evidence reconciliation: the prior D3-impact-unknown gate was superseded by a corrected exact-manifest audit and integrated validator fix; require only durable provenance reconciliation, not a repeated dataset scan.",
+  "reason": "Post-D3 rotation: keep recovered frozen R9 under its independent supervisor and execute the separate future-only All-Pass bidding Parquet schema gate without touching historical B1-v1.",
   "schema": "skatai.v2.main-execution-lock.v2",
   "secondary": null,
-  "switching_rule": "Do not switch PRIMARY inside this bounded permit. Terminal classification returns control for a fresh lock/permit."
+  "switching_rule": "Do not switch PRIMARY inside this permit. R9 remains independent; terminal classification returns control for a fresh lock/permit."
 }
