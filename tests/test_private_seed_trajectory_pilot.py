@@ -162,13 +162,15 @@ def test_ouvert_capture_audit_and_learner_reject_false_public_hand(
     foreign = next(card for card in make_deal(seed).hands[(raw.declarer + 1) % 3]
                    if card not in view["open_hand_cards"])
     view["open_hand_cards"][0] = foreign
-    with pytest.raises(ValueError, match="LEARNER_OUVERT_DECLARER_HAND_MISMATCH"):
+    with pytest.raises(ValueError, match="OUVERT_OWN_HAND_MISMATCH"):
         load_row(wrong)
 
     privileged = json.loads(json.dumps(asdict(raw)))
     raw_view = next(d["observation"] for d in privileged["decisions"]
-                    if d["phase"] == "CARDPLAY")
-    foreign_raw = next(card for card in make_deal(seed).hands[(raw.declarer + 1) % 3]
+                    if d["phase"] == "CARDPLAY" and d["seat"] != raw.declarer)
+    foreign_seat = next(seat for seat in range(3)
+                        if seat not in (raw.declarer, raw_view["seat"]))
+    foreign_raw = next(card for card in make_deal(seed).hands[foreign_seat]
                        if card not in raw_view["open_hand_cards"])
     raw_view["open_hand_cards"][0] = foreign_raw
     privileged["decision_trace_sha256"] = hashlib.sha256(json.dumps(

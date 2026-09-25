@@ -171,3 +171,30 @@ def test_open_hand_cards_may_shrink_during_cardplay():
         open_hand_cards=["C8","C9","CT","CJ","CQ","CK","S7","S8","S9"],
     )
     assert len(obs.open_hand_cards) == 9
+
+
+def test_product_boundary_rejects_impossible_ouvert_public_hand():
+    common = dict(
+        seat=0, declarer=0, contract="NHO", winning_bid=23,
+        current_trick=(), played_cards=(), legal_cards=(HAND10[0],),
+    )
+    with pytest.raises(SkatAIInterfaceError, match="OUVERT_PUBLIC_HAND_INCOMPLETE_OR_STALE"):
+        CardplayObservation.create(HAND10, **common)
+    with pytest.raises(SkatAIInterfaceError, match="OUVERT_OWN_HAND_MISMATCH"):
+        CardplayObservation.create(
+            HAND10, **common, open_hand_cards=HAND10[1:] + ("S9",)
+        )
+    with pytest.raises(SkatAIInterfaceError, match="OUVERT_PUBLIC_HAND_INCOMPLETE_OR_STALE"):
+        CardplayObservation.create(
+            HAND10[1:], **dict(common, legal_cards=(HAND10[1],),
+                               played_cards=((0, HAND10[0]),)),
+            open_hand_cards=HAND10,
+        )
+    with pytest.raises(SkatAIInterfaceError, match="OUVERT_DEFENDER_OWNS_PUBLIC_CARD"):
+        CardplayObservation.create(
+            (HAND10[0],), **dict(common, seat=1), open_hand_cards=HAND10,
+        )
+    with pytest.raises(SkatAIInterfaceError, match="NONOUVERT_PUBLIC_HAND"):
+        CardplayObservation.create(
+            HAND10, **dict(common, contract="G"), open_hand_cards=HAND10,
+        )
