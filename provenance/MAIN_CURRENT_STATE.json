@@ -6,9 +6,18 @@
       "owner": "independent fail-closed supervisor, restored S3/HOME launch environment",
       "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
       "task_id": "B1_EXTERNAL_ISS_R9"
+    },
+    {
+      "classification": "CONTINUE",
+      "job_runtime_root": "/workspace/skatai-v2-runtime/isolated-science/cardplay-diagnostic-20260925-v1",
+      "max_wall_seconds": 2700,
+      "owner": "fenced RunPod isolated science worker",
+      "pod_id": "eab9j199p7q0kc",
+      "source_commit": "1a4d6a84cdfa9eb07509d93930185ff94382cfdb",
+      "task_id": "CARDPLAY_B0_DIAGNOSTIC_72_ISOLATED"
     }
   ],
-  "captured_at": "2026-09-25T11:15:50.989396Z",
+  "captured_at": "2026-09-25T11:19:43.826271Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/TRAIN_ENDGAME_TEACHER_PILOT_20260925.json",
@@ -18,10 +27,10 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through b6e89ea; cardplay science evidence pending commit",
+    "remote_state": "pushed through 1a4d6a8; dispatch record pending commit",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "b6e89eab6a2da1f02f4064213df604044ffef7c0",
-    "worktree_state": "coherent cardplay science evidence pending commit"
+    "verified_head_before_this_manifest": "1a4d6a84cdfa9eb07509d93930185ff94382cfdb",
+    "worktree_state": "coherent dispatch record pending commit"
   },
   "nearest_gates": [
     {
@@ -49,14 +58,15 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "R9 stays under independent supervisor. On isolated compute, run precommitted 72-decision B0 cardplay diagnostic, then one causal cardplay treatment and paired gameplay. Bounded real endgame labels are research-only. At clean R9 boundary run measured 1->2->4 epochs.",
-  "open_blockers": [
-    {
-      "blocker": "Configured RunPod API key received HTTP 403 on read-only pod listing; isolated compute provisioning unavailable from this controller",
-      "recheck": "Only after provider key/scope changes or another verified isolated worker is available",
-      "task_id": "ISOLATED_CARDPLAY_DIAGNOSTIC_COMPUTE"
-    }
-  ],
+  "next_action": "Conclude isolated 72-decision diagnostic when durable result or failure arrives, verify pod deletion and evidence; use weakness evidence to choose one bounded causal cardplay treatment. R9 stays frozen under independent supervisor.",
+  "open_blockers": [],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
+  "resource_state": {
+    "cpu_vcpu": 2,
+    "dispatch": "provenance/CARDPLAY_ISOLATED_DIAGNOSTIC_TASK_20260925.json",
+    "expected_max_compute_usd": 0.045,
+    "isolated_pod_id": "eab9j199p7q0kc",
+    "memory_gb": 4
+  },
   "schema": "skatai.v2.main-current-state.v1"
 }
