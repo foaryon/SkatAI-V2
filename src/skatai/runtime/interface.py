@@ -192,19 +192,36 @@ class CardplayObservation:
             return out
 
         trick = history(current_trick)
+        played = history(played_cards)
         if len(trick) > 2:
             raise SkatAIInterfaceError("CURRENT_TRICK_TOO_LONG")
-        if len(open_hand_cards) > 10:
+        open_hand = _cards(open_hand_cards) if open_hand_cards else ()
+        if len(open_hand) > 10:
             raise SkatAIInterfaceError("OPEN_HAND_TOO_LONG")
+        declarer_seat = _seat(declarer)
+        viewer_seat = _seat(seat)
+        if "O" in str(contract):
+            played_by_declarer = {
+                card for actor, card in played if actor == declarer_seat
+            }
+            if (len(open_hand) != 10 - len(played_by_declarer)
+                    or set(open_hand) & played_by_declarer):
+                raise SkatAIInterfaceError("OUVERT_PUBLIC_HAND_INCOMPLETE_OR_STALE")
+            if viewer_seat == declarer_seat and set(open_hand) != set(h):
+                raise SkatAIInterfaceError("OUVERT_OWN_HAND_MISMATCH")
+            if viewer_seat != declarer_seat and set(open_hand) & set(h):
+                raise SkatAIInterfaceError("OUVERT_DEFENDER_OWNS_PUBLIC_CARD")
+        elif open_hand:
+            raise SkatAIInterfaceError("NONOUVERT_PUBLIC_HAND")
 
         return cls(
             hand=h,
-            seat=_seat(seat),
-            declarer=_seat(declarer),
+            seat=viewer_seat,
+            declarer=declarer_seat,
             contract=str(contract),
             winning_bid=int(winning_bid),
             current_trick=trick,
-            played_cards=history(played_cards),
+            played_cards=played,
             legal_cards=legal,
             known_private_cards=_cards(known_private_cards),
             points_self=None if points_self is None else int(points_self),
@@ -212,7 +229,7 @@ class CardplayObservation:
             max_accepted_bids_by_seat=_bids(max_accepted_bids_by_seat),
             skat_cards=_optional_exact_cards(skat_cards, 2),
             blind_hand=bool(blind_hand),
-            open_hand_cards=_cards(open_hand_cards) if open_hand_cards else (),
+            open_hand_cards=open_hand,
         )
 
 

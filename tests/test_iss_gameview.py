@@ -95,3 +95,23 @@ def test_pickup_null_ouvert_server_echo_reconstructs_discards_and_open_hand():
     assert s.discarded_cards == ("CQ", "CA")
     assert set(s.hand) == {"S8", "CT", "SK", "H8", "H9", "HJ", "SJ", "C7", "ST", "S7"}
     assert set(s.open_hand_cards) == set(s.hand)
+
+    from skatai.runtime.interface import CardplayObservation
+
+    on_turn = replay_player_view(moves(
+        deal_mh,
+        "1 18", "0 p", "2 p", "1 s",
+        "w ST.S7", "1 NO",
+        "1 CQ.CA.H8.H9.HJ.S7.S8.ST.SJ.SK.C7.CT",
+        "0 H7",
+    ))
+    assert on_turn.to_move == on_turn.viewer_seat == on_turn.declarer
+    product = CardplayObservation.create(
+        on_turn.hand, seat=on_turn.viewer_seat, declarer=on_turn.declarer,
+        contract=on_turn.contract, winning_bid=on_turn.winning_bid,
+        current_trick=on_turn.current_trick, played_cards=on_turn.played_cards,
+        legal_cards=on_turn.legal_cards,
+        open_hand_cards=on_turn.open_hand_cards,
+        skat_cards=on_turn.discarded_cards, blind_hand=False,
+    )
+    assert product.open_hand_cards == on_turn.open_hand_cards
