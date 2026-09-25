@@ -11,6 +11,7 @@ from typing import Any, Mapping
 
 from skatai.artifacts.release import validate_release_package
 from skatai.game.rules import (
+    card_points,
     game_type_from_contract,
     legal_cards as rule_legal_cards,
     replay_tricks,
@@ -110,6 +111,22 @@ def handle_request(ai: SkatAI, release_id: str, payload: Mapping[str, Any]) -> d
                     actor == observation.seat for actor, _ in played
                 )):
             raise SkatAIInterfaceError("HOST_CARDPLAY_HISTORY_INCONSISTENT")
+        if (observation.known_private_cards
+                or (observation.skat_cards and (
+                    observation.seat != observation.declarer or observation.blind_hand
+                ))
+                or set(observation.skat_cards) & (
+                    set(observation.hand) | set(played_tokens)
+                )):
+            raise SkatAIInterfaceError("HOST_PRIVATE_CARD_VISIBILITY_INVALID")
+        declarer_points = replayed["declarer_trick_points"]
+        if observation.seat == observation.declarer and not observation.blind_hand:
+            declarer_points += sum(card_points(card) for card in observation.skat_cards)
+        if ((observation.points_self is not None
+             and observation.points_self != declarer_points)
+                or (observation.points_other is not None
+                    and observation.points_other != replayed["defender_trick_points"])):
+            raise SkatAIInterfaceError("HOST_CARDPLAY_POINTS_MISMATCH")
         rule_set = set(rule_legal_cards(
             observation.hand,
             observation.current_trick,

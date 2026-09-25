@@ -1,0 +1,33 @@
+{
+  "schema": "skatai.v2.host-cardplay-visibility-gate.v1",
+  "captured_at": "2026-09-25T12:37:19Z",
+  "task_id": "HOST_CARDPLAY_VISIBILITY_GATE",
+  "classification": "PASS_SOURCE_ONLY",
+  "current_evidence": {
+    "parent_source_commit": "8a10698",
+    "prior_replay_gate": "provenance/HOST_CARDPLAY_REPLAY_GATE_20260925.json"
+  },
+  "goal_or_hypothesis": "Host cardplay requests must not expose hidden skat, unqualified private cards, or point totals inconsistent with lawful public play.",
+  "nearest_gate": "Deployment host observation legality and leakage safety",
+  "smallest_intervention": "At host ingress reject unsupported known_private_cards; require skat_cards only for pickup declarer and disjoint from hand/history; verify optional point totals against replayed public tricks and owned discarded skat.",
+  "invariants_to_preserve": [
+    "Frozen B0 and R9 untouched",
+    "No Java host adoption or model strength claim",
+    "No same-pod model inference"
+  ],
+  "input_identities": {
+    "host_service_sha256": "b833a45151cb262c5eb214b653e1d8077b0f1185e2416364821f3225ae16830d",
+    "test_sha256": "afb30137ad0387902e772b8db007857eaebe0b5109ef8008f5b2facb545fd710"
+  },
+  "resource_bound": "Source and focused synthetic tests only",
+  "success_criteria": "Valid visible state accepted; hidden skat, unsupported private cards, and fabricated points rejected before policy invocation.",
+  "failure_or_stop_criteria": "Product/bridge regression or visibility ambiguity; keep release gate closed until resolved.",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_host_service.py tests/test_product_interface.py tests/test_game_rules.py tests/test_release_loader.py tests/test_iss_bridge.py",
+    "result": "56 passed in 0.73s",
+    "git_diff_check": "PASS"
+  },
+  "limits": "Synthetic source gate only. The actual Java callback, release package smoke, and host distribution gate remain pending.",
+  "next_on_success": "Run source-bound package and host callback smoke on isolated compute when available.",
+  "next_on_failure_or_inconclusive": "Preserve failing observation and resolve visibility semantics before host integration."
+}

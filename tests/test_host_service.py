@@ -231,6 +231,36 @@ def test_host_requires_trick_winner_to_lead_next_trick():
         handle_request(_ai(), "release-1", bad)
 
 
+def test_host_cardplay_rejects_private_card_and_point_leakage():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-4", "sequence_no": 4,
+        "decision_type": "PLAY_CARD",
+        "observation": {
+            "hand": HAND10, "seat": 1, "declarer": 0, "contract": "G",
+            "winning_bid": 18, "current_trick": ((0, "D7"),),
+            "played_cards": ((0, "D7"),), "legal_cards": HAND10,
+            "points_self": 0, "points_other": 0,
+        },
+    }
+    assert handle_request(_ai(), "release-1", payload)["ok"]
+    for changes, error in (
+        ({"known_private_cards": ("D8",)}, "HOST_PRIVATE_CARD_VISIBILITY_INVALID"),
+        ({"skat_cards": ("D8", "D9")}, "HOST_PRIVATE_CARD_VISIBILITY_INVALID"),
+        ({"points_self": 11}, "HOST_CARDPLAY_POINTS_MISMATCH"),
+    ):
+        bad = {**payload, "observation": {**payload["observation"], **changes}}
+        with pytest.raises(SkatAIInterfaceError, match=error):
+            handle_request(_ai(), "release-1", bad)
+    own = {**payload, "observation": {
+        **payload["observation"], "seat": 1, "declarer": 1,
+        "skat_cards": ("DA", "D9"), "points_self": 11,
+    }}
+    assert handle_request(_ai(), "release-1", own)["ok"]
+    blind = {**own, "observation": {**own["observation"], "blind_hand": True}}
+    with pytest.raises(SkatAIInterfaceError, match="HOST_PRIVATE_CARD_VISIBILITY_INVALID"):
+        handle_request(_ai(), "release-1", blind)
+
+
 def test_host_accepts_reverse_order_legal_discard():
     ai = _ai()
     ai.discard.choose_discard = lambda _observation: ("ST", "S9")
