@@ -330,8 +330,8 @@ class ISSEffectJournal:
         """Semantic equality for server-normalized echoes.
 
         ISS split discard mode may append ten ouvert cards to the declarer's
-        two-card discard in an echoed private/public view. The material action
-        is still the same discard. All other action forms remain exact-match.
+        two-card discard in an echoed private/public view. ISS may also sort
+        the ten cards in a hand declaration. Other action forms stay exact.
         """
         expected = str(expected)
         observed = str(observed)
@@ -339,6 +339,22 @@ class ISSEffectJournal:
             return True
         ep = expected.split(".")
         op = observed.split(".")
+        if len(ep) == len(op) == 11 and ep[0] == op[0]:
+            from skatai.iss.protocol import is_card, parse_game_declaration
+
+            try:
+                parse_game_declaration(expected)
+                parse_game_declaration(observed)
+            except ValueError:
+                return False
+            expected_cards = ep[1:]
+            observed_cards = op[1:]
+            return (
+                all(is_card(x) for x in expected_cards + observed_cards)
+                and len(set(expected_cards)) == 10
+                and len(set(observed_cards)) == 10
+                and set(expected_cards) == set(observed_cards)
+            )
         if len(ep) == 2 and len(op) == 12 and op[:2] == ep:
             from skatai.iss.protocol import is_card
 
