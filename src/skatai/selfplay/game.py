@@ -15,7 +15,7 @@ from skatai.selfplay.declaration import (
     DeclarationEpisode, DeclarationPolicy, DiscardPolicy, run_declaration,
 )
 
-SCHEMA = "skatai.v2.selfplay.game.v1"
+SCHEMA = "skatai.v2.selfplay.game.v2"
 
 
 @dataclass(frozen=True)

@@ -12,9 +12,10 @@ from typing import Sequence
 
 from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
 from skatai.selfplay.cardplay import DECK, make_deal
+from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS
 from skatai.selfplay.game import GameEpisode
 
-SCHEMA = "skatai.v2.selfplay.basic-score.v1"
+SCHEMA = "skatai.v2.selfplay.basic-score.v2"
 BASE_VALUES = {"C": 12, "S": 11, "H": 10, "D": 9, "G": 24}
 NULL_VALUES = {"N": 23, "NH": 35, "NO": 46, "NHO": 59}
 JACKS = ("CJ", "SJ", "HJ", "DJ")
@@ -109,6 +110,16 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or declaration.winning_bid != episode.bidding.winning_bid):
         raise ValueError("EPISODE_IDENTITY_MISMATCH")
     original = set((*deal.hands[declaration.declarer], *deal.skat))
+    if declaration.picked_up_skat:
+        if (declaration.contract not in PICKUP_CONTRACTS
+                or len(declaration.discarded) != 2
+                or tuple(declaration.final_skat) != tuple(declaration.discarded)):
+            raise ValueError("EPISODE_PICKUP_CONTRACT_OR_DISCARD_MISMATCH")
+    elif (declaration.contract not in HAND_CONTRACTS
+          or declaration.discarded
+          or declaration.final_hand != deal.hands[declaration.declarer]
+          or declaration.final_skat != deal.skat):
+        raise ValueError("EPISODE_HAND_CONTRACT_OR_SKAT_MISMATCH")
     if (len(declaration.final_hand) != 10 or len(declaration.final_skat) != 2
             or len(set((*declaration.final_hand, *declaration.final_skat))) != 12
             or set((*declaration.final_hand, *declaration.final_skat)) != original):

@@ -12,7 +12,16 @@ from typing import Protocol, Sequence
 from skatai.runtime.interface import DeclarationObservation, DiscardObservation
 from skatai.selfplay.cardplay import Deal, make_deal
 
-SCHEMA = "skatai.v2.selfplay.declaration.v1"
+SCHEMA = "skatai.v2.selfplay.declaration.v2"
+HAND_CONTRACTS = frozenset(
+    base + modifier for base in "DSHCG" for modifier in ("H", "HO", "HS", "HZ")
+) | {"NH", "NHO"}
+PICKUP_CONTRACTS = frozenset(("D", "S", "H", "C", "G", "N", "NO"))
+
+
+def _allowed_at_bid(contract: str, winning_bid: int) -> bool:
+    max_null_bid = {"N": 23, "NO": 46, "NH": 35, "NHO": 59}
+    return winning_bid <= max_null_bid.get(contract, winning_bid)
 
 
 class DeclarationPolicy(Protocol):
@@ -52,17 +61,26 @@ def run_declaration(
     if declarer not in (0, 1, 2) or winning_bid < 18:
         raise ValueError("BAD_DECLARER_OR_WINNING_BID")
     legal = tuple(str(x) for x in legal_contracts)
-    if not legal or "PICKUP" in legal or len(set(legal)) != len(legal):
+    if (not legal or len(set(legal)) != len(legal)
+            or any(x not in HAND_CONTRACTS | PICKUP_CONTRACTS for x in legal)):
         raise ValueError("BAD_LEGAL_CONTRACT_SET")
+    if any(not _allowed_at_bid(x, winning_bid) for x in legal):
+        raise ValueError("CONTRACT_NOT_LEGAL_AT_WINNING_BID")
+    hand_legal = tuple(x for x in legal if x in HAND_CONTRACTS)
+    pickup_legal = tuple(x for x in legal if x in PICKUP_CONTRACTS)
+    initial_legal = (("PICKUP",) if pickup_legal else ()) + hand_legal
     bids = tuple(int(x) for x in max_accepted_bids_by_seat)
     if len(bids) != 3 or any(x < 0 for x in bids):
         raise ValueError("BAD_BID_VECTOR")
     initial = DeclarationObservation.create(
         deal.hands[declarer], seat=declarer, winning_bid=winning_bid,
-        picked_up_skat=False, legal_contracts=("PICKUP", *legal),
+        picked_up_skat=False,
+        legal_contracts=initial_legal,
         max_accepted_bids_by_seat=bids,
     )
     choice = str(declaration_policy.choose_contract(initial))
+    if choice not in initial.legal_contracts:
+        raise ValueError("CONTRACT_NOT_IN_LEGAL_SET")
     if choice == "PICKUP":
         hand12 = (*deal.hands[declarer], *deal.skat)
         discard_view = DiscardObservation.create(
@@ -76,7 +94,7 @@ def run_declaration(
         final_skat = (discarded[0], discarded[1])
         pickup_view = DeclarationObservation.create(
             hand12, seat=declarer, winning_bid=winning_bid,
-            picked_up_skat=True, legal_contracts=legal,
+            picked_up_skat=True, legal_contracts=pickup_legal,
             max_accepted_bids_by_seat=bids,
         )
         contract = str(declaration_policy.choose_contract(pickup_view))
@@ -85,7 +103,7 @@ def run_declaration(
         final_hand = deal.hands[declarer]
         final_skat = deal.skat
         contract = choice
-    if contract not in legal:
+    if contract not in (pickup_legal if choice == "PICKUP" else hand_legal):
         raise ValueError("CONTRACT_NOT_IN_LEGAL_SET")
     return DeclarationEpisode(
         schema=SCHEMA, deal_seed=deal.seed, deal_sha256=deal.identity_sha256,

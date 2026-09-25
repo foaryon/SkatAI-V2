@@ -28,8 +28,9 @@ class ContractPolicy:
             assert len(view.cards) == 10 and "PICKUP" in view.legal_contracts
             return "PICKUP"
         assert len(view.cards) == (12 if self.pickup else 10)
-        assert "G" in view.legal_contracts
-        return "G"
+        contract = "G" if self.pickup else "GH"
+        assert contract in view.legal_contracts
+        return contract
 
 
 class DiscardPolicy:
@@ -67,7 +68,7 @@ def test_auction_declaration_and_legal_cardplay(seed, pickup):
             declaration_policies=[ContractPolicy(pickup) for _ in range(3)],
             discard_policies=[DiscardPolicy() for _ in range(3)],
             cardplay_policies=play,
-            legal_contracts=("G",),
+            legal_contracts=("G", "GH"),
         )
         assert [p.calls for p in play] == [10, 10, 10]
         return result
@@ -146,3 +147,27 @@ def test_invalid_discard_contract_partition_and_deal_identity_fail_closed():
             max_accepted_bids_by_seat=(18, 0, 0), legal_contracts=("G",),
             declaration_policy=ContractPolicy(False), discard_policy=DiscardPolicy(),
         )
+
+
+def test_declaration_rejects_wrong_mode_and_null_bid():
+    deal = make_deal(4)
+    kwargs = dict(
+        deal=deal, declarer=0, winning_bid=18,
+        max_accepted_bids_by_seat=(18, 0, 0), discard_policy=DiscardPolicy(),
+    )
+    class Choose:
+        def __init__(self, token):
+            self.token = token
+
+        def choose_contract(self, view):
+            return self.token
+
+    with pytest.raises(ValueError, match="CONTRACT_NOT_IN_LEGAL_SET"):
+        run_declaration(**kwargs, legal_contracts=("G",),
+                        declaration_policy=Choose("GH"))
+    with pytest.raises(ValueError, match="CONTRACT_NOT_IN_LEGAL_SET"):
+        run_declaration(**kwargs, legal_contracts=("GH",),
+                        declaration_policy=Choose("PICKUP"))
+    with pytest.raises(ValueError, match="CONTRACT_NOT_LEGAL_AT_WINNING_BID"):
+        run_declaration(**(kwargs | {"winning_bid": 24}), legal_contracts=("N",),
+                        declaration_policy=Choose("PICKUP"))

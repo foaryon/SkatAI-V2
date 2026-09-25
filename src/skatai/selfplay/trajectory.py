@@ -17,7 +17,7 @@ from skatai.selfplay.declaration import DeclarationPolicy, DiscardPolicy
 from skatai.selfplay.game import run_game
 from skatai.selfplay.scoring import score_basic_episode
 
-SCHEMA = "skatai.v2.selfplay.decision-trajectory.v1"
+SCHEMA = "skatai.v2.selfplay.decision-trajectory.v2"
 PHASES = ("BID", "DECLARATION", "DISCARD", "CARDPLAY")
 
 

@@ -21,7 +21,9 @@ class Declare:
         self.pickup = pickup
 
     def choose_contract(self, view):
-        return "PICKUP" if self.pickup and not view.picked_up_skat else "G"
+        if self.pickup and not view.picked_up_skat:
+            return "PICKUP"
+        return "G" if self.pickup else "GH"
 
 
 class Discard:
@@ -38,7 +40,7 @@ def captured(seed, pickup, limit=18):
         declaration_policies=[Declare(pickup)] * 3,
         discard_policies=[Discard()] * 3,
         cardplay_policies=[RandomLegalPolicy(seed * 10 + seat) for seat in range(3)],
-        legal_contracts=("G",),
+        legal_contracts=("G", "GH"),
     )
 
 

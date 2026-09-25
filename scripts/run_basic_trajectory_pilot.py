@@ -28,7 +28,9 @@ class Declare:
         self.contract, self.pickup = contract, pickup
 
     def choose_contract(self, observation) -> str:
-        return "PICKUP" if self.pickup and not observation.picked_up_skat else self.contract
+        if self.pickup and not observation.picked_up_skat:
+            return "PICKUP"
+        return self.contract if self.pickup else self.contract + "H"
 
 
 class DiscardFirstTwo:
@@ -52,7 +54,7 @@ def one(seed: int, commit: str, script_sha256: str) -> dict:
         declaration_policies=[Declare(contract, pickup) for _ in range(3)],
         discard_policies=[DiscardFirstTwo() for _ in range(3)],
         cardplay_policies=[RandomLegalPolicy(1000 * seed + seat) for seat in range(3)],
-        legal_contracts=(contract,),
+        legal_contracts=(contract, contract + "H"),
     )
     return asdict(trajectory)
 
@@ -90,9 +92,9 @@ def main() -> None:
         raise RuntimeError("PILOT_NOT_DETERMINISTIC")
     os.replace(tmp, output)
     record = {
-        "schema": "skatai.v2.selfplay.trajectory-pilot-manifest.v1",
+        "schema": "skatai.v2.selfplay.trajectory-pilot-manifest.v2",
         "source_commit": commit, "script_sha256": script_sha256,
-        "trajectory_schema": "skatai.v2.selfplay.decision-trajectory.v1",
+        "trajectory_schema": "skatai.v2.selfplay.decision-trajectory.v2",
         "records": args.count, "contracts": CONTRACTS,
         "output_file": output.name, "output_bytes": output.stat().st_size,
         "output_sha256": digest.hexdigest(), "second_run_sha256": second.hexdigest(),
