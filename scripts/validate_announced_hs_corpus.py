@@ -77,7 +77,7 @@ def check_record(record: dict) -> dict:
 
 def validate_window(source: Path, *, start: int, end: int, plan_sha256: str,
                     registered_source_sha256: str) -> dict:
-    if not 0 <= start < end <= 200_000:
+    if not 0 <= start < end <= 400_000:
         raise ValueError("WINDOW_OUT_OF_BOUNDS")
     prefix = hashlib.sha256()
     counts = Counter()

@@ -34,7 +34,7 @@ def target_records(canonical: Path, oracle_paths: list[Path], limit: int) -> dic
         for path in oracle_paths
         for row in json.loads(path.read_text())["results"]
     }
-    if not identities or len(identities) > 256 or not 1 <= limit <= 200_000:
+    if not identities or len(identities) > 256 or not 1 <= limit <= 400_000:
         raise ValueError("BAD_BOUNDED_TARGET_SET")
     targets = {}
     with canonical.open("rb") as stream:
@@ -57,7 +57,7 @@ def target_records(canonical: Path, oracle_paths: list[Path], limit: int) -> dic
 
 
 def audit_stream(compressed_stream, targets: dict, max_raw_lines: int) -> dict:
-    if not 1 <= max_raw_lines <= 300_000:
+    if not 1 <= max_raw_lines <= 600_000:
         raise ValueError("RAW_LINE_BOUND_INVALID")
     found = []
     seen = set()
