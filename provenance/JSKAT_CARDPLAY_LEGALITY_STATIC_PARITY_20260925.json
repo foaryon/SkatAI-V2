@@ -1,0 +1,22 @@
+{
+  "bounded_check": {
+    "cases": 89280,
+    "method": "Direct translation of pinned JSkat source predicates, all six game types, every distinct lead card, every unordered two-card own hand excluding the lead",
+    "mismatches": 0
+  },
+  "captured_at": "2026-09-25T12:31:31Z",
+  "classification": "PASS_STATIC_ONLY",
+  "limits": "Static source translation only. JSkat Java runtime is unavailable here; callback state, card-set construction and actual Java parity remain unverified. No host adoption or strength claim.",
+  "mapping": "JSkat getPlayableCards delegates each own card to isCardAllowed. Suit/Grand require a trump when led and held; otherwise a nontrump led suit when held. Null follows physical suit, including Jacks. V2 category and legal_cards use the same categories.",
+  "schema": "skatai.v2.jskat-cardplay-static-parity.v1",
+  "source_sha256": {
+    "player/AbstractJSkatPlayer.java": "729ddcd1b69e2d787a0ed7c88c74736293e84c905863a3e141a0a8294464cd12",
+    "util/Card.java": "3064779f48b44bb623bf71348a6db6493ebd162110c3d646cbbda1e2b7fffbc9",
+    "util/CardList.java": "fc47bf750ca8594e9c76889b0096815882312e5cd12846fb8ebea6382ad83a8d",
+    "util/rule/NullRule.java": "320c9af7a84c63df4a8cbef7c82395d6380750e3e88c5f3c73645baddce59f1a",
+    "util/rule/SuitGrandRamschRule.java": "706dc4605e07a17d0cb94f1595de39867713c294e4594ac3fd26b19d511806eb"
+  },
+  "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+  "v2_commit_before_record": "ca0cfecb5a1f4b8cf27e97a433b6b488ef884f78",
+  "v2_rules_sha256": "84251d8b084259d81a64a2d64fab62cba2c6a387b6829a1a8af2a7f6b04dc94b"
+}

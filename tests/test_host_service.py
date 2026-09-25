@@ -64,19 +64,23 @@ def test_host_request_rejects_unknown_schema():
         handle_request(_ai(), "release-1", {"schema": "unknown"})
 
 
-def test_host_rejects_malformed_contract_before_cardplay_inference():
+@pytest.mark.parametrize("contract, error", [
+    ("GARBAGE", "CARDPLAY_RULE_CONTEXT_INVALID"),
+    ("G.BAD", "CARDPLAY_CONTRACT_NOT_TOKEN"),
+])
+def test_host_rejects_malformed_contract_before_cardplay_inference(contract, error):
     payload = {
         "schema": REQUEST_SCHEMA,
         "game_id": "game-1", "sequence_no": 1,
         "decision_type": "PLAY_CARD",
         "observation": {
             "hand": HAND10, "seat": 1, "declarer": 1,
-            "contract": "GARBAGE", "winning_bid": 18,
+            "contract": contract, "winning_bid": 18,
             "current_trick": (), "played_cards": (),
             "legal_cards": HAND10,
         },
     }
-    with pytest.raises(SkatAIInterfaceError, match="CARDPLAY_RULE_CONTEXT_INVALID"):
+    with pytest.raises(SkatAIInterfaceError, match=error):
         handle_request(_ai(), "release-1", payload)
 
 

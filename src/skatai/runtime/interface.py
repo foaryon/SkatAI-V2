@@ -182,6 +182,8 @@ class CardplayObservation:
         blind_hand: bool = False,
         open_hand_cards: Sequence[str] = (),
     ) -> "CardplayObservation":
+        if "." in str(contract):
+            raise SkatAIInterfaceError("CARDPLAY_CONTRACT_NOT_TOKEN")
         h = _cards(hand)
         legal = _cards(legal_cards)
         if not legal:

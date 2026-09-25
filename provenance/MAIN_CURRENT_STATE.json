@@ -8,12 +8,14 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:29:53Z",
+  "captured_at": "2026-09-25T12:31:31Z",
   "completed_independent_gate": {
-    "also_completed": "provenance/BIDDING_TERMINAL_264_CORRECTION_20260925.json",
-    "classification": "CORRECT_VERIFIED",
-    "evidence": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
-    "task_id": "HOST_CONTRACT_TOKEN_VALIDATION"
+    "classification": "CORRECT_VERIFIED_AND_PASS_STATIC_ONLY",
+    "evidence": [
+      "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
+      "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json"
+    ],
+    "task_id": "HOST_CARDPLAY_TOKEN_AND_JSKAT_STATIC_LEGALITY"
   },
   "git": {
     "branch": "main",
@@ -58,7 +60,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "R9 remains independently supervised to clean gate. Current-source package and JSkat runtime parity require isolated compute access; actual host integration awaits source. Continue independent science/product work when executable.",
+  "next_action": "Keep R9 under independent supervisor. JSkat legal-card source parity is static only; actual callback parity and current-source package smoke require isolated runtime access. Actual user host integration awaits its source.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -82,6 +84,7 @@
     "bid_schedule_static_parity": "provenance/JSKAT_BID_SCHEDULE_PARITY_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "card_seat_static_parity": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
+    "cardplay_legal_set_static_parity": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
     "contract_mapping_static": "provenance/JSKAT_CONTRACT_MAPPING_STATIC_20260925.json",
     "next_gate": "Versioned pickup plan staged and focused tests pass; stage package and verify actual JSkat callback lifecycle, then rules/assets/Windows build",
@@ -107,6 +110,7 @@
     "contract_token_validation": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
     "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
     "jskat_runtime_parity": "PENDING",
+    "jskat_static_parity": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
     "task_id": "HOST_CARDPLAY_EXACT_LEGAL_SET"
   },
   "staged_product_gate": {

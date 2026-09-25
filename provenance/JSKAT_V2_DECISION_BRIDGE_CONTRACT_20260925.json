@@ -1,5 +1,20 @@
 {
+  "bid_schedule_static_parity": {
+    "evidence": "provenance/JSKAT_BID_SCHEDULE_PARITY_20260925.json",
+    "runtime_auction_parity": "PENDING",
+    "status": "PASS_STATIC_WITH_TERMINAL_OFFER_GUARD_PENDING"
+  },
   "captured_at": "2026-09-25T12:06:24.660968+00:00",
+  "card_seat_static_parity": {
+    "evidence": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
+    "runtime_turn_rotation": "PENDING",
+    "status": "PASS_STATIC_ONLY"
+  },
+  "cardplay_legal_set_static_parity": {
+    "evidence": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
+    "runtime_parity": "PENDING",
+    "status": "PASS_STATIC_ONLY"
+  },
   "confirmed_engine_order": {
     "additional_rule_note": "Normal discard permits Jacks; no-Jack restriction at lines 527-529 is only SCHIEBERAMSCH option",
     "declaration_lines": "537-548: announceGame called after discard and GameContract checked weakly with TODO",
@@ -10,6 +25,10 @@
     "state_machine_lines": "156-174",
     "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7"
   },
+  "contract_mapping_static": {
+    "evidence": "provenance/JSKAT_CONTRACT_MAPPING_STATIC_20260925.json",
+    "status": "PASS_STATIC_RUNTIME_PENDING"
+  },
   "identity": {
     "cards": "JSkat Card enum names are suit C/S/H/D plus rank A/T/K/Q/J/9/8/7, matching V2 two-character tokens; require 32-card bijection test",
     "game_id": "Stable host table plus local game identity, never card or wall-clock-derived only",
@@ -18,28 +37,6 @@
     "source_context": "Only provenance and public host metadata; never hidden game state"
   },
   "implementation_authorized": false,
-  "card_seat_static_parity": {
-    "status": "PASS_STATIC_ONLY",
-    "evidence": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
-    "runtime_turn_rotation": "PENDING"
-  },
-  "bid_schedule_static_parity": {
-    "status": "PASS_STATIC_WITH_TERMINAL_OFFER_GUARD_PENDING",
-    "evidence": "provenance/JSKAT_BID_SCHEDULE_PARITY_20260925.json",
-    "runtime_auction_parity": "PENDING"
-  },
-  "contract_mapping_static": {
-    "status": "PASS_STATIC_RUNTIME_PENDING",
-    "evidence": "provenance/JSKAT_CONTRACT_MAPPING_STATIC_20260925.json"
-  },
-  "pickup_plan_stage": {
-    "source": "src/skatai/runtime/host_service.py",
-    "request_schema": "skatai.v2.host-pickup-plan-request.v1",
-    "response_schema": "skatai.v2.host-pickup-plan-response.v1",
-    "evidence": "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
-    "host_sequence": "Use initial 10-card DECLARATION with PICKUP plus hand contracts at pickUpSkat. After takeSkat, canonicalize 12 own cards and request one pickup plan at discardSkat. Cache its contract, final_hand and plan_id until announceGame. Compare actual 10-card own set against final_hand before returning the cached contract.",
-    "status": "STAGED_V2_SOURCE_ONLY_JAVA_ADAPTER_PENDING"
-  },
   "phase_mapping": [
     {
       "gap": "nextBidValue must map exactly to V2 bid_index from same auction schedule",
@@ -89,6 +86,14 @@
       "v2_phase": "UNSUPPORTED"
     }
   ],
+  "pickup_plan_stage": {
+    "evidence": "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
+    "host_sequence": "Use initial 10-card DECLARATION with PICKUP plus hand contracts at pickUpSkat. After takeSkat, canonicalize 12 own cards and request one pickup plan at discardSkat. Cache its contract, final_hand and plan_id until announceGame. Compare actual 10-card own set against final_hand before returning the cached contract.",
+    "request_schema": "skatai.v2.host-pickup-plan-request.v1",
+    "response_schema": "skatai.v2.host-pickup-plan-response.v1",
+    "source": "src/skatai/runtime/host_service.py",
+    "status": "STAGED_V2_SOURCE_ONLY_JAVA_ADAPTER_PENDING"
+  },
   "public_information_policy": {
     "allowed": "Own hand, public auction, announced contract/declarer, public cards/tricks, legally disclosed ouvert hand, own picked-up/discarded skat when actor is declarer",
     "prohibited": "Whole JSkat game state, opponent private hands, unopened skat for defenders, uncertain possible-card estimates as if observations, future tricks, private host test labels",
