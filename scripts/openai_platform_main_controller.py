@@ -1035,9 +1035,11 @@ def _expected_function_tool_names():
 
 def ensure_saved_agent(state):
     model = desired_model()
+    expected_instructions = PROMPT.read_text(encoding="utf-8")
+    expected_instructions_sha256 = hashlib.sha256(expected_instructions.encode("utf-8")).hexdigest()
     agent_config = {
         "model": model,
-        "instructions": PROMPT.read_text(encoding="utf-8"),
+        "instructions": expected_instructions,
         "service_tier": SERVICE_TIER,
         "tools": function_tools(),
         "multi_agent": {"enabled": False},
@@ -1051,6 +1053,12 @@ def ensure_saved_agent(state):
                 raise RuntimeError(f"saved agent service_tier verification failed: {a.get('service_tier')!r}")
             if a.get("model") != model:
                 raise RuntimeError(f"saved agent model verification failed: {a.get('model')!r}")
+            if a.get("instructions") != expected_instructions:
+                actual_hash = hashlib.sha256(str(a.get("instructions") or "").encode("utf-8")).hexdigest()
+                raise RuntimeError(
+                    "saved agent instructions verification failed: "
+                    f"expected_sha256={expected_instructions_sha256} actual_sha256={actual_hash}"
+                )
             if bool((a.get("multi_agent") or {}).get("enabled")):
                 raise RuntimeError("saved agent multi_agent unexpectedly enabled")
             names = {row.get("name") for row in (a.get("tools") or []) if row.get("type") == "function"}
@@ -1058,7 +1066,8 @@ def ensure_saved_agent(state):
                 raise RuntimeError("saved agent function tool set mismatch")
             log(
                 f"saved_agent_verified id={agent_id} model={a.get('model')} "
-                f"service_tier={a.get('service_tier')} function_tools={len(names)}"
+                f"service_tier={a.get('service_tier')} function_tools={len(names)} "
+                f"instructions_sha256={expected_instructions_sha256}"
             )
             return a, state
         except RuntimeError as e:
@@ -1075,6 +1084,12 @@ def ensure_saved_agent(state):
     a = api("POST", "/agents", body)
     if a.get("service_tier") != SERVICE_TIER:
         raise RuntimeError(f"saved agent created with service_tier={a.get('service_tier')!r}")
+    if a.get("instructions") != expected_instructions:
+        actual_hash = hashlib.sha256(str(a.get("instructions") or "").encode("utf-8")).hexdigest()
+        raise RuntimeError(
+            "saved agent created with wrong instructions: "
+            f"expected_sha256={expected_instructions_sha256} actual_sha256={actual_hash}"
+        )
     if bool((a.get("multi_agent") or {}).get("enabled")):
         raise RuntimeError("saved agent created with multi_agent enabled")
     names = {row.get("name") for row in (a.get("tools") or []) if row.get("type") == "function"}
@@ -1084,7 +1099,8 @@ def ensure_saved_agent(state):
     atomic_json(STATE, state)
     log(
         f"saved_agent_created id={a['id']} model={a.get('model')} "
-        f"service_tier={a.get('service_tier')} function_tools={len(names)}"
+        f"service_tier={a.get('service_tier')} function_tools={len(names)} "
+        f"instructions_sha256={expected_instructions_sha256}"
     )
     return a, state
 
