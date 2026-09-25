@@ -1,0 +1,16 @@
+{
+  "schema": "skatai.v2.main-turn-closure-recovery.v1",
+  "captured_at": "2026-09-25T22:15:00Z",
+  "task_id": "MAIN_TURN_CLOSURE_RECOVERY",
+  "classification": "OPEN",
+  "problem": "A completed useful turn could hit the 12-round ceiling before record_turn_outcome, causing cancellation/hard-disable; aborted turns also left local actual-token accounting at zero despite backend usage.",
+  "required_properties": [
+    "At the work-round ceiling, one non-material grace response instructs the model to call record_turn_outcome instead of cancelling immediately.",
+    "Only record_turn_outcome may execute beyond the 12 work-round ceiling.",
+    "A repeated post-cap work request still fails closed.",
+    "Abort/failure settlement accounts actual cumulative usage when available and conservatively charges the full reservation otherwise.",
+    "No idle-driven model submission or budget bypass is introduced."
+  ],
+  "verification": "PENDING",
+  "decision": "PENDING"
+}

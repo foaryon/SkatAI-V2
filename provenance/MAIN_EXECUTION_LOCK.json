@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-25T21:53:50Z",
+  "captured_at": "2026-09-25T22:18:05Z",
   "external_dependencies": [
     {
       "event_watch": {
@@ -12,85 +12,68 @@
       "gate_id": "B1_EXTERNAL_ISS_R9",
       "goal_path_id": "G4_CONTROLLED_EVALUATION",
       "owner": "independent fail-closed supervisor",
-      "rule": "No model polling and no live-worker mutation from this PRIMARY; deterministic event watch only.",
+      "rule": "No model polling; react only to a controller-authenticated gate transition/anomaly.",
       "status": "WAITING_EXTERNAL"
     }
   ],
   "primary": {
-    "gate_id": "R9_SUPERVISOR_STATUS_HEARTBEAT",
+    "gate_id": "B0_REPRODUCIBILITY_ACCEPTANCE",
     "status": "EXECUTABLE",
-    "goal_path_id": "G4_CONTROLLED_EVALUATION",
-    "objective": "Make supervisor-status.json accurately and repeatedly publish RUNNING/worker identity while the frozen R9 child is alive, without modifying the worker, treatment, gameplay, restart policy, or evidence.",
-    "end_state_contribution": "Deterministic R9 event watches can distinguish live evaluation from safe-to-restart/worker-exited states without spending model tokens or risking duplicate recovery actions.",
-    "selection_basis": "Direct process evidence shows supervisor PID 133139 and gate_worker PID 133145 alive for >25 minutes while supervisor-status.json remains the pre-launch SAFE_TO_RESTART snapshot because supervise() blocks in proc.wait(). Worker status continues advancing.",
+    "goal_path_id": "G2_REPRODUCIBLE_BASELINE",
+    "objective": "Decide whether the existing exact V2-B0 identity, environment lock and deterministic reproduction evidence satisfy the immutable/reproducible B0 acceptance requirement; persist the decision without mutating B0.",
+    "end_state_contribution": "Closes or precisely narrows the reproducible-baseline prerequisite used as the scientific control for all later challenger/evaluation claims.",
+    "selection_basis": "The end-state scorecard still marks B0 reproducibility NOT_YET_VERIFIED, while exact baseline and reproduction provenance already exist. This evidence-reconciliation gate is local, bounded, independent of R9, and avoids unnecessary retraining or compute.",
     "selection_evidence": [
-      "provenance/R9_SUPERVISOR_STATUS_HEARTBEAT_20260925.json",
-      "scripts/supervise_frozen_r9.py",
-      "tests/test_supervise_frozen_r9.py",
-      "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
-      "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json"
+      "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json",
+      "provenance/B0_SKATZERO_BASELINE.json",
+      "provenance/B0_REPRODUCTION.json",
+      "provenance/B0_ENVIRONMENT.lock.txt"
     ],
     "evidence": [
-      "provenance/R9_SUPERVISOR_STATUS_HEARTBEAT_20260925.json",
-      "scripts/supervise_frozen_r9.py",
-      "tests/test_supervise_frozen_r9.py"
+      "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json",
+      "provenance/B0_SKATZERO_BASELINE.json",
+      "provenance/B0_REPRODUCTION.json",
+      "provenance/B0_ENVIRONMENT.lock.txt"
     ],
     "evidence_identities": {
-      "live_supervisor_pid": 133139,
-      "live_worker_pid": 133145,
-      "worker_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7",
-      "baseline_test_runner_sha256": "dc96473f4f19cef353804b1dfafb0c82e1893592c422cdd5e0fe54d9cec98e0e",
-      "baseline_focused_tests": "8 passed"
+      "baseline_sha256": "dc83e73ff77a04bedbd12d64d05647997e2fc7b292860c4a3e08abd52d3f03a1",
+      "reproduction_sha256": "d42543e6bc3ded16dfb7c1fde01406436890434625a5ed77b9875f25a75bd2ce",
+      "environment_lock_sha256": "e9d27185f17e907b25d600b3aa1f02551aa9100eee306058d71ec3b8c9579d5c"
     },
     "decisive_facts": [
-      "The live frozen R9 worker is already running and must not be restarted or modified by this gate.",
-      "supervise() currently blocks in proc.wait() after Popen, so supervisor-status.json is not refreshed during a long-lived worker run.",
-      "A correct fix must preserve atomic status writes, duplicate-supervisor protection, fail-closed restart checks, and worker/treatment identity.",
-      "The supervisor status lifecycle must be testable without launching ISS or changing scientific evidence."
+      "V2-B0 is recorded as SKATZERO_BASELINE with upstream commit, Git tree/archive identity, dependency-manifest identity, implementation hashes, license identity and exact hashes for nine pretrained model files.",
+      "The baseline provenance status is FROZEN_PUBLISHED_RUNTIME_REPRODUCED.",
+      "B0_REPRODUCTION records Python 3.11.13, NumPy 1.26.4, Torch 2.1.2+cpu, nine pretrained agents loaded, API cardplay smoke PASS, cardplay benchmark PASS and determinism recheck PASS.",
+      "B0_ENVIRONMENT.lock.txt pins the reproduced runtime package set.",
+      "This gate cannot mutate B0, launch training/evaluation, touch R9, or make a challenger-strength/promotion claim."
     ],
     "model_tier": "VERIFIED_CURRENT",
-    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a narrow controller-observability code/test task.",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a small evidence-reconciliation decision, not open-ended research.",
     "allowed_material_effects": [
       "READ_ONLY_INSPECTION",
-      "LOCAL_GIT_CHANGE",
-      "PROVENANCE_WRITE",
-      "BOUNDED_TEST_EXECUTION"
+      "PROVENANCE_WRITE"
     ],
     "executor_capabilities": [],
     "progress_contract": {
       "kind": "JSON_FIELD_TRANSITION",
-      "path": "provenance/R9_SUPERVISOR_STATUS_HEARTBEAT_20260925.json",
+      "path": "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json",
       "field": "classification",
       "before_prefix": "OPEN",
       "after_forbid_prefix": "OPEN"
     },
-    "authorized_commands": [
-      {
-        "id": "test_r9_supervisor_observability",
-        "argv_prefix": [
-          "/usr/bin/python3",
-          "/workspace/skatai-v2/scripts/run_r9_supervisor_observability_tests.py"
-        ],
-        "script": "scripts/run_r9_supervisor_observability_tests.py",
-        "script_sha256": "dc96473f4f19cef353804b1dfafb0c82e1893592c422cdd5e0fe54d9cec98e0e",
-        "timeout_seconds": 120,
-        "arg_schema": {}
-      }
-    ],
+    "authorized_commands": [],
     "writable_files": [
-      "scripts/supervise_frozen_r9.py",
-      "tests/test_supervise_frozen_r9.py",
-      "provenance/R9_SUPERVISOR_STATUS_HEARTBEAT_20260925.json"
+      "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json"
     ],
     "completion": [
-      "Supervisor publishes a fresh RUNNING status with the launched worker PID while that child is alive instead of blocking status updates until exit.",
-      "Focused tests deterministically cover the live-worker status lifecycle and preserve restart/duplicate-safety behavior.",
-      "test_r9_supervisor_observability returns zero.",
-      "Gate provenance records ACCEPT, REJECT, or INCONCLUSIVE with verification evidence and explicitly confirms no live worker/treatment mutation."
+      "Classification is ACCEPT, REJECT or INCONCLUSIVE and no longer OPEN.",
+      "Decision cites the exact three evidence identities and distinguishes identity/reproducibility from strength.",
+      "Any missing acceptance requirement is named precisely rather than inferred.",
+      "No B0, training, R9, deployment or promotion mutation occurs."
     ],
-    "next_action": "Call get_active_lease first. Read only the supervisor launch/wait path, focused tests, and gate provenance. Implement the smallest nonblocking status-refresh lifecycle; do not signal, restart, replace, or otherwise interact with the live worker. Add deterministic tests using fake/subprocess stubs only. Run test_r9_supervisor_observability, inspect the exact diff once, update the gate provenance classification/verification/decision, call record_turn_outcome, and yield."
+    "next_action": "Call get_active_lease first. Treat decisive_facts/evidence_identities as controller-bound. Read only the three B0 evidence files as needed to verify the acceptance semantics; do not search broadly. Update only the gate provenance classification/verification/decision to ACCEPT, REJECT or INCONCLUSIVE, then call record_turn_outcome and yield."
   },
-  "reason": "Post-All-Pass rotation: R9 is independently active and the verified highest-value local blocker is stale supervisor status while a long-lived worker is running; repair only deterministic supervisor observability.",
+  "reason": "Rotate from accepted R9 observability code gate to the highest-value executable local end-state gap while R9 continues independently: reconcile existing immutable/reproduced V2-B0 evidence into a formal acceptance decision.",
   "schema": "skatai.v2.main-execution-lock.v2",
   "secondary": null,
   "switching_rule": "Do not switch PRIMARY inside this permit. Terminal classification returns control for a fresh lock/permit."
