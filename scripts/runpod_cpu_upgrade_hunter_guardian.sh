@@ -8,7 +8,7 @@ HUNTER="$REPO/scripts/runpod_cpu_upgrade_hunter.py"
 SECRET_PREP=/workspace/openai-agent/prepare-runtime-secrets.py
 LOG="$BASE/logs/runpod-cpu-hunter-guardian.log"
 LOCK=/run/lock/skatai-runpod-cpu-hunter-guardian.lock
-POLL_SECONDS=60
+POLL_SECONDS=15
 TARGETS="16/32,8/16"
 
 mkdir -p "$BASE/logs" /run/lock "$BASE/runpod-cpu-upgrade-hunter" 2>/dev/null || true
