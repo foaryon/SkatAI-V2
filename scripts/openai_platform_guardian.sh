@@ -37,7 +37,6 @@ while true; do
     continue
   }
   if [ ! -s /run/skatai-v2-secrets/openai_agents_api_key ]; then log "application API key unavailable"; sleep 30; continue; fi
-  if [ ! -s /run/skatai-v2-secrets/openai_executor_api_key ]; then log "executor key unavailable"; sleep 30; continue; fi
   rm -f "$PIDFILE" 2>/dev/null || true
   nohup python3 "$CONTROLLER" </dev/null >>"$CONTROL_ROOT/boot.log" 2>&1 &
   log "platform controller launch requested"

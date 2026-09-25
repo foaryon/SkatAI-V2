@@ -437,3 +437,10 @@ def test_background_event_is_quiet_until_meaningful_change(tmp_path, monkeypatch
     assert event is not None
     assert event["trigger_type"] == "EXTERNAL_EVENT"
     assert event["gate_id"] == "R9"
+
+
+def test_guardian_has_no_retired_executor_key_dependency():
+    root = Path(__file__).resolve().parents[1]
+    guardian = (root / "scripts" / "openai_platform_guardian.sh").read_text(encoding="utf-8")
+    assert "openai_agents_api_key" in guardian
+    assert "openai_executor_api_key" not in guardian
