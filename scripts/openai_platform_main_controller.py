@@ -24,6 +24,8 @@ PIDFILE = ROOT / "controller.pid"
 EXEC_PID = ROOT / "exec-server.pid"
 EXEC_LOG = ROOT / "exec-server.log"
 PAUSE_SUBMISSIONS = ROOT / "pause-submissions"
+HARD_DISABLE = Path("/workspace/openai-agent/AGENT_HARD_DISABLED")
+REENABLE_APPROVED = Path("/workspace/openai-agent/AGENT_REENABLE_APPROVED")
 CODEX_HOME = Path("/workspace/openai-agent/main-controller/codex-home")
 CODEX = "/workspace/openai-agent/bin/codex"
 BASE = "https://api.openai.com/v1"
@@ -452,11 +454,21 @@ def backoff_seconds(state):
     return min(3600, 30 * (2 ** min(n, 7)))
 
 def main():
+    if HARD_DISABLE.exists():
+        log("hard disable marker present; controller refusing to start")
+        return
+    if not REENABLE_APPROVED.exists():
+        log("reenable approval marker absent; controller refusing to start")
+        return
     PIDFILE.write_text(str(os.getpid()), encoding="utf-8")
     os.chmod(PIDFILE, 0o600)
     log("platform_controller_start")
     last_idle_fp = None
     while True:
+        if HARD_DISABLE.exists():
+            log("hard disable marker present; controller exiting")
+            stop_stale_executor()
+            return
         if not APP_KEY.exists() or APP_KEY.stat().st_size == 0:
             log("waiting_for_application_api_key")
             time.sleep(30)
