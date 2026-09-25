@@ -8,17 +8,24 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:39:54Z",
+  "captured_at": "2026-09-25T12:41:25Z",
   "completed_independent_gate": {
     "classification": "CORRECT_SOURCE_IMPACT_UNKNOWN",
     "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
     "task_id": "BIDDING_D3_SPLIT_INTEGRITY_CORRECTION"
   },
+  "data_integrity": {
+    "bidding_historical_v1": "D3_CLAIM_SUSPENDED_PENDING_INTEGRITY_RECHECK",
+    "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
+    "frozen_b1_r9": "CONTINUE_UNCHANGED",
+    "new_training_and_promotion": "BLOCKED_UNTIL_EXACT_ARTIFACT_AUDIT",
+    "registry": "provenance/DATA_REGISTRY.json"
+  },
   "git": {
     "branch": "main",
-    "remote_state": "88df368 pushed before bidding integrity correction commit; verify current Git at resume",
+    "remote_state": "5dee97d pushed before data-registry authority correction; verify current Git at resume",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "88df368",
+    "verified_head_before_this_manifest": "5dee97d",
     "worktree_state": "verify with Git at resume"
   },
   "independent_science_diagnostic": {
