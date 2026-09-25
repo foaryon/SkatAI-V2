@@ -22,8 +22,11 @@ fd,tmp=tempfile.mkstemp(prefix="status.",dir=os.path.dirname(path))
 with os.fdopen(fd,"w") as f:
  json.dump(payload,f,sort_keys=True);f.write("\n");f.flush();os.fsync(f.fileno())
 os.replace(tmp,path)
+with open(os.path.join(os.path.dirname(path),"events.jsonl"),"a") as f:
+ f.write(json.dumps(payload,sort_keys=True)+"\n");f.flush();os.fsync(f.fileno())
 PY
 }
+fail() { status FAILED "$1"; exit 1; }
 
 finish() {
   local rc="$?"
@@ -38,10 +41,14 @@ finish() {
 trap finish EXIT
 
 status STARTING
-test "${SKATAI_NODE_ROLE:-}" = ISOLATED_SCIENCE
-test "$(git -C "$ROOT" rev-parse HEAD)" = "${SKATAI_DIAGNOSTIC_SOURCE_COMMIT:?}"
-test -z "$(git -C "$ROOT" status --porcelain)"
-test -n "${AWS_ACCESS_KEY_ID:-}" && test -n "${AWS_SECRET_ACCESS_KEY:-}"
+[ "${SKATAI_NODE_ROLE:-}" = ISOLATED_SCIENCE ] || fail ROLE_NOT_ISOLATED_SCIENCE
+[ -n "${SKATAI_DIAGNOSTIC_SOURCE_COMMIT:-}" ] || fail SOURCE_COMMIT_ENV_MISSING
+[ -d "$ROOT" ] || fail PINNED_WORKTREE_MISSING
+[ "$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)" = "$SKATAI_DIAGNOSTIC_SOURCE_COMMIT" ] || fail SOURCE_COMMIT_MISMATCH
+[ -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ] || fail PINNED_WORKTREE_DIRTY
+[ -n "${AWS_ACCESS_KEY_ID:-}" ] || fail S3_ACCESS_KEY_ENV_MISSING
+[ -n "${AWS_SECRET_ACCESS_KEY:-}" ] || fail S3_SECRET_KEY_ENV_MISSING
+status PREFLIGHT_OK
 
 timeout 900 "$ROOT/scripts/bootstrap-local-b1-pregate.sh" >"$RUNTIME/bootstrap.log" 2>&1
 status BOOTSTRAPPED
