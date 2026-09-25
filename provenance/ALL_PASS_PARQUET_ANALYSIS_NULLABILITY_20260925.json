@@ -2,7 +2,7 @@
   "schema": "skatai.v2.all-pass-parquet-analysis-nullability.v1",
   "captured_at": "2026-09-25T21:28:00Z",
   "task_id": "ALL_PASS_PARQUET_ANALYSIS_NULLABILITY",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "scope": "Future refreshed bidding datasets only; historical B1-v1 is immutable.",
   "observation": "VERIFIED_ALL_PASS records have no declarer, bid_level, or game-outcome fields, while bidding-parquet-v1 stores those analysis-only columns as non-null and parquet_row indexes declarer/bid_level directly.",
   "invariants": [
@@ -11,6 +11,6 @@
     "Any nullable representation is versioned for future refreshed datasets.",
     "No holdout content, training, promotion, or R9 treatment change is authorized by this gate."
   ],
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": "2026-09-25: authorized test_all_pass_parquet_schema (scripts/run_bidding_parquet_gate_tests.py, lease-pinned sha256 6117aa815c8b360e3c1d7320f986491419cb19ef1d9cadda63d7df4b06709a98) returned 0; 17 passed in 0.68s. tests/test_bidding_parquet.py materializes a parsed VERIFIED_ALL_PASS fixture through bidding-parquet.v2: three test-split rows, null declarer/bid_level/game_type/game_won/game_value/card_points, and target_continue 0. Existing v1 fixture asserts default v1 schema and non-null declarer/game_won. Source review confirms v1 default, field nullability and parquet_row conversion branch preserved; v2 is selected explicitly. Git status clean before provenance update at 01f866b.",
+  "decision": "ACCEPT future bidding-parquet.v2 nullable analysis path for VERIFIED_ALL_PASS materialization. This gate does not authorize artifact refresh, training, promotion, historical B1-v1 mutation, or R9 change."
 }
