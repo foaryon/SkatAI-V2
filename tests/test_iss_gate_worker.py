@@ -1737,6 +1737,7 @@ def test_throughput_policy_defaults_preserve_single_table_cold_sync():
     p = throughput_policy_from_environment({})
     assert p.tables == 1
     assert p.inference_workers == 1
+    assert p.torch_threads_per_worker == 1
     assert p.warm_skatzero is False
     assert p.async_decisions is False
 
@@ -1754,10 +1755,316 @@ def test_multitable_policy_requires_async_and_bounds_workers():
         {
             "ISS_GATE_TABLES": "4",
             "ISS_GATE_INFERENCE_WORKERS": "2",
+            "ISS_GATE_TORCH_THREADS_PER_WORKER": "1",
             "ISS_GATE_WARM_SKATZERO": "true",
             "ISS_GATE_ASYNC_DECISIONS": "1",
         }
     )
     assert (p.tables, p.inference_workers) == (4, 2)
+    assert p.torch_threads_per_worker == 1
     assert p.warm_skatzero is True
     assert p.async_decisions is True
+
+
+def test_table_slot_payload_roundtrip_preserves_parallel_lifecycle_states():
+    from skatai.iss.gate_worker import (
+        TableSlot,
+        table_slots_payload,
+        parse_table_slots_payload,
+    )
+
+    slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "READY_SENT", 10),
+        "T2": TableSlot("T2", "kermit+theCount", "ACTIVE", 20),
+        "T3": TableSlot("T3", "zoot+theCount", "RETIRING", 30),
+    }
+    payload = table_slots_payload(slots, source_commit="abc1234")
+    assert parse_table_slots_payload(
+        payload, expected_source_commit="abc1234"
+    ) == slots
+
+
+def test_concurrent_reservations_prevent_duplicate_quota_claims():
+    from skatai.iss.gate_worker import (
+        GameAssignment,
+        choose_arm_for_stratum,
+    )
+
+    rows = []
+    first = choose_arm_for_stratum(
+        rows, per_arm=1, stack="kermit+zoot", seat=0
+    )
+    assert first.primary is True
+    assert first.arm == "B0"
+
+    second = choose_arm_for_stratum(
+        rows,
+        per_arm=1,
+        stack="kermit+zoot",
+        seat=0,
+        reserved=[first],
+    )
+    assert second.primary is True
+    assert second.arm == "B1"
+
+    third = choose_arm_for_stratum(
+        rows,
+        per_arm=1,
+        stack="kermit+zoot",
+        seat=0,
+        reserved=[first, second],
+    )
+    assert third.primary is False
+
+
+def test_multitable_create_persists_ready_intent_before_commands():
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import (
+        MultiTableExternalGateWorker,
+        TableSlot,
+    )
+
+    class Client:
+        def __init__(self):
+            self.sent = []
+        def send_service_command(self, line):
+            self.sent.append(line)
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.client = Client()
+    w.table_slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "PENDING_CREATE", 0)
+    }
+    w.assignment_by_game = {}
+    w._fresh_pending_creates = {"T1"}
+    w._create_seen_current_connection = set()
+    w._leave_sent_current_connection = set()
+    w._mirror_pause_requested = False
+    w._campaign_complete_requested = False
+    persisted = []
+    w._persist_table_slots = lambda: persisted.append(
+        w.table_slots["T1"].state
+    )
+
+    event = SimpleNamespace(
+        fields={
+            "is_player": True,
+            "table_id": "T1",
+            "viewer_name": "SkatAI",
+        }
+    )
+    w._on_create(event)
+
+    assert persisted[:2] == ["READY_INTENT", "READY_SENT"]
+    assert w.table_slots["T1"].state == "READY_SENT"
+    assert w.client.sent == [
+        "table T1 SkatAI invite kermit",
+        "table T1 SkatAI invite zoot",
+        "table T1 SkatAI ready",
+    ]
+
+
+def test_multitable_reconnect_never_replays_unknown_ready():
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import (
+        MultiTableExternalGateWorker,
+        TableSlot,
+    )
+
+    class Client:
+        def __init__(self):
+            self.sent = []
+        def send_service_command(self, line):
+            self.sent.append(line)
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.client = Client()
+    w.table_slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "READY_SENT", 0)
+    }
+    w.assignment_by_game = {}
+    w._fresh_pending_creates = set()
+    w._create_seen_current_connection = set()
+    w._leave_sent_current_connection = set()
+    w._mirror_pause_requested = False
+    w._campaign_complete_requested = False
+    calls = []
+    w._retire_table = lambda *a, **k: calls.append((a, k))
+
+    event = SimpleNamespace(
+        fields={
+            "is_player": True,
+            "table_id": "T1",
+            "viewer_name": "SkatAI",
+        }
+    )
+    w._on_create(event)
+
+    assert w.client.sent == []
+    assert len(calls) == 1
+    assert calls[0][1]["reason"] == "READY_OUTCOME_UNKNOWN"
+
+
+def test_multitable_retiring_replay_authorizes_same_leave_retry():
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import (
+        MultiTableExternalGateWorker,
+        TableSlot,
+    )
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.client = SimpleNamespace()
+    w.table_slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "RETIRING", 0)
+    }
+    w.assignment_by_game = {}
+    w._fresh_pending_creates = set()
+    w._create_seen_current_connection = set()
+    w._leave_sent_current_connection = set()
+    w._mirror_pause_requested = False
+    w._campaign_complete_requested = False
+    calls = []
+    w._retire_table = lambda *a, **k: calls.append((a, k))
+
+    event = SimpleNamespace(
+        fields={
+            "is_player": True,
+            "table_id": "T1",
+            "viewer_name": "SkatAI",
+        }
+    )
+    w._on_create(event)
+
+    assert len(calls) == 1
+    assert calls[0][1]["allow_retry"] is True
+
+
+def test_multitable_leave_retry_is_once_per_connection(tmp_path):
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import (
+        MultiTableExternalGateWorker,
+        TableSlot,
+    )
+
+    class Client:
+        def __init__(self):
+            self.sent = []
+        def send_service_command(self, line):
+            self.sent.append(line)
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.client = Client()
+    w.table_slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "RETIRING", 0)
+    }
+    w._leave_sent_current_connection = set()
+    w._departure_dir = tmp_path
+    marker = tmp_path / "T1.json"
+    marker.write_text("{}", encoding="utf-8")
+
+    w._retire_table(
+        "T1",
+        "SkatAI",
+        game_sequence=0,
+        game_id=None,
+        reason="retry",
+        allow_retry=True,
+    )
+    w._retire_table(
+        "T1",
+        "SkatAI",
+        game_sequence=0,
+        game_id=None,
+        reason="retry",
+        allow_retry=True,
+    )
+
+    assert w.client.sent == ["table T1 SkatAI leave"]
+
+
+def test_multitable_scheduler_fills_three_distinct_stack_slots(tmp_path):
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import MultiTableExternalGateWorker
+
+    class Client:
+        def __init__(self):
+            self.sent = []
+        def send_service_command(self, line):
+            self.sent.append(line)
+
+    class Evidence:
+        protocol_journal = tmp_path / "service.jsonl"
+        def scored_rows(self):
+            return []
+        def _file_size(self, path):
+            return 0
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.client = Client()
+    w.evidence = Evidence()
+    w.assignment_by_game = {}
+    w.table_slots = {}
+    w._fresh_pending_creates = set()
+    w._mirror_pause_requested = False
+    w._campaign_complete_requested = False
+    w.throughput_policy = SimpleNamespace(tables=3)
+    w._persist_table_slots = lambda: None
+
+    w._create_next_table()
+
+    assert len(w.table_slots) == 3
+    assert {
+        slot.desired_stack for slot in w.table_slots.values()
+    } == {
+        "kermit+zoot",
+        "kermit+theCount",
+        "zoot+theCount",
+    }
+    assert len(w.client.sent) == 3
+    assert all(line.startswith("create / 3 AI") for line in w.client.sent)
+
+
+def test_multitable_concurrent_starts_reserve_different_arms(tmp_path):
+    from skatai.iss.gate_worker import (
+        MultiTableExternalGateWorker,
+        TableSlot,
+    )
+
+    class Evidence:
+        protocol_journal = tmp_path / "service.jsonl"
+        effect_journal = tmp_path / "effects.jsonl"
+        def scored_rows(self):
+            return []
+        def _file_size(self, path):
+            return 0
+
+    class Switch:
+        def __init__(self):
+            self.bindings = []
+        def bind_game(self, table_id, game_sequence, arm):
+            self.bindings.append((table_id, game_sequence, arm))
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.evidence = Evidence()
+    w.switch = Switch()
+    w.assignment_by_game = {}
+    w.table_slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "READY_SENT", 0),
+        "T2": TableSlot("T2", "kermit+zoot", "READY_SENT", 0),
+    }
+    w._persist_active_game_authority = lambda: None
+    w._persist_table_slots = lambda: None
+
+    w._on_start_preapply(
+        "table T1 SkatAI start 1 SkatAI 100 kermit 100 zoot 100"
+    )
+    w._on_start_preapply(
+        "table T2 SkatAI start 2 SkatAI 100 kermit 100 zoot 100"
+    )
+
+    assert w.assignment_by_game[("T1", 1)].assignment.arm == "B0"
+    assert w.assignment_by_game[("T2", 2)].assignment.arm == "B1"
+    assert w.switch.bindings == [
+        ("T1", 1, "B0"),
+        ("T2", 2, "B1"),
+    ]

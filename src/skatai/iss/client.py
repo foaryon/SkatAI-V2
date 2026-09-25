@@ -111,6 +111,7 @@ class ISSClientCore:
         self.state = ISSSessionState()
         self._sent_decision_keys: set[tuple[str, int, int, str]] = set()
         self._send_lock = threading.Lock()
+        self._effect_lock = threading.RLock()
         self._state_lock = threading.RLock()
         self._decision_futures: dict[
             tuple[str, int], concurrent.futures.Future
@@ -146,25 +147,26 @@ class ISSClientCore:
             str(decision.wire_action),
         )
         if self.effect_guard is not None:
-            state_hash = table_state_hash(table)
-            effect, created = self.effect_guard.prepare(
-                decision.request,
-                decision.result,
-                current_external_state_hash=state_hash,
-                table_id=table.table_id,
-                game_sequence=table.game_sequence,
-                protocol_sequence=len(table.moves),
-                wire_action=str(decision.wire_action),
-                outbound_line=outbound,
-            )
-            if not created:
-                return
-            self.effect_guard.send(
-                effect,
-                created_now=True,
-                send_line=self._send,
-                outbound_line=outbound,
-            )
+            with self._effect_lock:
+                state_hash = table_state_hash(table)
+                effect, created = self.effect_guard.prepare(
+                    decision.request,
+                    decision.result,
+                    current_external_state_hash=state_hash,
+                    table_id=table.table_id,
+                    game_sequence=table.game_sequence,
+                    protocol_sequence=len(table.moves),
+                    wire_action=str(decision.wire_action),
+                    outbound_line=outbound,
+                )
+                if not created:
+                    return
+                self.effect_guard.send(
+                    effect,
+                    created_now=True,
+                    send_line=self._send,
+                    outbound_line=outbound,
+                )
             return
 
         key = (
@@ -214,12 +216,13 @@ class ISSClientCore:
             ):
                 reschedule = table
             elif decision is not None:
-                if (
-                    self.effect_guard is None
-                    or not self.effect_guard.has_pending_for_game(
-                        table.table_id, table.game_sequence
-                    )
-                ):
+                should_send = self.effect_guard is None
+                if self.effect_guard is not None:
+                    with self._effect_lock:
+                        should_send = not self.effect_guard.has_pending_for_game(
+                            table.table_id, table.game_sequence
+                        )
+                if should_send:
                     self._send_decision(table, decision)
 
         if reschedule is not None:
@@ -230,13 +233,12 @@ class ISSClientCore:
             return
 
         # Exactly one material external effect may be in flight per game.
-        if (
-            self.effect_guard is not None
-            and self.effect_guard.has_pending_for_game(
-                table.table_id, table.game_sequence
-            )
-        ):
-            return
+        if self.effect_guard is not None:
+            with self._effect_lock:
+                if self.effect_guard.has_pending_for_game(
+                    table.table_id, table.game_sequence
+                ):
+                    return
 
         decision_method = getattr(self.move_provider, "next_decision", None)
         if callable(decision_method):
@@ -299,7 +301,8 @@ class ISSClientCore:
                 in {"table_start", "table_play", "table_state", "table_go"}
                 and table is not None
             ):
-                self.effect_guard.journal.reconcile_table(table)
+                with self._effect_lock:
+                    self.effect_guard.journal.reconcile_table(table)
 
         if event.kind == "invite" and self.policy.accept_invitations:
             self._send(

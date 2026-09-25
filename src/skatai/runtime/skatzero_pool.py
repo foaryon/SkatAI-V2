@@ -13,6 +13,24 @@ from typing import Sequence
 from skatai.runtime.interface import SkatAIInterfaceError
 
 
+class _WorkerTransportError(SkatAIInterfaceError):
+    pass
+
+
+class _WorkerRequestError(SkatAIInterfaceError):
+    pass
+
+
+def default_threads_per_worker(workers: int) -> int:
+    if int(workers) < 1:
+        raise ValueError("SKATZERO_POOL_WORKERS_LT_ONE")
+    try:
+        cpus = len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        cpus = int(os.cpu_count() or 1)
+    return max(1, cpus // int(workers))
+
+
 class _WarmWorker:
     def __init__(
         self,
@@ -21,6 +39,8 @@ class _WarmWorker:
         python_executable: Path,
         startup_timeout_s: float,
         worker_id: int,
+        torch_threads: int,
+        torch_interop_threads: int,
     ) -> None:
         self.skatzero_root = Path(skatzero_root)
         self.python_executable = Path(python_executable)
@@ -30,6 +50,16 @@ class _WarmWorker:
         env = dict(os.environ)
         prior = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = str(src_root) + (os.pathsep + prior if prior else "")
+        thread_value = str(int(torch_threads))
+        env["SKATZERO_TORCH_THREADS"] = thread_value
+        env["SKATZERO_TORCH_INTEROP_THREADS"] = str(
+            int(torch_interop_threads)
+        )
+        # Keep native math runtimes aligned with PyTorch's per-worker budget.
+        env["OMP_NUM_THREADS"] = thread_value
+        env["MKL_NUM_THREADS"] = thread_value
+        env["OPENBLAS_NUM_THREADS"] = thread_value
+        env["NUMEXPR_NUM_THREADS"] = thread_value
         self.proc = subprocess.Popen(
             [
                 str(self.python_executable),
@@ -50,42 +80,42 @@ class _WarmWorker:
         ready = self._read_json_line(startup_timeout_s)
         if ready.get("ready") is not True:
             self.close()
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_NOT_READY:{self.worker_id}"
             )
 
     def _read_json_line(self, timeout_s: float) -> dict:
         if self.proc.stdout is None:
-            raise SkatAIInterfaceError("SKATZERO_WARM_WORKER_STDOUT_MISSING")
+            raise _WorkerTransportError("SKATZERO_WARM_WORKER_STDOUT_MISSING")
         if self.proc.poll() is not None:
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_EXITED:{self.worker_id}:{self.proc.returncode}"
             )
         ready, _, _ = select.select([self.proc.stdout], [], [], float(timeout_s))
         if not ready:
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_TIMEOUT:{self.worker_id}"
             )
         line = self.proc.stdout.readline()
         if not line:
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_EOF:{self.worker_id}"
             )
         try:
             payload = json.loads(line)
         except json.JSONDecodeError as exc:
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_BAD_JSON:{self.worker_id}"
             ) from exc
         if not isinstance(payload, dict):
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_NONOBJECT:{self.worker_id}"
             )
         return payload
 
     def request(self, args: Sequence[str], *, timeout_s: float) -> list[str]:
         if self.proc.stdin is None:
-            raise SkatAIInterfaceError("SKATZERO_WARM_WORKER_STDIN_MISSING")
+            raise _WorkerTransportError("SKATZERO_WARM_WORKER_STDIN_MISSING")
         self._request_seq += 1
         req_id = f"{self.worker_id}:{self._request_seq}"
         request = {
@@ -98,16 +128,16 @@ class _WarmWorker:
             )
             self.proc.stdin.flush()
         except (BrokenPipeError, OSError) as exc:
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_WRITE_FAILED:{self.worker_id}"
             ) from exc
         response = self._read_json_line(timeout_s)
         if response.get("id") != req_id:
-            raise SkatAIInterfaceError(
+            raise _WorkerTransportError(
                 f"SKATZERO_WARM_WORKER_ID_MISMATCH:{self.worker_id}"
             )
         if response.get("ok") is not True:
-            raise SkatAIInterfaceError(
+            raise _WorkerRequestError(
                 "SKATZERO_WARM_WORKER_REQUEST_FAILED:"
                 + str(response.get("error") or "unknown")[:300]
             )
@@ -115,7 +145,7 @@ class _WarmWorker:
         if not isinstance(lines, list) or not lines or not all(
             isinstance(x, str) for x in lines
         ):
-            raise SkatAIInterfaceError(
+            raise _WorkerRequestError(
                 f"SKATZERO_WARM_WORKER_EMPTY_OUTPUT:{self.worker_id}"
             )
         return list(lines)
@@ -151,6 +181,8 @@ class PersistentSkatZeroPool:
         *,
         workers: int = 1,
         startup_timeout_s: float = 180.0,
+        torch_threads: int | None = None,
+        torch_interop_threads: int = 1,
     ) -> None:
         if workers < 1:
             raise ValueError("SKATZERO_POOL_WORKERS_LT_ONE")
@@ -158,6 +190,14 @@ class PersistentSkatZeroPool:
         self.python_executable = Path(python_executable)
         self.workers = int(workers)
         self.startup_timeout_s = float(startup_timeout_s)
+        self.torch_threads = (
+            default_threads_per_worker(self.workers)
+            if torch_threads is None
+            else int(torch_threads)
+        )
+        self.torch_interop_threads = int(torch_interop_threads)
+        if self.torch_threads < 1 or self.torch_interop_threads < 1:
+            raise ValueError("BAD_SKATZERO_POOL_THREAD_CONFIG")
         self._available: queue.Queue[_WarmWorker] = queue.Queue()
         self._all: list[_WarmWorker] = []
         self._replace_lock = threading.Lock()
@@ -173,6 +213,8 @@ class PersistentSkatZeroPool:
             python_executable=self.python_executable,
             startup_timeout_s=self.startup_timeout_s,
             worker_id=worker_id,
+            torch_threads=self.torch_threads,
+            torch_interop_threads=self.torch_interop_threads,
         )
 
     def _replace(self, failed: _WarmWorker) -> _WarmWorker:
@@ -195,19 +237,33 @@ class PersistentSkatZeroPool:
         except queue.Empty as exc:
             raise SkatAIInterfaceError("SKATZERO_POOL_ACQUIRE_TIMEOUT") from exc
 
-        return_worker = None
+        return_worker: _WarmWorker | None = None
         try:
             try:
                 result = worker.request(args, timeout_s=timeout_s)
                 return_worker = worker
                 return result
-            except SkatAIInterfaceError:
-                # No material ISS effect exists yet. A single internal retry on
-                # a fresh worker is safe and removes transient worker crashes.
+            except _WorkerRequestError:
+                # The worker is healthy; this request itself is invalid or
+                # failed deterministically. Never churn/retry it.
+                return_worker = worker
+                raise
+            except _WorkerTransportError:
+                # No ISS effect exists yet. Replace the broken local inference
+                # process and retry this request exactly once.
                 replacement = self._replace(worker)
-                result = replacement.request(args, timeout_s=timeout_s)
-                return_worker = replacement
-                return result
+                try:
+                    result = replacement.request(args, timeout_s=timeout_s)
+                    return_worker = replacement
+                    return result
+                except _WorkerRequestError:
+                    return_worker = replacement
+                    raise
+                except _WorkerTransportError:
+                    # Restore pool capacity for later requests, but do not
+                    # execute this logical request a third time.
+                    return_worker = self._replace(replacement)
+                    raise
         finally:
             if return_worker is not None and not self._closed:
                 self._available.put(return_worker)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import os
@@ -112,7 +112,34 @@ class ActiveGame:
     effect_offset: int
 
 
+@dataclass(frozen=True)
+class TableSlot:
+    table_id: str
+    desired_stack: str
+    state: str
+    create_protocol_offset: int
+
+    def validate(self) -> None:
+        if not self.table_id:
+            raise ISSGateWorkerError("EMPTY_TABLE_SLOT_ID")
+        if self.desired_stack not in PRIMARY_STACKS:
+            raise ISSGateWorkerError(
+                f"BAD_TABLE_SLOT_STACK:{self.desired_stack}"
+            )
+        if self.state not in {
+            "PENDING_CREATE",
+            "READY_INTENT",
+            "READY_SENT",
+            "ACTIVE",
+            "RETIRING",
+        }:
+            raise ISSGateWorkerError(f"BAD_TABLE_SLOT_STATE:{self.state}")
+        if self.create_protocol_offset < 0:
+            raise ISSGateWorkerError("BAD_TABLE_SLOT_PROTOCOL_OFFSET")
+
+
 ACTIVE_GAMES_SCHEMA = "skatai.v2.external-iss-active-games.v1"
+TABLE_SLOTS_SCHEMA = "skatai.v2.external-iss-table-slots.v1"
 
 
 @dataclass(frozen=True)
@@ -190,6 +217,7 @@ def mirror_policy_from_environment(
 class ThroughputPolicy:
     tables: int = 1
     inference_workers: int = 1
+    torch_threads_per_worker: int = 1
     warm_skatzero: bool = False
     async_decisions: bool = False
 
@@ -200,6 +228,8 @@ class ThroughputPolicy:
             raise ValueError("ISS_GATE_INFERENCE_WORKERS_OUT_OF_RANGE")
         if self.inference_workers > self.tables:
             raise ValueError("ISS_GATE_INFERENCE_WORKERS_GT_TABLES")
+        if self.torch_threads_per_worker < 1 or self.torch_threads_per_worker > 8:
+            raise ValueError("ISS_GATE_TORCH_THREADS_OUT_OF_RANGE")
         if self.tables > 1 and not self.async_decisions:
             raise ValueError("ISS_GATE_MULTITABLE_REQUIRES_ASYNC_DECISIONS")
 
@@ -225,6 +255,9 @@ def throughput_policy_from_environment(
             tables=int(env.get("ISS_GATE_TABLES", "1")),
             inference_workers=int(
                 env.get("ISS_GATE_INFERENCE_WORKERS", "1")
+            ),
+            torch_threads_per_worker=int(
+                env.get("ISS_GATE_TORCH_THREADS_PER_WORKER", "1")
             ),
             warm_skatzero=_env_bool(
                 env, "ISS_GATE_WARM_SKATZERO", False
@@ -343,6 +376,60 @@ def parse_active_games_payload(
             protocol_offset=int(row["protocol_offset"]),
             effect_offset=int(row["effect_offset"]),
         )
+    return out
+
+
+def table_slots_payload(
+    slots: Mapping[str, TableSlot],
+    *,
+    source_commit: str,
+) -> dict[str, Any]:
+    return {
+        "schema": TABLE_SLOTS_SCHEMA,
+        "source_commit": str(source_commit),
+        "slots": [
+            {
+                "table_id": slot.table_id,
+                "desired_stack": slot.desired_stack,
+                "state": slot.state,
+                "create_protocol_offset": slot.create_protocol_offset,
+            }
+            for _, slot in sorted(slots.items())
+        ],
+    }
+
+
+def parse_table_slots_payload(
+    payload: Mapping[str, Any],
+    *,
+    expected_source_commit: str,
+) -> dict[str, TableSlot]:
+    if payload.get("schema") != TABLE_SLOTS_SCHEMA:
+        raise ISSGateWorkerError("TABLE_SLOTS_SCHEMA_MISMATCH")
+    rows = payload.get("slots")
+    if not isinstance(rows, list):
+        raise ISSGateWorkerError("TABLE_SLOTS_ROWS_NOT_LIST")
+    if rows and payload.get("source_commit") != expected_source_commit:
+        raise ISSGateWorkerError(
+            "TABLE_SLOTS_SOURCE_COMMIT_MISMATCH:"
+            + str(payload.get("source_commit"))
+            + "!="
+            + str(expected_source_commit)
+        )
+    out: dict[str, TableSlot] = {}
+    for row in rows:
+        slot = TableSlot(
+            table_id=str(row["table_id"]),
+            desired_stack=str(row["desired_stack"]),
+            state=str(row["state"]),
+            create_protocol_offset=int(row["create_protocol_offset"]),
+        )
+        slot.validate()
+        if slot.table_id in out:
+            raise ISSGateWorkerError(
+                f"DUPLICATE_TABLE_SLOT:{slot.table_id}"
+            )
+        out[slot.table_id] = slot
     return out
 
 
@@ -471,18 +558,43 @@ def current_target(scored_rows: list[dict[str, Any]]) -> tuple[int | None, dict 
     return None, last_analysis
 
 
+def _rows_with_reservations(
+    scored_rows: Iterable[Mapping[str, Any]],
+    reserved: Iterable[GameAssignment],
+) -> list[dict[str, Any]]:
+    rows = [dict(row) for row in scored_rows]
+    for index, assignment in enumerate(reserved):
+        if not assignment.primary:
+            continue
+        rows.append(
+            {
+                "game_id": (
+                    f"reservation:{index}:{assignment.arm}:"
+                    f"{assignment.stack}:{assignment.seat}"
+                ),
+                "arm": assignment.arm,
+                "opponent": assignment.stack,
+                "seat": assignment.seat,
+            }
+        )
+    return rows
+
+
 def choose_arm_for_stratum(
     scored_rows: list[dict[str, Any]],
     *,
     per_arm: int,
     stack: str,
     seat: int,
+    reserved: Iterable[GameAssignment] = (),
 ) -> GameAssignment:
     if stack not in PRIMARY_STACKS or seat not in (0, 1, 2):
         return GameAssignment("B0", stack, seat, per_arm, False)
 
     targets = target_quotas(per_arm)
-    counts = observed_counts(scored_rows)
+    counts = observed_counts(
+        _rows_with_reservations(scored_rows, reserved)
+    )
     arm_totals = {
         arm: sum(v for s, v in counts.items() if s.arm == arm)
         for arm in ARMS
@@ -518,10 +630,58 @@ def next_underfilled_stack(
     scored_rows: list[dict[str, Any]],
     *,
     per_arm: int,
+    reserved: Iterable[GameAssignment] = (),
 ) -> str | None:
-    """Choose the stack from the frozen global quota-priority rule."""
-    targets = next_targets(scored_rows, per_arm=per_arm)
+    """Choose stack priority while accounting for in-flight primary games."""
+    targets = next_targets(
+        _rows_with_reservations(scored_rows, reserved),
+        per_arm=per_arm,
+    )
     return None if not targets else str(targets[0]["opponent"])
+
+
+def next_underfilled_stack_for_slot(
+    scored_rows: list[dict[str, Any]],
+    *,
+    per_arm: int,
+    reserved: Iterable[GameAssignment] = (),
+    existing_slot_stacks: Iterable[str] = (),
+) -> str | None:
+    """Spread table slots across still-useful opponent stacks."""
+    targets = next_targets(
+        _rows_with_reservations(scored_rows, reserved),
+        per_arm=per_arm,
+    )
+    ordered: list[str] = []
+    for target in targets:
+        opponent = str(target["opponent"])
+        if opponent not in ordered:
+            ordered.append(opponent)
+    if not ordered:
+        return None
+    slot_stacks = tuple(str(stack) for stack in existing_slot_stacks)
+    counts = {
+        opponent: sum(
+            1 for stack in slot_stacks if stack == opponent
+        )
+        for opponent in ordered
+    }
+    rank = {opponent: index for index, opponent in enumerate(ordered)}
+    return min(ordered, key=lambda opponent: (counts[opponent], rank[opponent]))
+
+
+def assignment_still_needed(
+    scored_rows: list[dict[str, Any]],
+    assignment: GameAssignment,
+) -> bool:
+    if not assignment.primary:
+        return False
+    targets = target_quotas(assignment.per_arm_target)
+    stratum = Stratum(assignment.arm, assignment.stack, assignment.seat)
+    if stratum not in targets:
+        return False
+    counts = observed_counts(scored_rows)
+    return counts[stratum] < targets[stratum]
 
 
 class RecordingSwitchProvider:
@@ -955,6 +1115,7 @@ class GateEvidence:
         self.games_dir = paths.runtime_root / "games"
         self.games_dir.mkdir(parents=True, exist_ok=True)
         self.active_games_path = paths.runtime_root / "active-games.json"
+        self.table_slots_path = paths.runtime_root / "table-slots.json"
         self.connection_events_path = paths.runtime_root / "connection-events.jsonl"
         self.mirror = HetznerEvidenceMirror(local_root=paths.runtime_root)
         self.mirror_queue_dir = paths.runtime_root / "mirror-queue"
@@ -1194,6 +1355,41 @@ class GateEvidence:
     ) -> dict[str, Any]:
         payload = active_games_payload(games, source_commit=source_commit)
         _atomic_json(self.active_games_path, payload)
+        self.mark_current_mirror_dirty()
+        return payload
+
+
+    def restore_table_slots(
+        self,
+        *,
+        source_commit: str,
+    ) -> dict[str, TableSlot]:
+        if not self.table_slots_path.exists():
+            self.mirror.download_optional(
+                "current/table-slots.json",
+                self.table_slots_path,
+            )
+        if not self.table_slots_path.exists():
+            return {}
+        payload = json.loads(
+            self.table_slots_path.read_text(encoding="utf-8")
+        )
+        return parse_table_slots_payload(
+            payload,
+            expected_source_commit=source_commit,
+        )
+
+    def persist_table_slots(
+        self,
+        slots: Mapping[str, TableSlot],
+        *,
+        source_commit: str,
+    ) -> dict[str, Any]:
+        payload = table_slots_payload(
+            slots,
+            source_commit=source_commit,
+        )
+        _atomic_json(self.table_slots_path, payload)
         self.mark_current_mirror_dirty()
         return payload
 
@@ -1772,6 +1968,7 @@ class GateEvidence:
             (self.protocol_journal, "current/service.jsonl"),
             (self.effect_journal, "current/effects.jsonl"),
             (self.active_games_path, "current/active-games.json"),
+            (self.table_slots_path, "current/table-slots.json"),
             (self.connection_events_path, "current/connection-events.jsonl"),
             (self.paths.runtime_root / "status.json", "current/status.json"),
         ):
@@ -2075,6 +2272,10 @@ class ExternalGateWorker:
                     paths.skatzero_root,
                     paths.skatzero_python,
                     workers=self.throughput_policy.inference_workers,
+                    torch_threads=(
+                        self.throughput_policy.torch_threads_per_worker
+                    ),
+                    torch_interop_threads=1,
                 )
                 runner = self.skatzero_pool
             if self.throughput_policy.async_decisions:
@@ -2498,6 +2699,11 @@ class ExternalGateWorker:
             keepalive_thread.start()
             if self.table_id is None:
                 self._create_next_table()
+                idle_outcome = getattr(
+                    self, "_connected_idle_outcome", lambda: None
+                )()
+                if idle_outcome is not None:
+                    return idle_outcome
             while True:
                 if keepalive_error:
                     exc = keepalive_error[0]
@@ -2533,7 +2739,15 @@ class ExternalGateWorker:
                     if not keep_running:
                         return self.campaign_status()
                 elif event.kind == "destroy":
-                    if self._on_destroy(str(event.fields["table_id"])):
+                    destroy_outcome = self._on_destroy(
+                        str(event.fields["table_id"])
+                    )
+                    if destroy_outcome == "CAMPAIGN_COMPLETE":
+                        return self.campaign_status()
+                    if (
+                        destroy_outcome == "MIRROR_PAUSED"
+                        or destroy_outcome is True
+                    ):
                         return {"mirror_paused": True}
         finally:
             keepalive_stop.set()
@@ -2602,7 +2816,14 @@ class ExternalGateWorker:
                         self.mirror_writebehind.stop(flush=True)
                         return result
                 except ISSTransportError as exc:
-                    if self._mirror_pause_requested:
+                    if (
+                        self._mirror_pause_requested
+                        and not getattr(
+                            self,
+                            "_allow_departure_observer_reconnect",
+                            False,
+                        )
+                    ):
                         raise ISSGateWorkerError(
                             "MIRROR_DEPARTURE_OUTCOME_UNKNOWN"
                         ) from exc
@@ -2647,6 +2868,719 @@ class ExternalGateWorker:
                 self.skatzero_pool = None
 
 
+
+class MultiTableExternalGateWorker(ExternalGateWorker):
+    """Throughput-oriented ISS worker with multiple concurrent table actors.
+
+    The scientific gate contract, effect authority and evidence schema remain
+    shared with ExternalGateWorker. Only table lifecycle/scheduling is widened.
+    """
+
+    def __init__(self, paths: GatePaths) -> None:
+        super().__init__(paths)
+        if self.throughput_policy.tables <= 1:
+            raise ISSGateWorkerError("MULTITABLE_WORKER_REQUIRES_TABLES_GT_ONE")
+        self.table_slots: dict[str, TableSlot] = {}
+        self._fresh_pending_creates: set[str] = set()
+        self._create_seen_current_connection: set[str] = set()
+        self._leave_sent_current_connection: set[str] = set()
+        self._campaign_complete_requested = False
+        self._allow_departure_observer_reconnect = True
+        self._confirmed_departures: set[str] = set()
+        self._departure_dir = paths.runtime_root / "table-departures"
+        self._departure_dir.mkdir(parents=True, exist_ok=True)
+
+    def _persist_table_slots(self) -> None:
+        self.evidence.persist_table_slots(
+            self.table_slots,
+            source_commit=self.source_commit,
+        )
+
+    def _reservations(
+        self,
+        *,
+        exclude_key: tuple[str, int] | None = None,
+    ) -> list[GameAssignment]:
+        return [
+            active.assignment
+            for key, active in self.assignment_by_game.items()
+            if key != exclude_key
+        ]
+
+    def _restore_active_game_authority(self) -> None:
+        restored = self.evidence.restore_active_games(
+            source_commit=self.source_commit
+        )
+        restored, _ = self.evidence.reconcile_terminal_active_games(
+            restored,
+            source_commit=self.source_commit,
+        )
+        slots = self.evidence.restore_table_slots(
+            source_commit=self.source_commit
+        )
+        changed = False
+
+        for table_id in self._confirmed_departures:
+            if table_id in slots:
+                slots.pop(table_id, None)
+                changed = True
+
+        for (table_id, game_sequence), active in restored.items():
+            slot = slots.get(table_id)
+            if slot is None:
+                slot = TableSlot(
+                    table_id=table_id,
+                    desired_stack=active.assignment.stack,
+                    state="ACTIVE",
+                    create_protocol_offset=active.protocol_offset,
+                )
+                slots[table_id] = slot
+                changed = True
+            elif slot.desired_stack != active.assignment.stack:
+                raise ISSGateWorkerError(
+                    "ACTIVE_GAME_TABLE_SLOT_STACK_MISMATCH:"
+                    f"{table_id}:{slot.desired_stack}!="
+                    f"{active.assignment.stack}"
+                )
+            elif slot.state == "RETIRING":
+                raise ISSGateWorkerError(
+                    f"ACTIVE_GAME_ON_RETIRING_TABLE:{table_id}"
+                )
+            elif slot.state != "ACTIVE":
+                slots[table_id] = replace(slot, state="ACTIVE")
+                changed = True
+            self.switch.bind_game(
+                table_id, game_sequence, active.assignment.arm
+            )
+
+        if len(slots) > self.throughput_policy.tables:
+            raise ISSGateWorkerError(
+                "RESTORED_TABLE_SLOTS_EXCEED_CONFIGURED_CAPACITY:"
+                f"{len(slots)}>{self.throughput_policy.tables}"
+            )
+        if len(restored) > self.throughput_policy.tables:
+            raise ISSGateWorkerError(
+                "RESTORED_ACTIVE_GAMES_EXCEED_CONFIGURED_CAPACITY"
+            )
+
+        self.assignment_by_game = restored
+        self.table_slots = slots
+        if changed:
+            self._persist_table_slots()
+
+    def _create_next_table(self) -> None:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+        if self._mirror_pause_requested or self._campaign_complete_requested:
+            return
+
+        while len(self.table_slots) < self.throughput_policy.tables:
+            rows = self.evidence.scored_rows()
+            target, _ = current_target(rows)
+            if target is None:
+                self._campaign_complete_requested = True
+                return
+
+            stack = next_underfilled_stack_for_slot(
+                rows,
+                per_arm=target,
+                reserved=self._reservations(),
+                existing_slot_stacks=(
+                    slot.desired_stack
+                    for slot in self.table_slots.values()
+                ),
+            )
+            if stack is None:
+                # All currently missing primary quota is already reserved by
+                # games in flight. Do not create speculative diagnostic load.
+                return
+
+            name, password = _private_table_credentials()
+            while name in self.table_slots:
+                name, password = _private_table_credentials()
+            slot = TableSlot(
+                table_id=name,
+                desired_stack=stack,
+                state="PENDING_CREATE",
+                create_protocol_offset=self.evidence._file_size(
+                    self.evidence.protocol_journal
+                ),
+            )
+            self.table_slots[name] = slot
+            self._fresh_pending_creates.add(name)
+            self._persist_table_slots()
+            self.client.send_service_command(
+                command_create_table(
+                    players=3,
+                    table_name=name,
+                    table_password=password,
+                )
+            )
+            password = ""
+
+    def _admitted_table_ids(self) -> set[str]:
+        return set(self.table_slots) | {
+            table_id for table_id, _ in self.assignment_by_game
+        }
+
+    def _on_create(self, event) -> None:
+        if self.client is None or not bool(event.fields.get("is_player")):
+            return
+        table_id = str(event.fields["table_id"])
+        slot = self.table_slots.get(table_id)
+        if slot is None:
+            return
+
+        seen_before = table_id in self._create_seen_current_connection
+        self._create_seen_current_connection.add(table_id)
+        viewer = str(event.fields["viewer_name"])
+
+        if any(key[0] == table_id for key in self.assignment_by_game):
+            if slot.state != "ACTIVE":
+                self.table_slots[table_id] = replace(slot, state="ACTIVE")
+                self._persist_table_slots()
+            self._fresh_pending_creates.discard(table_id)
+            return
+
+        if slot.state == "RETIRING":
+            self._fresh_pending_creates.discard(table_id)
+            if not seen_before:
+                # Server replay proves this table still exists. The desired
+                # terminal state is unchanged, so retrying that same LEAVE is
+                # authorized and cannot create a second table/game.
+                self._retire_table(
+                    table_id,
+                    viewer,
+                    game_sequence=0,
+                    game_id=None,
+                    reason="RETRY_CONFIRMED_TABLE_STILL_EXISTS",
+                    allow_retry=True,
+                )
+            return
+
+        if self._mirror_pause_requested:
+            self._retire_table(
+                table_id,
+                viewer,
+                game_sequence=0,
+                game_id=None,
+                reason="BACKPRESSURE",
+            )
+            return
+        if self._campaign_complete_requested:
+            self._retire_table(
+                table_id,
+                viewer,
+                game_sequence=0,
+                game_id=None,
+                reason="CAMPAIGN_COMPLETE",
+            )
+            return
+
+        if slot.state == "PENDING_CREATE":
+            # CREATE is now externally confirmed. Persist READY intent before
+            # any invitation/READY command. If the process dies mid-sequence,
+            # reconnect retires the table rather than replaying an unknown
+            # lifecycle effect.
+            self.table_slots[table_id] = replace(
+                slot, state="READY_INTENT"
+            )
+            self._persist_table_slots()
+            self._fresh_pending_creates.discard(table_id)
+
+            for opponent in slot.desired_stack.split("+"):
+                self.client.send_service_command(
+                    command_invite(table_id, viewer, opponent)
+                )
+            self.client.send_service_command(
+                command_ready(table_id, viewer)
+            )
+            self.table_slots[table_id] = replace(
+                self.table_slots[table_id], state="READY_SENT"
+            )
+            self._persist_table_slots()
+            return
+
+        if seen_before:
+            return
+
+        if slot.state in {"READY_INTENT", "READY_SENT", "ACTIVE"}:
+            # No active-game authority exists, so a replayed table is an
+            # ambiguous idle lifecycle state. Never resend READY/invites.
+            self._retire_table(
+                table_id,
+                viewer,
+                game_sequence=0,
+                game_id=None,
+                reason="READY_OUTCOME_UNKNOWN",
+            )
+
+
+    def _on_start_preapply(self, line: str) -> None:
+        event = parse_service_line(line)
+        if event.kind != "table_start":
+            return
+        meta = parse_table_start_payload(
+            str(event.fields.get("payload") or "")
+        )
+        players = tuple(meta["players"])
+        viewer = str(event.fields["viewer_name"])
+        seat = player_seat(players, viewer)
+        stack = canonical_opponent_stack(players, skatai_seat=seat)
+        table_id = str(event.fields["table_id"])
+        key = (table_id, int(meta["game_num"]))
+
+        slot = self.table_slots.get(table_id)
+        if slot is None:
+            raise ISSGateWorkerError(
+                f"START_WITHOUT_MANAGED_TABLE_SLOT:{table_id}"
+            )
+        if slot.state == "RETIRING":
+            raise ISSGateWorkerError(
+                f"GAME_STARTED_ON_RETIRING_TABLE:{table_id}"
+            )
+        if slot.state != "ACTIVE":
+            self.table_slots[table_id] = TableSlot(
+                table_id=slot.table_id,
+                desired_stack=slot.desired_stack,
+                state="ACTIVE",
+                create_protocol_offset=slot.create_protocol_offset,
+            )
+            self._persist_table_slots()
+
+        existing = self.assignment_by_game.get(key)
+        if existing is not None:
+            if (
+                existing.assignment.stack != stack
+                or existing.assignment.seat != seat
+            ):
+                raise ISSGateWorkerError(
+                    f"RECONNECT_ACTIVE_GAME_IDENTITY_MISMATCH:{key}"
+                )
+            self.switch.bind_game(
+                key[0], key[1], existing.assignment.arm
+            )
+            return
+
+        rows = self.evidence.scored_rows()
+        target, _ = current_target(rows)
+        if target is None or stack != slot.desired_stack:
+            assignment = GameAssignment(
+                "B0",
+                stack,
+                seat,
+                LOOKS_PER_ARM[-1] if target is None else target,
+                False,
+            )
+        else:
+            assignment = choose_arm_for_stratum(
+                rows,
+                per_arm=target,
+                stack=stack,
+                seat=seat,
+                reserved=self._reservations(),
+            )
+        self.switch.bind_game(
+            key[0], key[1], assignment.arm
+        )
+        self.assignment_by_game[key] = ActiveGame(
+            assignment=assignment,
+            protocol_offset=self.evidence._file_size(
+                self.evidence.protocol_journal
+            ),
+            effect_offset=self.evidence._file_size(
+                self.evidence.effect_journal
+            ),
+        )
+        self._persist_active_game_authority()
+
+    def _departure_marker(self, table_id: str) -> Path:
+        return self._departure_dir / f"{table_id}.json"
+
+    def _retire_table(
+        self,
+        table_id: str,
+        viewer_name: str,
+        *,
+        game_sequence: int,
+        game_id: str | None,
+        reason: str,
+        allow_retry: bool = False,
+    ) -> None:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+        slot = self.table_slots.get(table_id)
+        if slot is None:
+            return
+
+        marker = self._departure_marker(table_id)
+        if slot.state == "RETIRING":
+            if not allow_retry:
+                return
+            if table_id in self._leave_sent_current_connection:
+                return
+            if not marker.exists():
+                raise ISSGateWorkerError(
+                    f"RETIRING_TABLE_WITHOUT_DEPARTURE_MARKER:{table_id}"
+                )
+            self.client.send_service_command(
+                command_leave(table_id, viewer_name)
+            )
+            self._leave_sent_current_connection.add(table_id)
+            return
+
+        if marker.exists():
+            raise ISSGateWorkerError(
+                f"DEPARTURE_MARKER_WITH_NONRETIRING_SLOT:{table_id}"
+            )
+
+        self.table_slots[table_id] = replace(slot, state="RETIRING")
+        self._persist_table_slots()
+        _atomic_json(
+            marker,
+            {
+                "schema": "skatai.v2.iss-mirror-departure-pending.v2",
+                "source_commit": self.source_commit,
+                "table_id": table_id,
+                "viewer_name": viewer_name,
+                "game_sequence": int(game_sequence),
+                "game_id": game_id,
+                "protocol_offset": self.evidence._file_size(
+                    self.evidence.protocol_journal
+                ),
+                "reason": str(reason),
+            },
+        )
+        self.client.send_service_command(
+            command_leave(table_id, viewer_name)
+        )
+        self._leave_sent_current_connection.add(table_id)
+
+
+    def _retire_idle_tables(self, *, reason: str) -> None:
+        if self.client is None:
+            return
+        active_table_ids = {
+            table_id for table_id, _ in self.assignment_by_game
+        }
+        for table_id, slot in list(self.table_slots.items()):
+            if table_id in active_table_ids or slot.state == "RETIRING":
+                continue
+            if slot.state == "PENDING_CREATE":
+                # Outcome is not yet externally confirmed. _on_create will
+                # retire it immediately if a CREATE replay arrives.
+                continue
+            table = self.client.state.tables.get(table_id)
+            if table is None or table.in_progress:
+                continue
+            self._retire_table(
+                table_id,
+                table.viewer_name,
+                game_sequence=table.game_sequence,
+                game_id=None,
+                reason=reason,
+            )
+
+
+    def _on_end(self, event, table) -> bool:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+        key = (table.table_id, table.game_sequence)
+        active = self.assignment_by_game.get(key)
+        if active is None:
+            raise ISSGateWorkerError(f"MISSING_GAME_ASSIGNMENT:{key}")
+        if not table.game_sgf:
+            raise ISSGateWorkerError("TABLE_END_WITHOUT_SGF")
+
+        assignment = active.assignment
+        rows_before = self.evidence.scored_rows()
+        if assignment.primary and not assignment_still_needed(
+            rows_before, assignment
+        ):
+            assignment = GameAssignment(
+                assignment.arm,
+                assignment.stack,
+                assignment.seat,
+                assignment.per_arm_target,
+                False,
+            )
+
+        game_id = f"iss:{table.table_id}:{table.game_sequence}"
+        p50, p95 = self.switch.latency_summary(game_id)
+        stored = self.evidence.append_game(
+            assignment=assignment,
+            viewer_name=table.viewer_name,
+            sgf=table.game_sgf,
+            latency_p50=p50,
+            latency_p95=p95,
+            protocol_offset=active.protocol_offset,
+            effect_offset=active.effect_offset,
+            table_id=table.table_id,
+            game_sequence=table.game_sequence,
+        )
+        self.evidence.enqueue_mirror_game(
+            stored["result"]["game_id"]
+        )
+        self.assignment_by_game.pop(key, None)
+        self.switch.unbind_game(key[0], key[1])
+        self._persist_active_game_authority()
+        self._transport_failure_streak = 0
+
+        status = self.campaign_status()
+        target = status["next_per_arm_target"]
+        if target is None:
+            self._campaign_complete_requested = True
+        if self.mirror_writebehind.backpressure_required():
+            self._mirror_pause_requested = True
+
+        if self._campaign_complete_requested:
+            self._retire_table(
+                table.table_id,
+                table.viewer_name,
+                game_sequence=table.game_sequence,
+                game_id=stored["result"]["game_id"],
+                reason="CAMPAIGN_COMPLETE",
+            )
+            self._retire_idle_tables(reason="CAMPAIGN_COMPLETE")
+            return True
+
+        if self._mirror_pause_requested:
+            self.evidence._write_mirror_status(state="BACKPRESSURE")
+            self._retire_table(
+                table.table_id,
+                table.viewer_name,
+                game_sequence=table.game_sequence,
+                game_id=stored["result"]["game_id"],
+                reason="BACKPRESSURE",
+            )
+            self._retire_idle_tables(reason="BACKPRESSURE")
+            return True
+
+        rows = self.evidence.scored_rows()
+        targets = next_targets(
+            _rows_with_reservations(
+                rows, self._reservations()
+            ),
+            per_arm=target,
+        )
+        useful_stacks = {
+            str(item["opponent"]) for item in targets
+        }
+        slot = self.table_slots.get(table.table_id)
+        if (
+            slot is None
+            or assignment.stack != slot.desired_stack
+            or slot.desired_stack not in useful_stacks
+        ):
+            self._retire_table(
+                table.table_id,
+                table.viewer_name,
+                game_sequence=table.game_sequence,
+                game_id=stored["result"]["game_id"],
+                reason="ROTATE_STACK",
+            )
+            return True
+
+        slot = self.table_slots.get(table.table_id)
+        if slot is None:
+            raise ISSGateWorkerError(
+                f"MISSING_TABLE_SLOT_AT_READY:{table.table_id}"
+            )
+        self.table_slots[table.table_id] = replace(
+            slot, state="READY_INTENT"
+        )
+        self._persist_table_slots()
+        self.client.send_service_command(
+            command_ready(table.table_id, table.viewer_name)
+        )
+        self.table_slots[table.table_id] = replace(
+            self.table_slots[table.table_id], state="READY_SENT"
+        )
+        self._persist_table_slots()
+        return True
+
+    def _on_table_error(self, event, table) -> None:
+        if self.client is None:
+            raise ISSGateWorkerError("CLIENT_NOT_CONNECTED")
+        table.stopped = True
+        table.in_progress = False
+        key = (table.table_id, table.game_sequence)
+        active = self.assignment_by_game.get(key)
+        error_text = str(event.fields.get("text") or "").strip()
+        reason = f"ISS_TABLE_ERROR:{error_text or 'UNSPECIFIED'}"
+
+        if active is not None:
+            for state in self.effect_guard.journal.pending_for_game(
+                table.table_id, table.game_sequence
+            ):
+                self.effect_guard.journal.abort_stale(
+                    state.effect_id,
+                    reason=reason,
+                )
+            stored = self.evidence.append_failure_without_terminal(
+                assignment=active.assignment,
+                table_id=table.table_id,
+                game_sequence=table.game_sequence,
+                protocol_offset=active.protocol_offset,
+                effect_offset=active.effect_offset,
+                status="PROTOCOL_FAILURE",
+                failure_reason=reason,
+            )
+            self.evidence.enqueue_mirror_game(stored["game_id"])
+            self.assignment_by_game.pop(key, None)
+            self.switch.unbind_game(key[0], key[1])
+            self._persist_active_game_authority()
+            game_id = stored["game_id"]
+        else:
+            game_id = None
+            self.evidence.append_connection_event(
+                "TABLE_ERROR_WITHOUT_ACTIVE_GAME",
+                table_id=table.table_id,
+                game_sequence=table.game_sequence,
+                error=error_text,
+            )
+
+        self._retire_table(
+            table.table_id,
+            table.viewer_name,
+            game_sequence=table.game_sequence,
+            game_id=game_id,
+            reason="TABLE_ERROR",
+        )
+
+    def _on_destroy(self, destroyed_table_id: str):
+        if any(
+            table_id == destroyed_table_id
+            for table_id, _ in self.assignment_by_game
+        ):
+            raise ISSGateWorkerError(
+                f"DESTROY_WITH_ACTIVE_GAME:{destroyed_table_id}"
+            )
+
+        marker = self._departure_marker(destroyed_table_id)
+        if marker.exists():
+            payload = json.loads(marker.read_text(encoding="utf-8"))
+            _atomic_json(
+                self._departure_dir
+                / f"reconciliation-{destroyed_table_id}.json",
+                {
+                    "schema": (
+                        "skatai.v2.iss-table-departure-reconciliation.v1"
+                    ),
+                    "source_commit": self.source_commit,
+                    "table_id": destroyed_table_id,
+                    "game_id": payload.get("game_id"),
+                    "reason": payload.get("reason"),
+                    "outcome": "CONFIRMED_BY_LIVE_DESTROY",
+                    "confirmed_unix_ns": time.time_ns(),
+                },
+            )
+            marker.unlink()
+
+        self.table_slots.pop(destroyed_table_id, None)
+        self._fresh_pending_creates.discard(destroyed_table_id)
+        self._create_seen_current_connection.discard(destroyed_table_id)
+        self._leave_sent_current_connection.discard(destroyed_table_id)
+        self._persist_table_slots()
+
+        if self._campaign_complete_requested:
+            self._retire_idle_tables(reason="CAMPAIGN_COMPLETE")
+            if not self.assignment_by_game and not self.table_slots:
+                return "CAMPAIGN_COMPLETE"
+            return False
+
+        if self._mirror_pause_requested:
+            self._retire_idle_tables(reason="BACKPRESSURE")
+            if not self.assignment_by_game and not self.table_slots:
+                return "MIRROR_PAUSED"
+            return False
+
+        self._create_next_table()
+        return False
+
+    def _wait_for_mirror_capacity(self) -> None:
+        # Active games must finish/reconcile; admission control applies only
+        # between games. Once all table departures are confirmed and the
+        # write-behind backlog has drained below its bound, resume table
+        # admission instead of carrying a sticky pause forever.
+        if self.assignment_by_game:
+            return
+        while self.mirror_writebehind.backpressure_required():
+            self.evidence._write_mirror_status(state="BACKPRESSURE")
+            time.sleep(self.mirror_policy.poll_interval_s)
+
+        unresolved = [
+            marker
+            for marker in self._departure_dir.glob("*.json")
+            if not marker.name.startswith("reconciliation-")
+        ]
+        if self._mirror_pause_requested and not unresolved and not self.table_slots:
+            self._mirror_pause_requested = False
+            self.evidence._write_mirror_status(state="RUNNING")
+
+    def _connected_idle_outcome(self) -> dict[str, Any] | None:
+        if self.assignment_by_game or self.table_slots:
+            return None
+        if self._campaign_complete_requested:
+            return self.campaign_status()
+        if self._mirror_pause_requested:
+            return {"mirror_paused": True}
+        return None
+
+    def _run_connected_session(
+        self,
+        *,
+        client_policy: ISSClientPolicy,
+    ) -> dict[str, Any] | None:
+        self._create_seen_current_connection.clear()
+        self._leave_sent_current_connection.clear()
+        return super()._run_connected_session(
+            client_policy=client_policy
+        )
+
+    def run(self) -> dict[str, Any]:
+        self._confirmed_departures.clear()
+        for marker in sorted(self._departure_dir.glob("*.json")):
+            if marker.name.startswith("reconciliation-"):
+                continue
+            try:
+                payload = json.loads(marker.read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError) as exc:
+                raise ISSGateWorkerError(
+                    f"BAD_TABLE_DEPARTURE_MARKER:{marker.name}"
+                ) from exc
+            reason = str(payload.get("reason") or "")
+            if reason == "BACKPRESSURE":
+                self._mirror_pause_requested = True
+            elif reason == "CAMPAIGN_COMPLETE":
+                self._campaign_complete_requested = True
+
+            if reconcile_mirror_departure(
+                marker,
+                self.paths.runtime_root / "service.jsonl",
+                source_commit=self.source_commit,
+            ):
+                table_id = str(payload.get("table_id") or "")
+                if table_id:
+                    self._confirmed_departures.add(table_id)
+                generic = (
+                    self._departure_dir
+                    / "mirror-departure-reconciliation.json"
+                )
+                if generic.exists() and table_id:
+                    os.replace(
+                        generic,
+                        self._departure_dir
+                        / f"reconciliation-{table_id}.json",
+                    )
+            # Otherwise reconnect in observer mode. The lifecycle effect is
+            # never replayed; only a future server destroy can resolve it.
+
+        return super().run()
+
+
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument(
@@ -2662,10 +3596,17 @@ def main() -> None:
             "object_storage": object_storage_readiness(paths),
             "assets": verify_deployment_assets(paths),
             "identities": load_identities(paths.repo_root),
+            "throughput_policy": throughput_policy_from_environment().__dict__,
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return
-    result = ExternalGateWorker(paths).run()
+    policy = throughput_policy_from_environment()
+    worker_type = (
+        MultiTableExternalGateWorker
+        if policy.tables > 1
+        else ExternalGateWorker
+    )
+    result = worker_type(paths).run()
     print(json.dumps(result, indent=2, sort_keys=True))
 
 

@@ -14,6 +14,20 @@ def _load_api(root: Path):
     root = root.resolve()
     os.chdir(root)
     sys.path.insert(0, str(root))
+
+    # Bound per-process parallelism before model construction. Multi-table
+    # throughput comes from multiple warm workers; letting every worker fan
+    # out across all host CPUs causes severe oversubscription.
+    import torch
+    torch_threads = int(os.environ.get("SKATZERO_TORCH_THREADS", "1"))
+    interop_threads = int(
+        os.environ.get("SKATZERO_TORCH_INTEROP_THREADS", "1")
+    )
+    if torch_threads < 1 or interop_threads < 1:
+        raise ValueError("BAD_SKATZERO_TORCH_THREAD_CONFIG")
+    torch.set_num_threads(torch_threads)
+    torch.set_num_interop_threads(interop_threads)
+
     import api as skatzero_api  # type: ignore
 
     # Load the nine frozen cardplay models once. Every request still receives
