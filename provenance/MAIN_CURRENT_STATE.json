@@ -6,9 +6,18 @@
       "owner": "independent fail-closed supervisor, restored S3/HOME launch environment",
       "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
       "task_id": "B1_EXTERNAL_ISS_R9"
+    },
+    {
+      "classification": "CONTINUE",
+      "job_runtime_root": "/workspace/skatai-v2-runtime/isolated-science/cardplay-choice-confirm-20260925-v1",
+      "max_wall_seconds": 2700,
+      "owner": "fenced RunPod isolated science worker",
+      "pod_id": "3pl3vtf10q7h41",
+      "source_commit": "c4744b26d277085e1e4b222e285f4da9a06d1713",
+      "task_id": "CARDPLAY_CHOICE_AGREEMENT_CONFIRM_216"
     }
   ],
-  "captured_at": "2026-09-25T11:27:54.205503Z",
+  "captured_at": "2026-09-25T11:29:19.810285Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/CARDPLAY_B0_DIAGNOSTIC_RESULT_20260925.json",
@@ -18,10 +27,10 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through 99fcec6; diagnostic conclusion pending commit",
+    "remote_state": "pushed through c4744b2; confirm dispatch pending commit",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "99fcec6",
-    "worktree_state": "diagnostic conclusion pending commit"
+    "verified_head_before_this_manifest": "c4744b26d277085e1e4b222e285f4da9a06d1713",
+    "worktree_state": "coherent confirm dispatch pending commit"
   },
   "nearest_gates": [
     {
@@ -49,14 +58,14 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "Prepare disjoint train-only choice-only confirmatory cardplay diagnostic for Suit historical-action disagreement; keep R9 frozen under independent supervisor.",
+  "next_action": "Conclude disjoint choice-only 216-decision diagnostic at durable result or failure and verify pod deletion; retain or reject Suit treatment hypothesis under preregistered rule. R9 stays frozen under independent supervisor.",
   "open_blockers": [],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {
-    "estimated_unit_price_usd_per_hour": 0.06,
-    "isolated_pod_id": null,
-    "last_pod_deleted": true,
-    "last_pod_id": "bxii3z4858l5j6"
+    "cpu_vcpu": 2,
+    "expected_max_compute_usd": 0.045,
+    "isolated_pod_id": "3pl3vtf10q7h41",
+    "memory_gb": 4
   },
   "schema": "skatai.v2.main-current-state.v1"
 }

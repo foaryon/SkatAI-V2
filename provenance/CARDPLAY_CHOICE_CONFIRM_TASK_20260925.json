@@ -1,8 +1,10 @@
 {
   "captured_at": "2026-09-25T11:28:59.506059Z",
   "choices_only": true,
-  "classification": "READY_TO_LAUNCH",
+  "classification": "CONTINUE",
   "diagnostic_sha256": "844d5e9be976173956c95b7083b062fa23506a171b3a69c461a9aa48f078f4e4",
+  "dispatch_record": "/workspace/skatai-v2-runtime/isolated-science/cardplay-choice-confirm-20260925-v1/dispatch.json",
+  "dispatched_at": "2026-09-25T11:29:19.810285Z",
   "goal": "Confirm or reject pilot Suit historical-action disagreement on disjoint train games with legal choices only",
   "integrity_gates": [
     "0 frozen split leakage",
@@ -15,7 +17,8 @@
   "next_on_inconclusive": "Broaden train-only diagnostic or choose treatment from other evidence without treating agreement as strength",
   "next_on_success": "Choose one bounded Suit cardplay treatment only if confirmatory direction holds; test causally with paired B0 gameplay before any strength claim",
   "per_stratum": 12,
-  "pod_id": null,
+  "pod_id": "3pl3vtf10q7h41",
+  "pod_state": "CREATED_RUNNING",
   "primary_descriptive_rule": "If Suit agreement is at least 0.15 lower than both Grand and Null on the 72 Suit / 72 Grand / 72 Null choice-only events, retain a Suit cardplay treatment hypothesis; otherwise treat pilot ranking as unstable. No strength decision follows.",
   "resource_bound": {
     "cpu_vcpu": 2,
@@ -33,6 +36,6 @@
   "seed": 20260926,
   "selected_events": 216,
   "selection_sha256": "ff493a527c67ea3c904316084c0f61faec414f17d77f8ed0765146996cd06782",
-  "source_commit": "PENDING_THIS_COMMIT",
+  "source_commit": "c4744b26d277085e1e4b222e285f4da9a06d1713",
   "task_id": "CARDPLAY_CHOICE_AGREEMENT_CONFIRM_216"
 }
