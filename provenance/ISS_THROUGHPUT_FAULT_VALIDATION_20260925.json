@@ -1,5 +1,5 @@
 {
-  "full_pytest": "499 passed",
+  "full_pytest": "501 passed",
   "live_r9_modified": false,
   "multitable_backpressure": {
     "property": "no new table admitted under pressure; active game may close durably; idle tables retire; admission resumes only after clean drain",
