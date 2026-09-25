@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-25T12:55:00Z",
+  "captured_at": "2026-09-25T20:46:08Z",
   "external_dependencies": [
     {
       "event_watch": {
@@ -17,22 +17,48 @@
     }
   ],
   "primary": {
-    "completion": [
-      "Exact artifact identity verified",
-      "calendar/role impact classified",
-      "B1 promotion/training block resolved or explicitly rejected/inconclusive"
-    ],
-    "end_state_contribution": "Remove an evidence-integrity blocker that currently prevents scientifically valid B1 training/promotion, preserving the trusted-data -> challenger -> controlled-evaluation path.",
-    "evidence": [
-      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json"
-    ],
-    "gate_id": "BIDDING_D3_PUBLISHED_SPLIT_IMPACT_UNKNOWN",
+    "gate_id": "BIDDING_D3_CORRECTION_RECONCILE",
+    "status": "EXECUTABLE",
     "goal_path_id": "G1_TRUSTED_EVIDENCE",
-    "model_reason": "Use the currently verified live Agents model only; no alternative API model has been directly verified available for this controller.",
+    "objective": "Reconcile the stale D3 integrity-blocker provenance against the already-verified exact-manifest correction; do not rerun the dataset audit.",
+    "end_state_contribution": "Close a stale trusted-data integrity blocker using preserved exact-manifest evidence so later B1 decisions use the corrected D3 status without resetting or reinterpreting R9.",
+    "selection_basis": "The exact 72-shard manifest has already been re-audited successfully and the validator fix is integrated; repeating the scan would waste compute and model/tool budget, while stale provenance still incorrectly says impact UNKNOWN.",
+    "selection_evidence": [
+      "provenance/BIDDING_D3_SELF_OFFER_AUDIT_CORRECTION_20260925.json",
+      "provenance/DATA_REGISTRY.json",
+      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_PUBLISHED_ARTIFACT_AUDIT_CORRECTED_20260925.json",
+      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_ACTOR_ROLE_IMPACT_20260925.json"
+    ],
+    "evidence": [
+      "provenance/BIDDING_D3_SELF_OFFER_AUDIT_CORRECTION_20260925.json",
+      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
+      "provenance/MAIN_CURRENT_STATE.json",
+      "provenance/DATA_REGISTRY.json",
+      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_PUBLISHED_ARTIFACT_AUDIT_CORRECTED_20260925.json",
+      "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_ACTOR_ROLE_IMPACT_20260925.json"
+    ],
+    "evidence_identities": {
+      "published_manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+      "correction_provenance_sha256": "b043354d396edae5b7830d4d955c86941799b334a68bfba349d5f56e634350cb",
+      "corrected_audit_sha256": "fa77a685845bb5b60b9e43e12aeee411f5e29555363b8ede423c9b23d9aebc90",
+      "actor_role_impact_sha256": "fdb0079992a2f44ac07d3226d01b379d95915902979b07b152077def8ae67dbe",
+      "integrated_fix_commits": [
+        "c0730e7",
+        "229d701",
+        "a4b11ed"
+      ]
+    },
+    "decisive_facts": [
+      "72 manifest-listed shards verified for the exact published manifest.",
+      "Corrected exact-manifest audit status PASS: actor-role=0, feature-target=0, invalid-calendar-date=0, split-mismatch=0.",
+      "All 1,403,419 rows flagged by the superseded strict audit are protocol-legal Forehand self-offer states; residual mismatch after the legal exception is 0.",
+      "This finding does not require B1 retraining and does not authorize B1 promotion.",
+      "Frozen R9 evidence and treatment continue unchanged; promotion still depends on the preregistered R9 gameplay gate and independent acceptance requirements."
+    ],
     "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the currently verified saved Agents model and pinned medium-reasoning/low-verbosity/Flex policy; deterministic evidence is already available and no broader model exploration is justified.",
     "allowed_material_effects": [
       "READ_ONLY_INSPECTION",
-      "LOCAL_DETERMINISTIC_ANALYSIS",
       "PROVENANCE_WRITE"
     ],
     "executor_capabilities": [],
@@ -43,48 +69,20 @@
       "before_prefix": "UNKNOWN",
       "after_forbid_prefix": "UNKNOWN"
     },
-    "authorized_commands": [
-      {
-        "id": "audit_published_bidding_artifact",
-        "argv_prefix": [
-          "/usr/bin/python3",
-          "/workspace/skatai-v2/scripts/audit_bidding_artifact.py"
-        ],
-        "script": "scripts/audit_bidding_artifact.py",
-        "script_sha256": "310245bb9efb501914b8883b4dcd1422a72c434befc8031249be0e00b687a592",
-        "timeout_seconds": 1200,
-        "arg_schema": {
-          "manifest": {
-            "type": "path",
-            "kind": "file",
-            "flag": "--manifest"
-          },
-          "root": {
-            "type": "path",
-            "kind": "dir",
-            "flag": "--root"
-          },
-          "expected_manifest_sha256": {
-            "type": "sha256",
-            "flag": "--expected-manifest-sha256"
-          }
-        }
-      }
-    ],
+    "authorized_commands": [],
     "writable_files": [
-      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json"
+      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
+      "provenance/MAIN_CURRENT_STATE.json"
     ],
-    "next_action": "Verify read-only whether the exact manifest-listed shards and an already-authorized bounded execution path are locally available. If they are available without privileged credential expansion, run scripts/audit_bidding_artifact.py against the published manifest SHA-256 and persist the bounded report. Otherwise persist the precise capability/data blocker and stop; never recover or expose raw cloud credentials.",
-    "objective": "Reconcile the exact published bidding dataset calendar/role impact before any new B1 training or promotion.",
-    "selection_basis": "This is a verified blocker on the shortest valid path to a defensible B1 decision; R9 can continue independently without MAIN attention.",
-    "selection_evidence": [
-      "provenance/MAIN_CURRENT_STATE.json",
-      "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json"
+    "completion": [
+      "published_dataset_impact no longer begins UNKNOWN and is bound to the exact corrected audit evidence",
+      "MAIN_CURRENT_STATE no longer lists this D3 integrity issue as an open blocker or suspended D3 claim",
+      "Disposition explicitly preserves no-retrain-from-this-finding, no-promotion-from-this-correction-alone, and unchanged R9 evidence"
     ],
-    "status": "EXECUTABLE_WHEN_MAIN_REENABLED"
+    "next_action": "Call get_active_lease, verify only the listed correction/current-state evidence identities as needed, then patch the two authorized provenance files to reflect PASS_FALSE_POSITIVE_RECONCILED / D3_SEMANTICALLY_VALID while preserving R9 unchanged and promotion still gated. Do not run audit_published_bidding_artifact, do not search for alternate manifests, and do not broaden scope. Verify strict JSON and record the terminal turn outcome."
   },
-  "reason": "Cost incident correction: replace open-ended independent-work selection with one locked consequential gate.",
+  "reason": "Fresh evidence reconciliation: the prior D3-impact-unknown gate was superseded by a corrected exact-manifest audit and integrated validator fix; require only durable provenance reconciliation, not a repeated dataset scan.",
   "schema": "skatai.v2.main-execution-lock.v2",
   "secondary": null,
-  "switching_rule": "Do not switch PRIMARY except after terminal classification or genuine BLOCKED_EXTERNAL with evidence."
+  "switching_rule": "Do not switch PRIMARY inside this bounded permit. Terminal classification returns control for a fresh lock/permit."
 }
