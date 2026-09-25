@@ -2,22 +2,30 @@
 set -euo pipefail
 umask 027
 
-JOB_ID=cardplay-diagnostic-20260925-v1
+JOB_ID="${SKATAI_DIAGNOSTIC_JOB_ID:-cardplay-diagnostic-20260925-v1}"
 ROOT=/workspace/skatai-v2-wt-cardplay-diag
 RUNTIME=/workspace/skatai-v2-runtime/isolated-science/$JOB_ID
 SAMPLE=/tmp/$JOB_ID-sample.jsonl
 OUTPUT=$RUNTIME/result.json
-SAMPLE_SHA=c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805
-SELECTION_SHA=2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a
+SAMPLE_SHA="${SKATAI_DIAGNOSTIC_SAMPLE_SHA:-c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805}"
+SELECTION_SHA="${SKATAI_DIAGNOSTIC_SELECTION_SHA:-2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a}"
+MAX_ROWS="${SKATAI_DIAGNOSTIC_MAX_ROWS:-882}"
+PER_STRATUM="${SKATAI_DIAGNOSTIC_PER_STRATUM:-4}"
+SEED="${SKATAI_DIAGNOSTIC_SEED:-20260925}"
+CHOICES_ONLY="${SKATAI_DIAGNOSTIC_CHOICES_ONLY:-0}"
 S3_ARGS=(--s3-provider Other --s3-env-auth --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1)
 
 mkdir -p "$RUNTIME"
+[[ "$JOB_ID" =~ ^[a-zA-Z0-9._-]+$ ]] || exit 1
+[[ "$SAMPLE_SHA" =~ ^[0-9a-f]{64}$ && "$SELECTION_SHA" =~ ^[0-9a-f]{64}$ ]] || exit 1
+[[ "$MAX_ROWS" =~ ^[1-9][0-9]*$ && "$PER_STRATUM" =~ ^[1-9][0-9]*$ && "$SEED" =~ ^[0-9]+$ ]] || exit 1
+[[ "$CHOICES_ONLY" = 0 || "$CHOICES_ONLY" = 1 ]] || exit 1
 status() {
   local state="$1" detail="${2:-}"
-  python3 - "$RUNTIME/status.json" "$state" "$detail" <<'PY'
+  python3 - "$RUNTIME/status.json" "$state" "$detail" "$JOB_ID" <<'PY'
 import json,os,sys,tempfile,time
-path,state,detail=sys.argv[1:]
-payload={"schema":"skatai.v2.isolated-cardplay-diagnostic-job.v1","job_id":"cardplay-diagnostic-20260925-v1","state":state,"detail":detail,"unix_ns":time.time_ns()}
+path,state,detail,job_id=sys.argv[1:]
+payload={"schema":"skatai.v2.isolated-cardplay-diagnostic-job.v1","job_id":job_id,"state":state,"detail":detail,"unix_ns":time.time_ns()}
 fd,tmp=tempfile.mkstemp(prefix="status.",dir=os.path.dirname(path))
 with os.fdopen(fd,"w") as f:
  json.dump(payload,f,sort_keys=True);f.write("\n");f.flush();os.fsync(f.fileno())
@@ -60,12 +68,15 @@ rclone copyto \
 test "$(sha256sum "$SAMPLE.tmp" | cut -d' ' -f1)" = "$SAMPLE_SHA"
 mv "$SAMPLE.tmp" "$SAMPLE"
 status EVALUATING
+CHOICE_ARGS=()
+if [ "$CHOICES_ONLY" = 1 ]; then CHOICE_ARGS=(--choices-only); fi
 timeout 1500 env PYTHONPATH="$ROOT/src" /tmp/skatai-v2-b0-venv/bin/python \
   "$ROOT/scripts/diagnose-b0-cardplay-agreement.py" \
   --input "$SAMPLE" --expected-input-sha256 "$SAMPLE_SHA" \
   --source-asset-id legacy-v1-canonical-corpus \
   --expected-selection-sha256 "$SELECTION_SHA" \
-  --max-rows 882 --per-stratum 4 --seed 20260925 \
+  --max-rows "$MAX_ROWS" --per-stratum "$PER_STRATUM" --seed "$SEED" \
+  "${CHOICE_ARGS[@]}" \
   --output "$OUTPUT.tmp" >"$RUNTIME/diagnostic.log" 2>&1
 test "$(/tmp/skatai-v2-b0-venv/bin/python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["selection"]["identity_sha256"])' "$OUTPUT.tmp")" = "$SELECTION_SHA"
 mv "$OUTPUT.tmp" "$OUTPUT"

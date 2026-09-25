@@ -1,0 +1,38 @@
+{
+  "captured_at": "2026-09-25T11:28:59.506059Z",
+  "choices_only": true,
+  "classification": "READY_TO_LAUNCH",
+  "diagnostic_sha256": "844d5e9be976173956c95b7083b062fa23506a171b3a69c461a9aa48f078f4e4",
+  "goal": "Confirm or reject pilot Suit historical-action disagreement on disjoint train games with legal choices only",
+  "integrity_gates": [
+    "0 frozen split leakage",
+    "0 illegal B0 actions",
+    "0 failed B0 inference",
+    "216 selection identities match preregistered SHA-256",
+    "Hetzner result readback hash verified",
+    "isolated pod deleted after result"
+  ],
+  "next_on_inconclusive": "Broaden train-only diagnostic or choose treatment from other evidence without treating agreement as strength",
+  "next_on_success": "Choose one bounded Suit cardplay treatment only if confirmatory direction holds; test causally with paired B0 gameplay before any strength claim",
+  "per_stratum": 12,
+  "pod_id": null,
+  "primary_descriptive_rule": "If Suit agreement is at least 0.15 lower than both Grand and Null on the 72 Suit / 72 Grand / 72 Null choice-only events, retain a Suit cardplay treatment hypothesis; otherwise treat pilot ranking as unstable. No strength decision follows.",
+  "resource_bound": {
+    "cpu_vcpu": 2,
+    "estimated_max_compute_usd": 0.045,
+    "max_wall_seconds": 2700,
+    "memory_gb": 4,
+    "unit_price_per_vcpu_hour_usd": 0.03
+  },
+  "result": "PENDING",
+  "runner_sha256": "d75c5a680e005fb246faf5477162b1958f9a2161ce1e83c9a59c186b6bd8d348",
+  "sample_object": "s3://skatai-v2/datasets/research/cardplay-train-range-sample/9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc.jsonl",
+  "sample_rows": 832,
+  "sample_sha256": "9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc",
+  "schema": "skatai.v2.cardplay-choice-confirm-task.v1",
+  "seed": 20260926,
+  "selected_events": 216,
+  "selection_sha256": "ff493a527c67ea3c904316084c0f61faec414f17d77f8ed0765146996cd06782",
+  "source_commit": "PENDING_THIS_COMMIT",
+  "task_id": "CARDPLAY_CHOICE_AGREEMENT_CONFIRM_216"
+}

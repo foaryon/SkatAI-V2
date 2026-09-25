@@ -1,0 +1,149 @@
+{
+  "choice_event_count": 17299,
+  "chunks": [
+    {
+      "count": 262144,
+      "offset": 817322896,
+      "sha256": "52bbe21ba1afd273c6f15d09b0864dd47cbdca116fdb2001003e6eb4fbbf9358",
+      "split_counts": {
+        "split:external_bot_holdout": 89,
+        "split:train": 127
+      },
+      "whole_lines": 216
+    },
+    {
+      "count": 262144,
+      "offset": 2451968690,
+      "sha256": "f25b4d449ed9a39cc59815a60a3745fb602e8012aeb373ecb7067c45da9262e6",
+      "split_counts": {
+        "split:external_bot_holdout": 173,
+        "split:train": 42
+      },
+      "whole_lines": 215
+    },
+    {
+      "count": 262144,
+      "offset": 4086614483,
+      "sha256": "37dc6274350c2b4ae0227c58e1da67637f3bb7289f40e757ced19e1a281decec",
+      "split_counts": {
+        "split:external_bot_holdout": 92,
+        "split:train": 126
+      },
+      "whole_lines": 218
+    },
+    {
+      "count": 262144,
+      "offset": 5721260277,
+      "sha256": "9adbfa898ed8c9a9b1772ba3a94f634ef9123438c8b9ef0f97eaab5b4dc4a5a3",
+      "split_counts": {
+        "split:external_bot_holdout": 31,
+        "split:train": 185
+      },
+      "whole_lines": 216
+    },
+    {
+      "count": 262144,
+      "offset": 7355906070,
+      "sha256": "b9a6ef14f044889a60a08c88a3817ba5e83f3700c4101699466d57d63fb6d713",
+      "split_counts": {
+        "split:external_bot_holdout": 143,
+        "split:train": 73
+      },
+      "whole_lines": 216
+    },
+    {
+      "count": 262144,
+      "offset": 8990551864,
+      "sha256": "a3da1d84f0277bd93f37cf11536d03229d53574377f4e7ba82b7fce2cab7b0a1",
+      "split_counts": {
+        "split:external_bot_holdout": 111,
+        "split:train": 106
+      },
+      "whole_lines": 217
+    },
+    {
+      "count": 262144,
+      "offset": 10625197657,
+      "sha256": "d1e97599bb52638f86522e9cb1778a1852b53127c6787bc23eed21d08fc9beec",
+      "split_counts": {
+        "split:external_bot_holdout": 117,
+        "split:train": 98
+      },
+      "whole_lines": 215
+    },
+    {
+      "count": 262144,
+      "offset": 12259843451,
+      "sha256": "d25dde50467b3d85b588032c932cdf9ddfaff6398994e0544f46e04f63c36ee0",
+      "split_counts": {
+        "split:external_bot_holdout": 138,
+        "split:train": 75
+      },
+      "whole_lines": 213
+    }
+  ],
+  "counts": {
+    "selected_train_cardplay_usable": 832,
+    "split:external_bot_holdout": 894,
+    "split:train": 832,
+    "valid_json": 1726
+  },
+  "diagnostic_selection": {
+    "choices_only": true,
+    "count": 216,
+    "identity_sha256": "ff493a527c67ea3c904316084c0f61faec414f17d77f8ed0765146996cd06782",
+    "per_stratum": 12,
+    "seed": 20260926,
+    "stratum_counts": {
+      "GRAND|DECLARER|EARLY": 12,
+      "GRAND|DECLARER|END": 12,
+      "GRAND|DECLARER|MIDDLE": 12,
+      "GRAND|DEFENDER|EARLY": 12,
+      "GRAND|DEFENDER|END": 12,
+      "GRAND|DEFENDER|MIDDLE": 12,
+      "NULL|DECLARER|EARLY": 12,
+      "NULL|DECLARER|END": 12,
+      "NULL|DECLARER|MIDDLE": 12,
+      "NULL|DEFENDER|EARLY": 12,
+      "NULL|DEFENDER|END": 12,
+      "NULL|DEFENDER|MIDDLE": 12,
+      "SUIT|DECLARER|EARLY": 12,
+      "SUIT|DECLARER|END": 12,
+      "SUIT|DECLARER|MIDDLE": 12,
+      "SUIT|DEFENDER|EARLY": 12,
+      "SUIT|DEFENDER|END": 12,
+      "SUIT|DEFENDER|MIDDLE": 12
+    }
+  },
+  "disjoint_from_sample_sha256": "c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805",
+  "durable_sample_object": "s3://skatai-v2/datasets/research/cardplay-train-range-sample/9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc.jsonl",
+  "local_path": "/tmp/skatai-v2-canonical-train-confirm-20260925.jsonl",
+  "range_rule": "eight midpoint 262144-byte ranges disjoint from pilot ranges; skip partial boundary lines; retain frozen train and cardplay_usable rows",
+  "raw_identity_overlap_with_pilot": 0,
+  "reconstruction": {
+    "counts": {
+      "candidate_games": 832,
+      "forced_events_excluded": 5335,
+      "reconstruction_ok": 832,
+      "rows_seen": 832
+    },
+    "event_count": 17299,
+    "reconstruction_errors": {}
+  },
+  "remote_readback_sha256": "9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc",
+  "representative_population_claim": false,
+  "sample_bytes": 999832,
+  "sample_sha256": "9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc",
+  "schema": "skatai.v2.canonical-train-range-confirmation.v1",
+  "scientific_scope": "Independent train-only confirmation of Suit vs Grand/Null historical action agreement; not strength",
+  "source_asset_id": "legacy-v1-canonical-corpus",
+  "source_object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+  "source_remote_metadata": {
+    "MimeType": "application/octet-stream",
+    "ModTime": "2026-09-07T07:18:30.000000000Z",
+    "Size": 13077428492
+  },
+  "source_sha256_registered": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+  "strength_claim_authorized": false,
+  "training_approved": false
+}

@@ -54,6 +54,21 @@ def test_cardplay_diagnostic_filters_split_before_reconstruction(tmp_path, monke
     }
 
 
+def test_cardplay_diagnostic_choice_filter_excludes_forced_actions(tmp_path, monkeypatch):
+    module = load_script()
+    source = tmp_path / "games.jsonl"
+    source.write_text(json.dumps({
+        "date": "2022-06-01", "players": ["A", "B", "C"],
+        "cardplay_usable": True,
+    }) + "\n")
+    forced = SimpleNamespace(observation=SimpleNamespace(legal_cards=("CA",)))
+    choice = SimpleNamespace(observation=SimpleNamespace(legal_cards=("CA", "CK")))
+    monkeypatch.setattr(module, "reconstruct_cardplay_events", lambda _row: (forced, choice))
+    events, report = module.load_events(source, max_rows=1, choices_only=True)
+    assert events == [choice]
+    assert report["counts"]["forced_events_excluded"] == 1
+
+
 def test_cardplay_diagnostic_rejects_wrong_input_before_loading(tmp_path, monkeypatch):
     module = load_script()
     source = tmp_path / "sample.jsonl"

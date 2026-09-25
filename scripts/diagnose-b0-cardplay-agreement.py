@@ -44,7 +44,7 @@ def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def load_events(path: Path, *, max_rows: int) -> tuple[list[Any], dict[str, Any]]:
+def load_events(path: Path, *, max_rows: int, choices_only: bool = False) -> tuple[list[Any], dict[str, Any]]:
     events: list[Any] = []
     counts: Counter[str] = Counter()
     errors: Counter[str] = Counter()
@@ -79,7 +79,15 @@ def load_events(path: Path, *, max_rows: int) -> tuple[list[Any], dict[str, Any]
                 errors[str(exc).split(":", 1)[0]] += 1
                 continue
             counts["reconstruction_ok"] += 1
-            events.extend(reconstructed)
+            if choices_only:
+                choice_events = [
+                    event for event in reconstructed
+                    if len(event.observation.legal_cards) > 1
+                ]
+                counts["forced_events_excluded"] += len(reconstructed) - len(choice_events)
+                events.extend(choice_events)
+            else:
+                events.extend(reconstructed)
 
     return events, {
         "counts": dict(sorted(counts.items())),
@@ -94,6 +102,7 @@ def run_diagnostic(
     expected_input_sha256: str,
     source_asset_id: str,
     expected_selection_sha256: str,
+    choices_only: bool = False,
     max_rows: int,
     per_stratum: int,
     seed: int,
@@ -110,7 +119,9 @@ def run_diagnostic(
         raise ValueError("INPUT_SHA256_MISMATCH")
     if max_rows < 1 or per_stratum < 1:
         raise ValueError("DIAGNOSTIC_LIMIT_MUST_BE_POSITIVE")
-    events, reconstruction = load_events(input_path, max_rows=max_rows)
+    events, reconstruction = load_events(
+        input_path, max_rows=max_rows, choices_only=choices_only,
+    )
     selected = deterministic_balanced_sample(
         events,
         per_stratum=per_stratum,
@@ -206,6 +217,7 @@ def run_diagnostic(
             "unit": "one decision per game within each contract-family/role/phase stratum",
             "seed": seed,
             "per_stratum": per_stratum,
+            "choices_only": choices_only,
             "selected_events": len(selected),
             "identity_sha256": selection_sha256,
             "identities": selection_identity,
@@ -236,6 +248,7 @@ def main() -> None:
     p.add_argument("--expected-input-sha256", required=True)
     p.add_argument("--source-asset-id", required=True)
     p.add_argument("--expected-selection-sha256", required=True)
+    p.add_argument("--choices-only", action="store_true")
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--max-rows", type=int, default=5000)
     p.add_argument("--per-stratum", type=int, default=4)
@@ -253,6 +266,7 @@ def main() -> None:
         expected_input_sha256=args.expected_input_sha256,
         source_asset_id=args.source_asset_id,
         expected_selection_sha256=args.expected_selection_sha256,
+        choices_only=args.choices_only,
         max_rows=args.max_rows,
         per_stratum=args.per_stratum,
         seed=args.seed,
