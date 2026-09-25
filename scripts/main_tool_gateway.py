@@ -268,7 +268,17 @@ class ToolGateway:
                 "allowed_trigger_types", "primary_gate_id", "goal_path_id",
             )
         }
+        policy_hashes = permit.get("policy_hashes") or {}
+        authority_hashes = {
+            k: policy_hashes.get(k)
+            for k in (
+                "founding_spec", "work_prompt", "master_prompt", "goal_policy",
+                "agent_instructions", "governor", "execution_lock",
+            )
+            if policy_hashes.get(k)
+        }
         return {
+            "authority_hashes": authority_hashes,
             "primary": lock["primary"],
             "secondary": lock.get("secondary"),
             "external_dependencies": lock.get("external_dependencies", []),

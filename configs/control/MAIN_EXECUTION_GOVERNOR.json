@@ -36,6 +36,7 @@
   },
   "tool_budget": {
     "max_tool_calls_per_turn": 40,
+    "max_tool_rounds_per_turn": 12,
     "max_side_effect_calls_per_turn": 8,
     "max_identical_tool_calls_per_turn": 3,
     "max_tool_output_bytes": 60000
@@ -84,6 +85,9 @@
   "model_policy": {
     "default_tier": "VERIFIED_CURRENT",
     "default_model": "gpt-6-sol",
+    "reasoning_effort": "medium",
+    "text_verbosity": "low",
+    "service_tier": "flex",
     "monitoring_model": null,
     "unverified_model_switching_forbidden": true,
     "rule": "Monitoring uses no model. MAIN execution uses only a model identity verified available in the live Agents runtime. Do not switch to a cheaper or stronger model based on an assumed product/model name. Model changes require direct availability verification plus an explicit policy update."

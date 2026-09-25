@@ -1033,14 +1033,32 @@ def tool_gateway():
 def _expected_function_tool_names():
     return {row["name"] for row in function_tools() if row.get("type") == "function"}
 
+def desired_agent_preferences():
+    policy = load_governor()["model_policy"]
+    reasoning_effort = str(policy.get("reasoning_effort") or "medium")
+    text_verbosity = str(policy.get("text_verbosity") or "low")
+    service_tier = str(policy.get("service_tier") or SERVICE_TIER)
+    if reasoning_effort not in {"low", "medium", "high", "xhigh", "max"}:
+        raise RuntimeError("MODEL_REASONING_EFFORT_INVALID")
+    if text_verbosity not in {"low", "medium", "high"}:
+        raise RuntimeError("MODEL_TEXT_VERBOSITY_INVALID")
+    if service_tier != SERVICE_TIER:
+        raise RuntimeError(
+            f"MODEL_SERVICE_TIER_POLICY_MISMATCH:{service_tier!r}!={SERVICE_TIER!r}"
+        )
+    return reasoning_effort, text_verbosity, service_tier
+
 def ensure_saved_agent(state):
     model = desired_model()
+    reasoning_effort, text_verbosity, service_tier = desired_agent_preferences()
     expected_instructions = PROMPT.read_text(encoding="utf-8")
     expected_instructions_sha256 = hashlib.sha256(expected_instructions.encode("utf-8")).hexdigest()
     agent_config = {
         "model": model,
         "instructions": expected_instructions,
-        "service_tier": SERVICE_TIER,
+        "reasoning": {"effort": reasoning_effort},
+        "service_tier": service_tier,
+        "text": {"verbosity": text_verbosity},
         "tools": function_tools(),
         "multi_agent": {"enabled": False},
     }
@@ -1049,10 +1067,18 @@ def ensure_saved_agent(state):
         try:
             api("GET", f"/agents/{agent_id}")
             a = api("POST", f"/agents/{agent_id}", agent_config)
-            if a.get("service_tier") != SERVICE_TIER:
+            if a.get("service_tier") != service_tier:
                 raise RuntimeError(f"saved agent service_tier verification failed: {a.get('service_tier')!r}")
             if a.get("model") != model:
                 raise RuntimeError(f"saved agent model verification failed: {a.get('model')!r}")
+            if (a.get("reasoning") or {}).get("effort") != reasoning_effort:
+                raise RuntimeError(
+                    f"saved agent reasoning verification failed: {(a.get('reasoning') or {}).get('effort')!r}"
+                )
+            if (a.get("text") or {}).get("verbosity") != text_verbosity:
+                raise RuntimeError(
+                    f"saved agent text verbosity verification failed: {(a.get('text') or {}).get('verbosity')!r}"
+                )
             if a.get("instructions") != expected_instructions:
                 actual_hash = hashlib.sha256(str(a.get("instructions") or "").encode("utf-8")).hexdigest()
                 raise RuntimeError(
@@ -1066,7 +1092,8 @@ def ensure_saved_agent(state):
                 raise RuntimeError("saved agent function tool set mismatch")
             log(
                 f"saved_agent_verified id={agent_id} model={a.get('model')} "
-                f"service_tier={a.get('service_tier')} function_tools={len(names)} "
+                f"service_tier={a.get('service_tier')} reasoning={reasoning_effort} "
+                f"verbosity={text_verbosity} function_tools={len(names)} "
                 f"instructions_sha256={expected_instructions_sha256}"
             )
             return a, state
@@ -1082,8 +1109,16 @@ def ensure_saved_agent(state):
         },
     }
     a = api("POST", "/agents", body)
-    if a.get("service_tier") != SERVICE_TIER:
+    if a.get("service_tier") != service_tier:
         raise RuntimeError(f"saved agent created with service_tier={a.get('service_tier')!r}")
+    if (a.get("reasoning") or {}).get("effort") != reasoning_effort:
+        raise RuntimeError(
+            f"saved agent created with reasoning={(a.get('reasoning') or {}).get('effort')!r}"
+        )
+    if (a.get("text") or {}).get("verbosity") != text_verbosity:
+        raise RuntimeError(
+            f"saved agent created with text verbosity={(a.get('text') or {}).get('verbosity')!r}"
+        )
     if a.get("instructions") != expected_instructions:
         actual_hash = hashlib.sha256(str(a.get("instructions") or "").encode("utf-8")).hexdigest()
         raise RuntimeError(
@@ -1099,7 +1134,8 @@ def ensure_saved_agent(state):
     atomic_json(STATE, state)
     log(
         f"saved_agent_created id={a['id']} model={a.get('model')} "
-        f"service_tier={a.get('service_tier')} function_tools={len(names)} "
+        f"service_tier={a.get('service_tier')} reasoning={reasoning_effort} "
+        f"verbosity={text_verbosity} function_tools={len(names)} "
         f"instructions_sha256={expected_instructions_sha256}"
     )
     return a, state
@@ -1109,19 +1145,43 @@ def retrieve_session(session_id):
 
 def ensure_flex(session_id, session):
     model = desired_model()
+    reasoning_effort, text_verbosity, service_tier = desired_agent_preferences()
     agent = session.get("agent") or {}
-    if agent.get("service_tier") == SERVICE_TIER and agent.get("model") == model:
+    if (agent.get("text") or {}).get("verbosity") != text_verbosity:
+        raise RuntimeError(
+            f"session text verbosity mismatch: {(agent.get('text') or {}).get('verbosity')!r}"
+        )
+    if (
+        agent.get("service_tier") == service_tier
+        and agent.get("model") == model
+        and (agent.get("reasoning") or {}).get("effort") == reasoning_effort
+    ):
         return session
     updated = api("POST", f"/agents/sessions/{session_id}", {
-        "agent": {"model": model, "service_tier": SERVICE_TIER}
+        "agent": {
+            "model": model,
+            "reasoning": {"effort": reasoning_effort},
+            "service_tier": service_tier,
+        }
     })
     actual_agent = updated.get("agent") or {}
     actual = actual_agent.get("service_tier")
-    if actual != SERVICE_TIER:
+    if actual != service_tier:
         raise RuntimeError(f"service_tier verification failed: {actual!r}")
     if actual_agent.get("model") != model:
         raise RuntimeError(f"session model verification failed: {actual_agent.get('model')!r}")
-    log(f"session_settings_verified model={model} service_tier={SERVICE_TIER}")
+    if (actual_agent.get("reasoning") or {}).get("effort") != reasoning_effort:
+        raise RuntimeError(
+            f"session reasoning verification failed: {(actual_agent.get('reasoning') or {}).get('effort')!r}"
+        )
+    if (actual_agent.get("text") or {}).get("verbosity") != text_verbosity:
+        raise RuntimeError(
+            f"session text verbosity verification failed: {(actual_agent.get('text') or {}).get('verbosity')!r}"
+        )
+    log(
+        f"session_settings_verified model={model} service_tier={service_tier} "
+        f"reasoning={reasoning_effort} verbosity={text_verbosity}"
+    )
     return updated
 
 def logical_submit_key(session_token, state, text):
@@ -1282,12 +1342,14 @@ def _commit_prepared_input(prepared, state):
 
 def create_session_with_input(state, prepared):
     model = desired_model()
+    reasoning_effort, text_verbosity, service_tier = desired_agent_preferences()
     agent, state = ensure_saved_agent(state)
     body = {
         "agent_id": agent["id"],
         "agent": {
             "model": model,
-            "service_tier": SERVICE_TIER,
+            "reasoning": {"effort": reasoning_effort},
+            "service_tier": service_tier,
         },
         "environment": {"type": "none"},
         "input": [{
@@ -1304,9 +1366,17 @@ def create_session_with_input(state, prepared):
     idem = logical_submit_key("new-" + str(state.get("work_permit_id") or "none"), state, prepared["text"])
     s = api("POST", "/agents/sessions", body, extra_headers={"Idempotency-Key": idem})
     actual_agent = s.get("agent") or {}
-    if actual_agent.get("service_tier") != SERVICE_TIER:
+    if actual_agent.get("service_tier") != service_tier:
         raise RuntimeError(
-            f"session created with service_tier={actual_agent.get('service_tier')!r}, expected {SERVICE_TIER!r}"
+            f"session created with service_tier={actual_agent.get('service_tier')!r}, expected {service_tier!r}"
+        )
+    if (actual_agent.get("reasoning") or {}).get("effort") != reasoning_effort:
+        raise RuntimeError(
+            f"session created with reasoning={(actual_agent.get('reasoning') or {}).get('effort')!r}"
+        )
+    if (actual_agent.get("text") or {}).get("verbosity") != text_verbosity:
+        raise RuntimeError(
+            f"session created with verbosity={(actual_agent.get('text') or {}).get('verbosity')!r}"
         )
     if (s.get("environment") or {}).get("type") != "none":
         raise RuntimeError("FUNCTION_ONLY_SESSION_ENVIRONMENT_MISMATCH")
@@ -1332,6 +1402,8 @@ def create_session_with_input(state, prepared):
             "name": agent.get("name"),
             "model": actual_agent.get("model"),
             "service_tier": actual_agent.get("service_tier"),
+            "reasoning_effort": (actual_agent.get("reasoning") or {}).get("effort"),
+            "text_verbosity": (actual_agent.get("text") or {}).get("verbosity"),
         },
         "environment": {"type": "none"},
         "created_at": s.get("created_at"),
@@ -1347,7 +1419,8 @@ def create_session_with_input(state, prepared):
     atomic_json(STATE, state)
     log(
         f"function_only_session_created id={state['session_id']} agent_id={agent['id']} "
-        f"model={state['agent']['model']} service_tier={actual_agent.get('service_tier')}"
+        f"model={state['agent']['model']} service_tier={actual_agent.get('service_tier')} "
+        f"reasoning={reasoning_effort} verbosity={text_verbosity}"
     )
     return state, s
 
@@ -1388,11 +1461,16 @@ def handle_required_actions(session_id, session, state, governor):
         raise RuntimeError("REQUIRES_ACTION_WITHOUT_ACTIONS")
     tool_budget = governor.get("tool_budget") or {}
     max_calls = int(tool_budget.get("max_tool_calls_per_turn") or 40)
+    max_rounds = int(tool_budget.get("max_tool_rounds_per_turn") or 12)
     max_effects = int(tool_budget.get("max_side_effect_calls_per_turn") or 8)
     max_identical = int(tool_budget.get("max_identical_tool_calls_per_turn") or 3)
     call_count = int(state.get("turn_tool_calls") or 0)
+    round_count = int(state.get("turn_tool_rounds") or 0)
     effect_count = int(state.get("turn_side_effect_calls") or 0)
     signatures = dict(state.get("turn_tool_signature_counts") or {})
+    if round_count >= max_rounds:
+        raise RuntimeError("TOOL_ROUND_BUDGET_EXCEEDED")
+    round_count += 1
     events = []
     gateway = tool_gateway()
 
@@ -1470,12 +1548,13 @@ def handle_required_actions(session_id, session, state, governor):
         extra_headers={"Idempotency-Key": idem},
     )
     state["turn_tool_calls"] = call_count
+    state["turn_tool_rounds"] = round_count
     state["turn_side_effect_calls"] = effect_count
     state["turn_tool_signature_counts"] = signatures
     atomic_json(STATE, state)
     log(
         f"function_tools_resolved session={session_id} count={len(events)} "
-        f"turn_calls={call_count} side_effects={effect_count}"
+        f"turn_calls={call_count} tool_rounds={round_count} side_effects={effect_count}"
     )
     return state
 
@@ -1530,6 +1609,7 @@ def _begin_turn_state(state, prepared, turn_lock):
     state["pending_external_event"] = None
     state["autonomy_hold_reason"] = None
     state["turn_tool_calls"] = 0
+    state["turn_tool_rounds"] = 0
     state["turn_side_effect_calls"] = 0
     state["turn_tool_signature_counts"] = {}
     state["active_turn_id"] = None
@@ -1616,6 +1696,7 @@ def main():
                 state["autonomy_followup_authorized"] = False
                 state["autonomy_hold_reason"] = "fresh_work_permit_session_required"
                 state["turn_tool_calls"] = 0
+                state["turn_tool_rounds"] = 0
                 state["turn_side_effect_calls"] = 0
                 state["turn_tool_signature_counts"] = {}
                 state["active_turn_id"] = None

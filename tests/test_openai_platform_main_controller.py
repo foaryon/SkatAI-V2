@@ -50,6 +50,7 @@ def _governor():
         },
         "tool_budget": {
             "max_tool_calls_per_turn": 40,
+            "max_tool_rounds_per_turn": 12,
             "max_side_effect_calls_per_turn": 8,
             "max_identical_tool_calls_per_turn": 3,
             "max_tool_output_bytes": 60000,
@@ -79,6 +80,9 @@ def _governor():
         "model_policy": {
             "default_tier": "VERIFIED_CURRENT",
             "default_model": "gpt-6-sol",
+            "reasoning_effort": "medium",
+            "text_verbosity": "low",
+            "service_tier": "flex",
             "monitoring_model": None,
             "unverified_model_switching_forbidden": True,
         },
@@ -133,6 +137,8 @@ def test_saved_agent_prompt_is_compact_and_points_to_binding_authority():
     assert "SKATAI_V2_FOUNDING_SPECIFICATION.md" in text
     assert "SKATAI_V2_WORK_PROMPT.md" in text
     assert "get_active_lease" in text
+    assert "authority_hashes" in text
+    assert "<=8 reconnaissance rounds" in text
     assert "record_turn_outcome" in text
 
 
@@ -444,3 +450,32 @@ def test_guardian_has_no_retired_executor_key_dependency():
     guardian = (root / "scripts" / "openai_platform_guardian.sh").read_text(encoding="utf-8")
     assert "openai_agents_api_key" in guardian
     assert "openai_executor_api_key" not in guardian
+
+
+def test_agent_preferences_are_explicit_and_cost_disciplined():
+    mod = _load_controller()
+    reasoning, verbosity, tier = mod.desired_agent_preferences()
+    assert reasoning == "medium"
+    assert verbosity == "low"
+    assert tier == "flex"
+
+
+def test_serial_tool_round_budget_stops_reconnaissance_loop():
+    mod = _load_controller()
+    gov = _governor()
+    state = {"turn_tool_rounds": gov["tool_budget"]["max_tool_rounds_per_turn"]}
+    session = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "get_active_lease",
+            "turn_id": "turn_test",
+            "call_id": "call_test",
+            "arguments": {},
+        }]
+    }
+    try:
+        mod.handle_required_actions("sess_test", session, state, gov)
+    except RuntimeError as exc:
+        assert "TOOL_ROUND_BUDGET_EXCEEDED" in str(exc)
+    else:
+        raise AssertionError("serial tool round cap was not enforced")
