@@ -317,3 +317,24 @@ def test_pickup_plan_rejects_illegal_policy_choice_before_host_discard():
     ai.declaration.choice = "GH"
     with pytest.raises(SkatAIInterfaceError, match="ILLEGAL_CONTRACT"):
         handle_pickup_plan(ai, "release-1", _pickup_payload())
+
+
+def test_host_bid_accepts_only_legal_forehand_self_offer_at_18():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-forehand-18", "sequence_no": 3,
+        "decision_type": "BID",
+        "observation": {
+            "hand": HAND10, "actor": 0, "bidder": 0, "answerer": 0,
+            "bid_index": 0, "decision_role": "BIDDER",
+        },
+    }
+    assert handle_request(_ai(), "release-1", payload)["result"]["action"] == "CONTINUE"
+
+    for change in (
+        {"bid_index": 1},
+        {"actor": 1, "bidder": 1, "answerer": 1},
+        {"decision_role": "ANSWERER"},
+    ):
+        bad = {**payload, "observation": {**payload["observation"], **change}}
+        with pytest.raises(SkatAIInterfaceError, match="HOST_BIDDING_ACTOR_ROLE_MISMATCH"):
+            handle_request(_ai(), "release-1", bad)
