@@ -1,0 +1,27 @@
+{
+  "schema": "skatai.v2.r9-supervisor-status-heartbeat.v1",
+  "captured_at": "2026-09-25T21:51:00Z",
+  "task_id": "R9_SUPERVISOR_STATUS_HEARTBEAT",
+  "classification": "OPEN",
+  "scope": "Supervisor observability only; frozen R9 worker/treatment/gameplay/evidence are immutable for this gate.",
+  "observation": "The independent supervisor process remains alive with a long-lived gate_worker child, and worker status advances, but supervisor-status.json remains at the pre-launch SAFE_TO_RESTART snapshot because supervise() blocks in proc.wait() until the child exits.",
+  "verified_live_evidence": {
+    "supervisor_pid": 133139,
+    "worker_pid": 133145,
+    "supervisor_process": "/usr/bin/python3 /opt/skatai-main-controller/current/supervise_frozen_r9.py",
+    "worker_process": "/tmp/skatai-v2-b0-venv/bin/python -m skatai.iss.gate_worker",
+    "supervisor_status_state": "SAFE_TO_RESTART",
+    "supervisor_status_mtime_utc": "2026-09-25T21:25:47Z",
+    "worker_status_scored_games": 510,
+    "worker_status_mtime_utc": "2026-09-25T21:50:16Z",
+    "worker_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+  },
+  "invariants": [
+    "Do not restart, stop, hot-switch, or otherwise mutate the live frozen R9 worker from this gate.",
+    "Do not change R9 game logic, model/treatment identity, ISS protocol behavior, scoring, or evidence.",
+    "Preserve fail-closed duplicate-supervisor and restart safety.",
+    "Status publication must remain atomic and deterministic."
+  ],
+  "verification": "PENDING",
+  "decision": "PENDING"
+}

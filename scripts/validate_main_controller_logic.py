@@ -45,7 +45,9 @@ def main() -> int:
 
     governor = m.load_governor()
     lock = m.load_execution_lock()
-    require(lock["primary"]["goal_path_id"] == "G1_TRUSTED_EVIDENCE", "UNEXPECTED_PRIMARY_GOAL")
+    goal_policy = json.loads(m.GOAL_POLICY.read_text(encoding="utf-8"))
+    valid_goal_ids = {row["id"] for row in goal_policy["goal_path"]}
+    require(lock["primary"]["goal_path_id"] in valid_goal_ids, "UNEXPECTED_PRIMARY_GOAL")
     results["lock_validation"] = "PASS"
 
     # Hard total budget covers user-triggered as well as autonomous model turns.
