@@ -115,6 +115,8 @@ def main() -> None:
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(tmp, args.output)
+        if args.output.stat().st_mode & 0o022:
+            raise ValueError("SPLIT_OUTPUT_PERMISSIONS_UNSAFE")
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
