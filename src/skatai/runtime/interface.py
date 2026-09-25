@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Protocol, Sequence
 import re
 
+from skatai.game.rules import game_type_from_contract, legal_cards as rule_legal_cards
+
 CARD_RE = re.compile(r"^[CSHD][AKQJT987]$")
 DECISION_INTERFACE_SCHEMA = "skatai.v2.product-interface.v1"
 
@@ -195,6 +197,12 @@ class CardplayObservation:
         played = history(played_cards)
         if len(trick) > 2:
             raise SkatAIInterfaceError("CURRENT_TRICK_TOO_LONG")
+        try:
+            rule_legal = rule_legal_cards(h, trick, game_type_from_contract(str(contract)))
+        except ValueError as exc:
+            raise SkatAIInterfaceError("CARDPLAY_RULE_CONTEXT_INVALID") from exc
+        if not set(legal).issubset(rule_legal):
+            raise SkatAIInterfaceError("LEGAL_CARD_VIOLATES_FOLLOW_SUIT")
         open_hand = _cards(open_hand_cards) if open_hand_cards else ()
         if len(open_hand) > 10:
             raise SkatAIInterfaceError("OPEN_HAND_TOO_LONG")

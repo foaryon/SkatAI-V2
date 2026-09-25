@@ -1,0 +1,51 @@
+{
+  "schema": "skatai.v2.main-resume-state.v1",
+  "captured_at": "2026-09-25T10:53:32Z",
+  "git": {
+    "repository": "foaryon/SkatAI-V2",
+    "branch": "main",
+    "verified_parent_head": "e3dd4d0",
+    "remote_state_at_parent": "pushed",
+    "latest_source_commit": "this Git commit"
+  },
+  "active_work": [
+    {
+      "task_id": "B1_EXTERNAL_ISS_R9",
+      "classification": "CONTINUE",
+      "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+      "worker_and_independent_supervisor_present_at_resume": true,
+      "first_strength_look": "closed until 300 scored games per arm",
+      "main_action": "Do not poll healthy games or change pinned treatment"
+    }
+  ],
+  "completed_this_resume": [
+    {
+      "task_id": "CARDPLAY_BOUNDED_INPUT_PREFLIGHT",
+      "evidence": "provenance/CARDPLAY_DIAGNOSTIC_INPUT_PREFLIGHT_20260925.json",
+      "status": "CONCLUDE"
+    },
+    {
+      "task_id": "PRODUCT_CARDPLAY_FOLLOW_SUIT_GUARD",
+      "status": "CONCLUDE",
+      "implementation_sha256": "d4f820829f72dafcdb7c718822b11c02aaa195198d21165567c56494b614e712",
+      "verification": "71 focused tests passed in 1.12s",
+      "scope": "Advertised legal cards must be rule-legal for the current trick and contract; frozen R9 source unchanged"
+    }
+  ],
+  "timestamp_erratum": {
+    "record": "provenance/CARDPLAY_DIAGNOSTIC_INPUT_PREFLIGHT_20260925.json",
+    "field": "captured_at",
+    "recorded_value": "2026-09-25T11:00:00Z",
+    "finding": "Entered ahead of the actual clock; it is not a valid capture time. Source, test, and Git identities remain unchanged."
+  },
+  "nearest_gates": [
+    "Run a bounded train-only B0 cardplay diagnostic on identified input when isolated compute is available",
+    "Rebuild and validate a release from current source when storage headroom and R9 CPU isolation permit",
+    "At clean R9 gate boundary, conduct separate measured 1, 2, then 4 table throughput epochs"
+  ],
+  "constraints": [
+    "Network volume UI approximately 119/120 GB; no large new local writes without verified headroom",
+    "Actual user host software is absent from this pod; host integration remains pending",
+    "No R9 strength look or material external effect was issued by MAIN during this resume"
+  ]
+}

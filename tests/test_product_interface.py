@@ -121,6 +121,20 @@ def test_product_boundary_rejects_illegal_component_outputs():
         _ai(cardplay=BadPlay()).play_card(obs)
 
 
+def test_cardplay_observation_rejects_advertised_off_suit_card():
+    with pytest.raises(SkatAIInterfaceError, match="LEGAL_CARD_VIOLATES_FOLLOW_SUIT"):
+        CardplayObservation.create(
+            ("C7", "S7"),
+            seat=1,
+            declarer=0,
+            contract="G",
+            winning_bid=18,
+            current_trick=((0, "C8"),),
+            played_cards=((0, "C8"),),
+            legal_cards=("S7",),
+        )
+
+
 def test_bidding_observation_contains_only_own_hand_and_public_duel_state():
     obs = BiddingObservation.create(
         HAND10,
