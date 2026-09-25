@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from skatai.game.bidding import BID_VALUES
 from skatai.runtime.interface import (
     BiddingObservation, CardplayObservation, DeclarationObservation,
     DiscardObservation,
@@ -30,7 +31,7 @@ def _normalized(value):
     return json.loads(json.dumps(value, sort_keys=True))
 
 
-def _validate_decision(item: dict, seat: int, contract: str) -> None:
+def _validate_decision(item: dict, seat: int, contract: str, threshold: float) -> None:
     if set(item) != DECISION_KEYS or item["seat"] != seat:
         raise ValueError("LEARNER_DECISION_KEYS_OR_SEAT")
     phase = item["phase"]
@@ -44,8 +45,15 @@ def _validate_decision(item: dict, seat: int, contract: str) -> None:
             decision_role=view["decision_role"],
         )
         action = float(item["action"])
-        if expected.actor != seat or not 0 <= action <= 1 or not item["native_bid_action"]:
+        if (expected.actor != seat or expected.bid_index >= len(BID_VALUES)
+                or not 0 <= action <= 1):
             raise ValueError("LEARNER_BID_INVALID")
+        native = (
+            str(BID_VALUES[expected.bid_index]) if expected.decision_role == "BIDDER"
+            else "y"
+        ) if action >= threshold else "p"
+        if item["native_bid_action"] != native:
+            raise ValueError("LEARNER_BID_NATIVE_ACTION_MISMATCH")
     elif phase == "DECLARATION":
         expected = DeclarationObservation.create(
             view["cards"], seat=view["seat"], winning_bid=view["winning_bid"],
@@ -102,6 +110,9 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
                 or row["source_commit"] != manifest["source_commit"]
                 or row["seat"] not in (0, 1, 2)
                 or set(row["policy_family_ids"]) != set(PHASES)
+                or not isinstance(row["threshold"], (int, float))
+                or not 0 <= row["threshold"] <= 1
+                or row["contract"] not in row["legal_contracts"]
                 or not row["decisions"] or not isinstance(row["signed_basic_value"], int)
                 or row["signed_basic_value"] == 0):
             raise ValueError("LEARNER_RECORD_INVALID")
@@ -110,5 +121,5 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
             if not isinstance(decision["ordinal"], int) or decision["ordinal"] <= previous:
                 raise ValueError("LEARNER_DECISION_ORDER_INVALID")
             previous = decision["ordinal"]
-            _validate_decision(decision, row["seat"], row["contract"])
+            _validate_decision(decision, row["seat"], row["contract"], row["threshold"])
     return rows
