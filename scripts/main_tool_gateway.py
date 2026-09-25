@@ -116,11 +116,31 @@ def function_tools() -> list[dict[str, Any]]:
         {
             "type": "function",
             "name": "apply_patch",
-            "description": "Apply one standard unified Git diff only to lease-authorized writable_files. The patch MUST contain diff --git a/<path> b/<path>, --- a/<path>, +++ b/<path>, and @@ hunk headers. Never use *** Begin Patch / *** Update File syntax.",
+            "description": "Apply lease-authorized text changes. Prefer structured replacements for ordinary text/JSON edits: each old_text must occur exactly once in its path. Raw patch mode is only for a standard Git unified diff beginning with diff --git; never use *** Begin Patch syntax.",
             "parameters": {
                 "type": "object",
-                "properties": {"patch": {"type": "string", "description": "Literal standard Git unified diff beginning with diff --git; *** Begin Patch syntax is invalid."}},
-                "required": ["patch"],
+                "properties": {
+                    "replacements": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 16,
+                        "description": "Preferred mode. Exact text replacements applied in order; every old_text must match exactly once at application time.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "path": {"type": "string"},
+                                "old_text": {"type": "string"},
+                                "new_text": {"type": "string"},
+                            },
+                            "required": ["path", "old_text", "new_text"],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "patch": {
+                        "type": "string",
+                        "description": "Fallback mode only: literal standard Git unified diff beginning with diff --git. *** Begin Patch syntax is invalid.",
+                    },
+                },
                 "additionalProperties": False,
             },
         },
@@ -431,33 +451,111 @@ class ToolGateway:
             raise RuntimeError("PATCH_NO_PATHS")
         return sorted(set(paths))
 
-    def _apply_patch(self, args: dict[str, Any]) -> dict[str, Any]:
-        patch = str(args["patch"])
-        if len(patch.encode("utf-8")) > MAX_PATCH_BYTES:
-            raise RuntimeError("PATCH_TOO_LARGE")
+    def _mutation_targets(self, paths: list[str]) -> tuple[list[Path], dict[Path, bytes]]:
         lock = self._lock()
         primary = lock["primary"]
         effects = set(primary.get("allowed_material_effects") or [])
         if not ({"LOCAL_GIT_CHANGE", "PROVENANCE_WRITE"} & effects):
             raise RuntimeError("PATCH_EFFECT_NOT_AUTHORIZED")
         allowed = set(primary.get("writable_files") or [])
-        paths = self._patch_paths(patch)
         if not set(paths).issubset(allowed):
             raise RuntimeError("PATCH_PATH_NOT_AUTHORIZED:" + ",".join(sorted(set(paths) - allowed)))
-        resolved = []
+        resolved: list[Path] = []
         originals: dict[Path, bytes] = {}
-        for rel in paths:
+        for rel in sorted(set(paths)):
             p = self._safe_path(rel)
             if not p.is_file() or p.is_symlink():
                 raise RuntimeError("PATCH_TARGET_INVALID:" + rel)
             resolved.append(p)
             originals[p] = p.read_bytes()
+        return resolved, originals
+
+    @staticmethod
+    def _atomic_restore(path: Path, data: bytes) -> None:
+        st = path.stat()
+        tmp = path.with_name(f".{path.name}.main-agent-{os.getpid()}.tmp")
+        try:
+            tmp.write_bytes(data)
+            os.chmod(tmp, st.st_mode & 0o777)
+            try:
+                os.chown(tmp, st.st_uid, st.st_gid)
+            except PermissionError:
+                pass
+            os.replace(tmp, path)
+        finally:
+            try:
+                tmp.unlink()
+            except FileNotFoundError:
+                pass
+
+    def _apply_replacements(self, replacements: Any) -> dict[str, Any]:
+        if not isinstance(replacements, list) or not (1 <= len(replacements) <= 16):
+            raise RuntimeError("REPLACEMENTS_INVALID")
+        total = 0
+        normalized: list[tuple[str, str, str]] = []
+        for row in replacements:
+            if not isinstance(row, dict) or set(row) != {"path", "old_text", "new_text"}:
+                raise RuntimeError("REPLACEMENT_SCHEMA_INVALID")
+            rel = str(row["path"])
+            old = str(row["old_text"])
+            new = str(row["new_text"])
+            if not old or old == new:
+                raise RuntimeError("REPLACEMENT_TEXT_INVALID")
+            total += len(old.encode("utf-8")) + len(new.encode("utf-8"))
+            normalized.append((rel, old, new))
+        if total > MAX_PATCH_BYTES:
+            raise RuntimeError("PATCH_TOO_LARGE")
+        paths = [row[0] for row in normalized]
+        resolved, originals = self._mutation_targets(paths)
+        by_rel = {str(p.relative_to(self.repo_root)): p for p in resolved}
+        staged = {
+            rel: originals[by_rel[rel]].decode("utf-8")
+            for rel in by_rel
+        }
+        for rel, old, new in normalized:
+            if rel not in staged:
+                raise RuntimeError("PATCH_PATH_NOT_AUTHORIZED:" + rel)
+            count = staged[rel].count(old)
+            if count != 1:
+                raise RuntimeError(f"REPLACEMENT_MATCH_COUNT:{rel}:{count}")
+            staged[rel] = staged[rel].replace(old, new, 1)
+        try:
+            for p, data in originals.items():
+                if p.read_bytes() != data:
+                    raise RuntimeError("PATCH_TARGET_CHANGED_CONCURRENTLY:" + str(p.relative_to(self.repo_root)))
+            for rel, text in staged.items():
+                self._atomic_restore(by_rel[rel], text.encode("utf-8"))
+            for p in resolved:
+                if p.suffix == ".json":
+                    strict_json(p)
+        except Exception:
+            for p, data in originals.items():
+                self._atomic_restore(p, data)
+            raise RuntimeError("PATCH_POSTVALIDATION_FAILED")
+        return {
+            "status": "REPLACED",
+            "paths": sorted(staged),
+            "sha256": {rel: sha256_file(by_rel[rel]) for rel in sorted(staged)},
+        }
+
+    def _apply_patch(self, args: dict[str, Any]) -> dict[str, Any]:
+        has_patch = "patch" in args and args.get("patch") is not None
+        has_replacements = "replacements" in args and args.get("replacements") is not None
+        if has_patch == has_replacements:
+            raise RuntimeError("PATCH_MODE_INVALID_USE_EXACTLY_ONE")
+        if has_replacements:
+            return self._apply_replacements(args["replacements"])
+
+        patch = str(args["patch"])
+        if len(patch.encode("utf-8")) > MAX_PATCH_BYTES:
+            raise RuntimeError("PATCH_TOO_LARGE")
+        paths = self._patch_paths(patch)
+        resolved, originals = self._mutation_targets(paths)
         check = subprocess.run(
             ["git", "-C", str(self.repo_root), "apply", "--check", "--whitespace=nowarn", "-"],
             input=patch, text=True, capture_output=True, timeout=30,
         )
         if check.returncode != 0:
-            # Retry/recovery: the exact patch may already be applied.
             reverse = subprocess.run(
                 ["git", "-C", str(self.repo_root), "apply", "--reverse", "--check", "--whitespace=nowarn", "-"],
                 input=patch, text=True, capture_output=True, timeout=30,
@@ -477,7 +575,7 @@ class ToolGateway:
                     strict_json(p)
         except Exception:
             for p, data in originals.items():
-                p.write_bytes(data)
+                self._atomic_restore(p, data)
             raise RuntimeError("PATCH_POSTVALIDATION_FAILED")
         return {
             "status": "APPLIED",

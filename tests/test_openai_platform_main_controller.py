@@ -139,7 +139,7 @@ def test_saved_agent_prompt_is_compact_and_points_to_binding_authority():
     assert "get_active_lease" in text
     assert "authority_hashes" in text
     assert "<=8 reconnaissance rounds" in text
-    assert "diff --git" in text
+    assert "apply_patch.replacements" in text
     assert "*** Begin Patch" in text
     assert "record_turn_outcome" in text
 
@@ -325,7 +325,8 @@ def test_function_only_boundary_and_token_reservation():
     assert '"environment": {"type": "none"}' in text
     assert '"multi_agent": {"enabled": False}' in text
     assert "start_executor(state" not in text
-    assert {row["name"] for row in mod.function_tools()} == {
+    tools = {row["name"]: row for row in mod.function_tools()}
+    assert set(tools) == {
         "get_active_lease",
         "read_text",
         "search_text",
@@ -335,6 +336,11 @@ def test_function_only_boundary_and_token_reservation():
         "run_authorized_command",
         "record_turn_outcome",
     }
+    apply_schema = tools["apply_patch"]["parameters"]
+    assert "replacements" in apply_schema["properties"]
+    assert "patch" in apply_schema["properties"]
+    assert "required" not in apply_schema
+    assert "exactly once" in tools["apply_patch"]["description"]
 
     gov = _governor()
     permit = {"max_total_tokens": 500_000}
@@ -492,3 +498,51 @@ def test_apply_patch_rejects_begin_patch_format_explicitly():
         assert "PATCH_FORMAT_INVALID_BEGIN_PATCH_USE_GIT_UNIFIED_DIFF" in str(exc)
     else:
         raise AssertionError("Begin Patch format was not rejected explicitly")
+
+
+def test_structured_replacement_is_exact_atomic_and_json_validated(tmp_path, monkeypatch):
+    mod = _load_controller()
+    repo = tmp_path / "repo"
+    runtime = tmp_path / "runtime"
+    control = tmp_path / "control"
+    repo.mkdir(); runtime.mkdir(); control.mkdir()
+    target = repo / "provenance" / "state.json"
+    target.parent.mkdir()
+    target.write_text('{"status":"OLD","keep":1}\n', encoding="utf-8")
+    dummy = control / "dummy.json"
+    dummy.write_text("{}\n", encoding="utf-8")
+    gw = mod.ToolGateway(
+        repo_root=repo,
+        runtime_root=runtime,
+        control_root=control,
+        execution_lock=dummy,
+        work_permit=dummy,
+        governor=dummy,
+        turn_outcome=control / "outcome.json",
+        executor_user="root",
+    )
+    monkeypatch.setattr(gw, "_lock", lambda: {
+        "primary": {
+            "allowed_material_effects": ["PROVENANCE_WRITE"],
+            "writable_files": ["provenance/state.json"],
+        }
+    })
+    result = gw._apply_patch({"replacements": [{
+        "path": "provenance/state.json",
+        "old_text": '"status":"OLD"',
+        "new_text": '"status":"PASS"',
+    }]})
+    assert result["status"] == "REPLACED"
+    assert json.loads(target.read_text(encoding="utf-8"))["status"] == "PASS"
+
+    target.write_text('{"status":"OLD OLD","keep":1}\n', encoding="utf-8")
+    try:
+        gw._apply_patch({"replacements": [{
+            "path": "provenance/state.json",
+            "old_text": "OLD",
+            "new_text": "PASS",
+        }]})
+    except RuntimeError as exc:
+        assert "REPLACEMENT_MATCH_COUNT:provenance/state.json:2" in str(exc)
+    else:
+        raise AssertionError("ambiguous replacement was accepted")
