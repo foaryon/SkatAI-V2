@@ -6,9 +6,19 @@
       "owner": "independent fail-closed supervisor, restored S3/HOME launch environment",
       "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
       "task_id": "B1_EXTERNAL_ISS_R9"
+    },
+    {
+      "classification": "CONTINUE",
+      "cost_bound_usd": 0.045,
+      "max_wall_seconds": 2700,
+      "pinned_source_commit": "c246c022db7d31fb380a5e39c842de3bf34da44e",
+      "pod_id": "ncj3ula4s9r33d",
+      "runtime_root": "/workspace/skatai-v2-runtime/isolated-science/endgame-pimc-campaign-20260925-v1",
+      "task_id": "ENDGAME_PIMC_PAIRED_CAMPAIGN_30_DEALS",
+      "task_sha256": "434c455f09fd7ecab24a88f82c319954af0f7fad755c16a622b64f8081cc93ee"
     }
   ],
-  "captured_at": "2026-09-25T11:43:52.198020+00:00",
+  "captured_at": "2026-09-25T11:44:31.435720+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "decision": "OPERATIONAL_PASS_SCIENTIFICALLY_INCONCLUSIVE",
@@ -18,10 +28,10 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through f5c5e0c",
+    "remote_state": "pushed through c246c02",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "c4563b6ecbc19aec83a54e291514442eee36d32a",
-    "worktree_state": "campaign source and evidence pending commit"
+    "verified_head_before_this_manifest": "c246c022db7d31fb380a5e39c842de3bf34da44e",
+    "worktree_state": "clean before state update"
   },
   "nearest_gates": [
     {
@@ -49,14 +59,14 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "Dispatch frozen 30-deal paired PIMC/B0 campaign on isolated compute; track play divergence and deal-clustered score deltas. R9 remains under independent supervisor.",
+  "next_action": "Allow frozen 30-deal PIMC paired campaign to run under isolated worker; inspect its terminal event or anomaly and apply preregistered deal-clustered decision rule. R9 remains frozen under supervisor.",
   "open_blockers": [],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {
     "estimated_unit_price_usd_per_hour": 0.06,
-    "isolated_pod_id": null,
-    "last_pod_deleted": true,
-    "last_pod_id": "sw8qmbenz5lnd0"
+    "isolated_pod_id": "ncj3ula4s9r33d",
+    "last_pod_deleted": false,
+    "last_pod_id": "ncj3ula4s9r33d"
   },
   "schema": "skatai.v2.main-current-state.v1"
 }
