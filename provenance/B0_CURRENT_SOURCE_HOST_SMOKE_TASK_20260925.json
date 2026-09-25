@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-09-25T11:49:15.228249+00:00",
+  "claims_excluded": [
+    "Accepted release",
+    "Actual user Skat software integration",
+    "Deployment p95/p99 latency gate"
+  ],
+  "classification": "CONTINUE",
+  "goal": "Validate current-source B0 package through the real four-phase JSONL host service on isolated CPU",
+  "input": {
+    "b0_source_tar_sha256": "40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d",
+    "b0_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+    "v2_source": "pinned isolated Git worktree"
+  },
+  "nearest_gate": "Reproducible staged release host protocol smoke",
+  "next_on_failure": "Preserve failure evidence and correct smallest host/package defect",
+  "next_on_success": "Preserve product smoke result; actual user-host integration remains dependent on host source/access",
+  "resource_bound": {
+    "ephemeral_package_bytes_approx": 111534080,
+    "estimated_max_usd": 0.045,
+    "max_wall_seconds": 2700,
+    "memory_gb": 4,
+    "vcpu": 2
+  },
+  "schema": "skatai.v2.b0-host-smoke-task.v1",
+  "stop": "identity mismatch, illegal/missing host response, package validation failure, timeout or resource anomaly",
+  "success": "Package validated and materialized; four JSONL decisions are legal; compact result uploaded to Hetzner and readback verified; isolated pod deleted",
+  "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE"
+}
