@@ -1,11 +1,11 @@
 {
   "schema": "skatai.v2.main-current-state.v1",
-  "captured_at": "2026-09-25T11:02:44Z",
+  "captured_at": "2026-09-25T11:03:42Z",
   "git": {
     "repository": "foaryon/SkatAI-V2",
     "branch": "main",
-    "verified_head_before_this_manifest": "8ee2a1cbdbe3da7ebec1c5f1c6584ee512012b8a",
-    "remote_state": "verified origin/main at parent; push pending for this change",
+    "verified_head_before_this_manifest": "5029c5c5ff15966606465d2f8b82a7e83901e981",
+    "remote_state": "pushed through 5029c5c; this provenance commit pending",
     "worktree_state": "clean"
   },
   "active_work": [
@@ -18,12 +18,12 @@
     }
   ],
   "completed_independent_gate": {
-    "task_id": "CARDPLAY_CLUSTERED_HAND_CAMPAIGN_STAGE",
+    "task_id": "B0_CURRENT_SOURCE_RELEASE_REBUILD",
     "classification": "CONCLUDE",
-    "evidence": "provenance/CARDPLAY_CLUSTERED_HAND_CAMPAIGN_STAGE_20260925.json",
-    "source_parent_commit": "8ee2a1cbdbe3da7ebec1c5f1c6584ee512012b8a",
-    "verification": "61 focused tests passed",
-    "scientific_status": "position-set and clustered summary staged; no strength estimate"
+    "evidence": "provenance/B0_CURRENT_SOURCE_RELEASE_REBUILD_20260925.json",
+    "source_commit": "5029c5c5ff15966606465d2f8b82a7e83901e981",
+    "verification": "two byte-identical 111534080-byte builds; package validator PASS",
+    "scientific_status": "staged B0 package integrity only; no new strength claim"
   },
   "nearest_gates": [
     {
@@ -40,9 +40,9 @@
     },
     {
       "gate": "Current-source release package and actual Skat host integration",
-      "dependency": "Measured storage headroom, isolated build compute, and actual user host software"
+      "dependency": "Current-source host smoke on isolated compute and actual user host software; current-source package rebuild verified locally"
     }
   ],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
-  "next_action": "Continue independent cardplay/data work with exact qualified inputs and isolated inference; R9 remains supervised through its preregistered gate, then run measured 1->2->4 throughput epochs."
+  "next_action": "Preserve R9 to its preregistered gate. Use qualified V5 objects for the exploratory data gate when object-store access is available; run isolated current-source host acceptance and weakness-driven cardplay inference when compute/input gates permit."
 }

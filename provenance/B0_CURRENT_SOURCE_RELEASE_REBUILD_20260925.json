@@ -1,0 +1,32 @@
+{
+  "schema": "skatai.v2.current-source-b0-release-rebuild.v1",
+  "captured_at": "2026-09-25T11:03:42Z",
+  "task_id": "B0_CURRENT_SOURCE_RELEASE_REBUILD",
+  "classification": "CONCLUDE",
+  "source_commit": "5029c5c5ff15966606465d2f8b82a7e83901e981",
+  "upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+  "upstream_archive_sha256": "40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d",
+  "output": {
+    "release_id": "V2-B0-package-v3",
+    "package_bytes": 111534080,
+    "package_sha256": "290f6bb06a648eb8d7aa9213145144314132960d2d5188efb76582e069397352",
+    "manifest_sha256": "5f059ba45946a7ba881f270ee31edadabd102466256ec43700766ced076510e2",
+    "v2_source_archive_sha256": "3c6c82364a55961ab29b71fe99be226b7b6f8a7c395a58b05753368d9047e85f"
+  },
+  "verification": {
+    "independent_rebuild_count": 2,
+    "byte_identical": true,
+    "release_validator": "PASS",
+    "embedded_source_commit": "5029c5c5ff15966606465d2f8b82a7e83901e981",
+    "components": 7
+  },
+  "storage": "Local scratch only at /tmp/V2-B0-current-source-5029c5c.skatmodel; reconstructable from Git commit plus pinned upstream source. Not published as accepted release.",
+  "limits": [
+    "No gameplay or model inference in this check",
+    "Current-source host smoke pending",
+    "Actual user host software integration pending",
+    "No remote object-store publication from credential-less MAIN process",
+    "Frozen R9 remained under independent supervisor"
+  ],
+  "next_gate": "Isolated host smoke and deployment-matched latency/crash checks, then actual user-host integration when source is available."
+}
