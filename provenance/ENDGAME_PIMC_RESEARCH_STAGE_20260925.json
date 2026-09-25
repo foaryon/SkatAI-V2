@@ -1,0 +1,22 @@
+{
+  "captured_at": "2026-09-25T11:37:39.072877Z",
+  "classification": "STAGED_RESEARCH_CANDIDATE",
+  "constraints": [
+    "No true hidden hands at decision time",
+    "Only legal observation fields",
+    "Research-only return contract",
+    "Full-information solver used only on sampled worlds",
+    "No B0 or R9 runtime changed"
+  ],
+  "implementation_sha256": "e7a05cbc44c711b56add20b8f3ed790aad3ab3ab1f6dc6107ca013a28b437679",
+  "nearest_gate": "Bounded belief/search cardplay treatment with paired B0 gameplay",
+  "next_gate": "Preserve raw per-case pilot evidence; design one paired B0 gameplay treatment with deployment-matched latency and explicit fallback for unsupported states",
+  "parent_source_commit": "f117ed5",
+  "pilot_initial_signal": "49/60 sampled-world actions match offline teacher vs 23/60 first legal; no failures",
+  "pilot_source": "60 train-only real-game labels in provenance/TRAIN_ENDGAME_TEACHER_PILOT_20260925.json",
+  "schema": "skatai.v2.endgame-pimc-research-stage.v1",
+  "scientific_limit": "Agreement with a perfect-information teacher on a small train pilot is not deployment strength, belief calibration, or promotion evidence",
+  "task_id": "OBSERVATION_ONLY_ENDGAME_PIMC",
+  "tests": "33 focused endgame tests passed",
+  "treatment": "For basic contracts at at most three cards per seat, enumerate hidden card allocations compatible with own hand, known skat, played cards and public voids; sample up to 32 worlds and average exact endgame action values"
+}
