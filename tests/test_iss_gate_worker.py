@@ -1547,3 +1547,57 @@ def test_mirror_backpressure_reports_bounded_backlog(tmp_path):
     for marker, _ in ev.pending_mirror_entries()[:2]:
         marker.unlink()
     assert wb.backpressure_required() is False
+
+
+def test_writebehind_storage_outage_retains_games_then_drains_without_duplicates(tmp_path):
+    import threading
+    import time
+    from skatai.iss.gate_worker import MirrorPolicy, MirrorWriteBehind
+
+    ev = _writebehind_evidence(tmp_path)
+    for game_id in ("g1", "g2"):
+        _writebehind_closed_game(ev, game_id)
+        ev.enqueue_mirror_game(game_id)
+
+    storage_up = threading.Event()
+    uploaded = []
+
+    def upload(files):
+        if not storage_up.is_set():
+            raise RuntimeError("storage unavailable")
+        items = list(files)
+        uploaded.extend(remote for _, remote in items)
+        return [ev._mirror_file_metadata(local, remote) for local, remote in items]
+
+    ev.mirror.upload_batch_verified = upload
+    wb = MirrorWriteBehind(
+        ev,
+        policy=MirrorPolicy(
+            batch_games=2,
+            max_delay_s=1,
+            retry_delay_s=0.01,
+            poll_interval_s=0.01,
+            max_pending_games=2,
+            max_pending_bytes=64 * 1024 * 1024,
+            max_backlog_age_s=2,
+        ),
+    )
+    wb.start()
+    try:
+        deadline = time.monotonic() + 2
+        while not ev.mirror_status_path.exists() or 'DEGRADED' not in ev.mirror_status_path.read_text():
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
+        assert wb.backpressure_required()
+        assert ev.mirror_backlog_status()["pending_games"] == 2
+        assert not uploaded
+
+        storage_up.set()
+        while ev.mirror_backlog_status()["pending_games"]:
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
+        assert not wb.backpressure_required()
+        assert uploaded.count("manifests/g1.json") == 1
+        assert uploaded.count("manifests/g2.json") == 1
+    finally:
+        wb.stop(flush=False)
