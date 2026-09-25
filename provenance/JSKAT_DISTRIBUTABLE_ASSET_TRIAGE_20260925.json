@@ -1,0 +1,35 @@
+{
+  "schema": "skatai.v2.jskat-distributable-asset-triage.v1",
+  "captured_at": "2026-09-25T12:18:24Z",
+  "task_id": "JSKAT_DISTRIBUTABLE_ASSET_TRIAGE",
+  "classification": "CONCLUDE_BOUNDED_AUDIT",
+  "goal": "Identify whether pinned JSkat GUI artwork can be included in a Windows V2 product package",
+  "jskat": {
+    "commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+    "code_license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "gui_authors_sha256": "3a13606e4ef7b1bf93dc7dbc36ddf78b523e0a1dbb6dca26430449b4847fb3d0",
+    "asset_root": "jskat-gui/src/main/resources/org/jskat/gui/img",
+    "total_files": 487,
+    "total_bytes": 9556561,
+    "card_faces": 352,
+    "card_backs": 7,
+    "gui_files": 128,
+    "card_decks": 11,
+    "card_deck_license_files": 0,
+    "finding": "GUI AUTHORS lists mixed GPL, public-domain, Creative Commons and freeware origins; no per-deck license files were found under the card artwork tree"
+  },
+  "replacement_candidate": {
+    "repo": "nikku/skaat-deck",
+    "commit": "72bda242af928a38273eed667f1e86a24d794503",
+    "readme_sha256": "8ea4bcf12c8d6687735f9eb7ec04591a75929f9091936441f426d75af6479468",
+    "package_json_sha256": "f16d736363b45291663d7160f44f4cdbfab51772b46ca05ddc747db402d8409c",
+    "source_svg_faces": 32,
+    "source_svg_backs": 1,
+    "license_claim": "README and package.json state MIT; README credits Wikimedia public-domain vector deck",
+    "limit": "No standalone LICENSE file or per-file rights identity; upstream artwork lineage and distributable notice still require verification"
+  },
+  "decision": "DO_NOT_BUNDLE_PINNED_JSKAT_GUI_ARTWORK_AS_IS",
+  "valid_work_preserved": "JSkat Apache-2.0 game core and API preference remain conditional; neither JSkat nor candidate artwork was copied into V2",
+  "next_gate": "Choose and qualify an independently distributable 32-card visual set before packaging a Windows derivative",
+  "resource_bound": "Read-only source inventory in disposable /tmp clones; no large network-volume write"
+}
