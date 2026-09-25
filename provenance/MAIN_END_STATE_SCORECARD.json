@@ -14,8 +14,8 @@
       "id": "DATA_SPLIT_LEAKAGE",
       "goal_path_id": "G1_TRUSTED_EVIDENCE",
       "criterion": "Splits and leakage controls are frozen.",
-      "status": "BLOCKED",
-      "reason": "Published bidding D3 split/calendar-role impact remains an explicit unresolved integrity blocker.",
+      "status": "IN_PROGRESS",
+      "reason": "Exact published D3 manifest and all 72 shards verified with zero actor-role, feature-target, invalid-calendar-date and split mismatches; broader frozen split/leakage acceptance remains separately unverified.",
       "evidence": [
         "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
         "provenance/MAIN_CURRENT_STATE.json"
@@ -25,9 +25,10 @@
       "id": "B0_REPRODUCIBLE",
       "goal_path_id": "G2_REPRODUCIBLE_BASELINE",
       "criterion": "B0 is immutable and reproducible.",
-      "status": "NOT_YET_VERIFIED",
-      "reason": "Do not infer final acceptance from historical milestones; re-use existing provenance when this becomes consequential.",
+      "status": "ACCEPTED",
+      "reason": "Immutable original SkatZero V2-B0 identity, pinned environment, nine pretrained agents, API smoke, cardplay benchmark and determinism recheck reproduced; this does not establish relative strength.",
       "evidence": [
+        "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json",
         "provenance/MAIN_CURRENT_STATE.json"
       ]
     },
@@ -125,10 +126,10 @@
       "id": "BUDGETS_ENFORCED",
       "goal_path_id": "G7_FULL_AFK",
       "criterion": "Budgets are enforced.",
-      "status": "BLOCKED",
-      "reason": "2026-09-25 MAIN cost incident proved previous model-cost governance inadequate; replacement controller is being validated while MAIN is hard-disabled.",
+      "status": "IN_PROGRESS",
+      "reason": "Turn-closure recovery accepted after 21 focused controller tests and validation; three cancelled sessions reconciled to 512351 actual tokens and 750000 stale reserved tokens cleared. Final budget-enforcement acceptance remains a separate gate.",
       "evidence": [
-        "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
+        "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
         "configs/control/MAIN_EXECUTION_GOVERNOR.json"
       ]
     },
@@ -186,11 +187,11 @@
       "id": "SUSTAINED_FULL_AFK",
       "goal_path_id": "G7_FULL_AFK",
       "criterion": "A sustained FULL-AFK test succeeds.",
-      "status": "BLOCKED",
-      "reason": "MAIN is intentionally hard-disabled until cost/goal/evidence governance is fully verified.",
+      "status": "NOT_YET_VERIFIED",
+      "reason": "Controller turn-closure recovery is accepted, but sustained FULL-AFK execution and remaining governance acceptance have not been demonstrated.",
       "evidence": [
-        "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
-        "configs/control/MAIN_EXECUTION_GOVERNOR.json"
+        "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
+        "provenance/MAIN_CURRENT_STATE.json"
       ]
     },
     {

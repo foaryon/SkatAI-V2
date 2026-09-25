@@ -4,7 +4,9 @@
       "classification": "CONTINUE",
       "main_rule": "Do not poll healthy games, open strength look before 300 scored games per arm, or change frozen runtime",
       "owner": "independent fail-closed supervisor, restored S3/HOME launch environment",
-      "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+      "observed_status_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7",
+      "observed_scored_games": 541,
+      "next_per_arm_target": 300,
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
@@ -13,6 +15,16 @@
     "classification": "PASS_FALSE_POSITIVE_RECONCILED",
     "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
     "task_id": "BIDDING_D3_SPLIT_INTEGRITY_CORRECTION"
+  },
+  "b0_reproducibility": {
+    "classification": "ACCEPT",
+    "evidence": "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json",
+    "scope": "Immutable original SkatZero V2-B0 identity, pinned environment, nine pretrained agents, API smoke, cardplay benchmark and determinism recheck reproduced; no relative-strength claim"
+  },
+  "controller_turn_closure_recovery": {
+    "classification": "ACCEPT",
+    "evidence": "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
+    "scope": "21 focused controller tests and validation passed; three cancelled sessions reconciled to 512351 actual tokens and 750000 stale reserved tokens cleared without new inference; whole-system budget enforcement remains a separate gate"
   },
   "data_integrity": {
     "bidding_historical_v1": "D3_SEMANTICALLY_VALID_EXACT_MANIFEST_AUDIT_PASS",
@@ -23,10 +35,9 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "5dee97d pushed before data-registry authority correction; verify current Git at resume",
+    "remote_state": "main synchronized with origin/main in current git status; commit SHA not checked",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "5dee97d",
-    "worktree_state": "verify with Git at resume"
+    "worktree_state": "clean in current git status"
   },
   "independent_science_diagnostic": {
     "classification": "CONCLUDE_EXPLORATORY_DIAGNOSTIC",
@@ -64,15 +75,8 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Keep frozen R9 treatment and evidence unchanged under the independent supervisor; await the preregistered gameplay gate and independent acceptance requirements before any B1 promotion decision. The corrected exact-manifest D3 integrity audit is PASS and requires no B1 retraining from this finding. Package smoke and actual host integration remain separately blocked.",
+  "next_action": "Return terminal reconciliation to the trusted controller for next authorized gate selection. R9 remains under the independent supervisor; actual host integration still requires authoritative user Skat software source/access and deployment latency acceptance.",
   "open_blockers": [
-    {
-      "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
-      "evidence": "MAIN shell has no RunPod deployment key in its environment; /proc/1/environ is permission denied; runpodctl get pod reports API key not found; R9 precludes a heavy same-CPU package/inference smoke",
-      "next": "Use an authorized file-backed launch path or schedule the bounded smoke on isolated compute; keep R9 under its supervisor",
-      "scope": "Current-source release package smoke only",
-      "status": "ACCESS_PATH_UNVERIFIED"
-    },
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
       "evidence": "provenance/HOST_SOURCE_DISCOVERY_20260925.json",
@@ -129,7 +133,7 @@
   "staged_release_gate": {
     "classification": "CONCLUDE_SOURCE_GATE",
     "evidence": "provenance/B0_SOURCE_BOUND_RELEASE_STAGE_20260925.json",
-    "package_smoke_status": "PENDING_ISOLATED_COMPUTE_LAUNCH_ACCESS",
+    "package_smoke_status": "PASSED_FOUR_PHASE_JSONL_ON_ISOLATED_CPU",
     "task_id": "B0_SOURCE_BOUND_RELEASE_STAGE"
   },
   "v5_learner_auction_role_gate": {

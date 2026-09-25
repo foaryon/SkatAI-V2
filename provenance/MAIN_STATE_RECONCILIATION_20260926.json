@@ -2,8 +2,12 @@
   "schema": "skatai.v2.main-state-reconciliation.v1",
   "captured_at": "2026-09-26T00:00:00Z",
   "task_id": "MAIN_STATE_RECONCILIATION",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Reconcile global state and end-state scorecard with accepted D3, MAIN recovery and B0 evidence plus current Git/R9 state.",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "observation": "D3 correction PASS_FALSE_POSITIVE_RECONCILED: exact manifest and 72 shards verified with zero actor-role, feature-target, invalid-calendar-date and split mismatches. B0 reproducibility ACCEPT for immutable original identity, pinned environment, nine agents, API smoke, cardplay benchmark and determinism. MAIN turn-closure recovery ACCEPT: 21 focused tests and validation passed; cancelled sessions reconciled to 512351 actual tokens; 750000 stale reserved tokens cleared. Current git status: clean main synchronized with origin/main; current head SHA not queried. Controller-bound R9 observation: 541 scored games, gate null, next per-arm target 300, source commit 5c4b6f977ebdf883e836e95eb0530121b99394e7.",
+  "interpretation": "D3 finding does not authorize B1 retraining or promotion; B0 reproducibility is not relative strength; turn-closure recovery does not establish final budget enforcement or sustained FULL-AFK success; R9 remains background-only.",
+  "change": "Updated MAIN_CURRENT_STATE and MAIN_END_STATE_SCORECARD to remove superseded D3, B0, controller and isolated package-smoke descriptions while retaining unresolved broader acceptance gates.",
+  "evidence": ["provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json", "provenance/B0_REPRODUCIBILITY_ACCEPTANCE_20260925.json", "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json", "provenance/MAIN_CURRENT_STATE.json", "provenance/MAIN_END_STATE_SCORECARD.json"],
+  "verification": "Atomic patch reported REPLACED for all three files with SHA256 current_state=467573444e96485a82aa27b25546ad47614f19724df39748302805a5027e2a7c, scorecard=913a05ae491de96ef1b17ae91e0922a63c27448885c09c234ae91a91a07fda31, and reconciliation_preclosure=0d49f0611f8699d101d0a8a0bd97696f3428975f70567a0fc385b01f6fbb4d58. Current-state readback parsed and confirmed Git, R9, B0, controller recovery, smoke and blocker fields. Post-patch scorecard and reconciliation readbacks returned tool errors; patch response confirms application but those file contents await independent readback.",
+  "decision": "Return terminal reconciliation to trusted controller for next authorized gate selection; leave R9 unchanged."
 }
