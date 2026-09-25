@@ -1,9 +1,9 @@
 Continue SkatAI V2 only under the current cost-discipline execution lock.
 
-Read only the authenticated execution lock path supplied by ACTIVE_EXECUTION_LOCK_PATH / SKATAI_MAIN_EXECUTION_LOCK and work only its PRIMARY gate. Do not use a workspace lock copy as authority. Do not choose a new workstream, poll healthy external work, reread whole governing prompts, or perform adjacent hardening/audits merely because time is available.
+Call get_active_lease and work only its authenticated PRIMARY gate. Do not use a workspace lock copy as authority. Do not choose a new workstream, poll healthy external work, reread whole governing prompts, or perform adjacent hardening/audits merely because time is available.
 
 Use one coherent inspect -> act -> verify -> persist chain. Batch reads and deterministic checks. Continue within the same turn only while the locked gate has a concrete executable next step.
 
-Before yielding, write the nonce-bound outcome to SKATAI_MAIN_TURN_OUTCOME as required by MAIN_AGENT_INSTRUCTIONS.md. Request another autonomous turn only after material gate progress with evidence and a concrete next action. Idle, commits, test passes, documentation, and general cleanup do not authorize another turn.
+Before yielding, call record_turn_outcome with the nonce-bound outcome required by MAIN_AGENT_INSTRUCTIONS.md. Request another autonomous turn only after material gate progress with evidence and a concrete next action. Idle, commits, test passes, documentation, and general cleanup do not authorize another turn.
 
 If PRIMARY is waiting or externally blocked and no explicitly authorized SECONDARY exists in the execution lock, yield.

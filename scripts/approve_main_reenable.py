@@ -33,6 +33,7 @@ def main() -> int:
     p.add_argument("--activate", action="store_true")
     p.add_argument("--max-total", type=int, default=4)
     p.add_argument("--max-autonomous", type=int, default=4)
+    p.add_argument("--max-total-tokens", type=int, default=1_000_000)
     p.add_argument("--ttl-minutes", type=int, default=240)
     p.add_argument("--allow-user-input", action="store_true")
     p.add_argument("--allow-external-events", action="store_true")
@@ -41,6 +42,8 @@ def main() -> int:
         raise SystemExit("MAIN_PERMIT_MAX_TOTAL_INVALID")
     if not (0 <= args.max_autonomous <= min(8, args.max_total)):
         raise SystemExit("MAIN_PERMIT_MAX_AUTONOMOUS_INVALID")
+    if not (250_000 <= args.max_total_tokens <= 2_500_000):
+        raise SystemExit("MAIN_PERMIT_MAX_TOTAL_TOKENS_INVALID")
     if not (5 <= args.ttl_minutes <= 720):
         raise SystemExit("MAIN_PERMIT_TTL_INVALID")
 
@@ -89,6 +92,7 @@ def main() -> int:
         "expires_at_epoch": int(now + args.ttl_minutes * 60),
         "max_model_submits_total": args.max_total,
         "max_autonomous_submits_total": args.max_autonomous,
+        "max_total_tokens": args.max_total_tokens,
         "allowed_trigger_types": triggers,
         "execution_lock_sha256": mod.sha256_file(mod.EXECUTION_LOCK),
         "primary_gate_id": lock["primary"]["gate_id"],

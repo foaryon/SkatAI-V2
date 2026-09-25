@@ -45,9 +45,9 @@ iss = (
 )
 write_secret("iss_password", iss, 0, sentinel.pw_gid, 0o640)
 
-# Controller-only keys. The least-privilege model executor cannot read these.
-executor_key = env.get("CODEX_API_KEY") or env.get("OPENAI_EXECUTOR_API_KEY")
-write_secret("openai_executor_api_key", executor_key, 0, 0)
+# MAIN is function-gateway only; self-hosted Codex execution is deliberately
+# disabled. Remove any stale executor key material from prior deployments.
+(OUT / "openai_executor_api_key").unlink(missing_ok=True)
 
 agents_key = (
     env.get("RUNPOD_SECRET_openai_agents_api_key")
@@ -81,6 +81,6 @@ os.chmod(tmp, 0o640)
 os.replace(tmp, public_env)
 
 print("iss_password=" + ("present" if iss else "absent"))
-print("executor_key=" + ("present" if executor_key else "absent"))
+print("executor_key=disabled_function_gateway_only")
 print("agents_api_key=" + ("present" if agents_key else "absent"))
 print("runpod_deploy_api_key=" + ("present" if runpod_deploy_key else "absent"))

@@ -168,6 +168,7 @@ def main() -> int:
             "expires_at_epoch": int(time.time() + 3600),
             "max_model_submits_total": 2,
             "max_autonomous_submits_total": 2,
+            "max_total_tokens": 500000,
             "allowed_trigger_types": ["PRIMARY_NEXT_STEP"],
             "execution_lock_sha256": m.sha256_file(m.EXECUTION_LOCK),
             "primary_gate_id": lock["primary"]["gate_id"],
@@ -187,33 +188,129 @@ def main() -> int:
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
 
-    # child_env is validated separately from filesystem permit persistence here.
-    m.work_permit_valid = lambda state=None, now=None: (
-        {"permit_id": "logic-validation-permit"},
-        None,
+    # Token reservations are external to the model, cannot be reset by
+    # session rotation, and must settle before another turn can be purchased.
+    token_permit = {
+        "max_total_tokens": 500000,
+        "permit_id": "logic-validation-permit",
+    }
+    token_state = {"budget_day": m.utc_day_key(now)}
+    ok, why = m.reserve_turn_tokens(token_state, governor, token_permit, now)
+    require(ok and why is None, "TOKEN_RESERVATION_REJECTED:" + str(why))
+    reserve = int(governor["hard_total_budget"]["token_reservation_per_turn"])
+    require(token_state["turn_token_reservation"] == reserve, "TOKEN_RESERVATION_WRONG_AMOUNT")
+    ok, why = m.token_reservation_status(token_state, governor, token_permit, now + 1)
+    require(not ok and why == "outstanding_token_reservation", "TOKEN_DOUBLE_RESERVATION_ALLOWED")
+
+    session = {"usage": {"total_tokens": 12345}}
+    ok, why = m.settle_session_usage(token_state, session, governor, token_permit, now + 10)
+    require(ok and why is None, "TOKEN_SETTLEMENT_FAILED:" + str(why))
+    require(token_state["turn_token_reservation"] == 0, "TOKEN_RESERVATION_NOT_RELEASED")
+    require(token_state["actual_total_tokens_today"] == 12345, "TOKEN_ACTUAL_NOT_ACCOUNTED")
+
+    # Missing usage never becomes zero-cost. After the grace period the whole
+    # reservation is conservatively charged.
+    ok, why = m.reserve_turn_tokens(token_state, governor, token_permit, now + 20)
+    require(ok and why is None, "SECOND_TOKEN_RESERVATION_REJECTED")
+    token_state["usage_pending_since"] = now + 20
+    ok, why = m.settle_session_usage(token_state, {}, governor, token_permit, now + 30)
+    require(not ok and why == "session_usage_pending", "MISSING_USAGE_NOT_HELD")
+    ok, why = m.settle_session_usage(token_state, {}, governor, token_permit, now + 200)
+    require(ok and why is None, "CONSERVATIVE_SETTLEMENT_FAILED")
+    require(
+        token_state["actual_total_tokens_today"] == 12345 + reserve,
+        "CONSERVATIVE_RESERVATION_NOT_CHARGED",
     )
-    env = m.child_env("validation-key")
-    forbidden = [
-        k
-        for k in env
-        if any(
-            marker in k.upper()
-            for marker in (
-                "AWS_",
-                "RUNPOD_API",
-                "SENTINELX_ENROLL",
-                "OPENAI_AGENTS",
-                "ISS_PASSWORD",
-            )
+    results["token_reservation_and_settlement"] = "PASS"
+
+    # Function-only execution boundary: no self-hosted shell, exact tool set,
+    # and side effects are denied unless the immutable lock authorizes them.
+    names = {row["name"] for row in m.function_tools()}
+    require(
+        names == {
+            "get_active_lease", "read_text", "search_text", "list_paths",
+            "git_query", "apply_patch", "run_authorized_command",
+            "record_turn_outcome",
+        },
+        "FUNCTION_TOOL_SET_MISMATCH",
+    )
+    controller_text = CONTROLLER.read_text(encoding="utf-8")
+    require('"environment": {"type": "none"}' in controller_text, "ENVIRONMENT_NONE_MISSING")
+    require('"multi_agent": {"enabled": False}' in controller_text, "MULTI_AGENT_DISABLE_MISSING")
+    require("start_executor(state" not in controller_text, "SELF_HOSTED_EXECUTOR_STILL_USED")
+
+    gateway_scratch = RUNTIME / "controller-validation-gateway"
+    shutil.rmtree(gateway_scratch, ignore_errors=True)
+    gateway_scratch.mkdir(parents=True, exist_ok=True)
+    try:
+        gateway_permit = gateway_scratch / "permit.json"
+        gateway_permit_id = "gateway-validation-permit-00000001"
+        gateway_permit.write_text(
+            json.dumps({
+                "schema": m.WORK_PERMIT_SCHEMA,
+                "mode": "BOUNDED_GATE",
+                "approved": True,
+                "permit_id": gateway_permit_id,
+                "expires_at_epoch": int(time.time() + 300),
+                "execution_lock_sha256": m.sha256_file(m.EXECUTION_LOCK),
+                "primary_gate_id": lock["primary"]["gate_id"],
+                "goal_path_id": lock["primary"]["goal_path_id"],
+            }) + "\n",
+            encoding="utf-8",
         )
-    ]
-    require(not forbidden, "SENSITIVE_ENV_LEAK:" + ",".join(forbidden))
-    require(env.get("CODEX_API_KEY") == "validation-key", "EXECUTOR_KEY_MISSING")
-    results["executor_environment"] = "PASS"
+        gateway = m.ToolGateway(
+            repo_root=REPO,
+            runtime_root=RUNTIME,
+            control_root=gateway_scratch,
+            execution_lock=m.EXECUTION_LOCK,
+            work_permit=gateway_permit,
+            governor=m.GOVERNOR,
+            turn_outcome=gateway_scratch / "turn-outcome.json",
+            executor_user="nobody",
+        )
+        gateway_state = {
+            "work_permit_id": gateway_permit_id,
+            "turn_primary_gate_id": lock["primary"]["gate_id"],
+        }
+        try:
+            gateway.dispatch(
+                "apply_patch",
+                {"patch": "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-x\n+y\n"},
+                gateway_state,
+            )
+        except RuntimeError as exc:
+            require("PATCH_PATH_NOT_AUTHORIZED" in str(exc), "UNAUTHORIZED_PATCH_WRONG_ERROR")
+        else:
+            raise SystemExit("UNAUTHORIZED_PATCH_ACCEPTED")
+
+        try:
+            gateway.dispatch(
+                "run_authorized_command",
+                {"command_id": "not-authorized", "arguments": {}},
+                gateway_state,
+            )
+        except RuntimeError as exc:
+            require("COMMAND_NOT_AUTHORIZED" in str(exc), "UNAUTHORIZED_COMMAND_WRONG_ERROR")
+        else:
+            raise SystemExit("UNAUTHORIZED_COMMAND_ACCEPTED")
+
+        # Expiry is checked at the side-effect boundary, independently of the
+        # scheduler loop.
+        expired = json.loads(gateway_permit.read_text(encoding="utf-8"))
+        expired["expires_at_epoch"] = int(time.time() - 1)
+        gateway_permit.write_text(json.dumps(expired) + "\n", encoding="utf-8")
+        try:
+            gateway.dispatch("get_active_lease", {}, gateway_state)
+        except RuntimeError as exc:
+            require("TOOL_PERMIT_EXPIRED" in str(exc), "EXPIRED_TOOL_PERMIT_WRONG_ERROR")
+        else:
+            raise SystemExit("EXPIRED_TOOL_PERMIT_ACCEPTED")
+        results["function_gateway_boundary"] = "PASS"
+    finally:
+        shutil.rmtree(gateway_scratch, ignore_errors=True)
 
     require(str(m.CONTROL_ROOT).startswith("/var/lib/"), "CONTROL_ROOT_NOT_LOCAL_PROTECTED")
     require(str(m.TRUSTED_ROOT).startswith("/opt/"), "TRUSTED_ROOT_NOT_LOCAL_PROTECTED")
-    require(str(m.CODEX).startswith(str(m.TRUSTED_ROOT)), "CODEX_NOT_TRUSTED")
     results["trust_roots"] = "PASS"
 
     results["status"] = "PASS"

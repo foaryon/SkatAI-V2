@@ -8,6 +8,8 @@ from pathlib import Path
 import pwd
 import stat
 import subprocess
+import tempfile
+import time
 
 TRUST = Path("/opt/skatai-main-controller/current")
 CONTROL = Path("/var/lib/skatai-main-controller")
@@ -54,13 +56,15 @@ def main() -> int:
     require(prompt_bytes < 8_000, "AGENT_INSTRUCTIONS_TOO_LARGE")
     hard_budget = governor["hard_total_budget"]
     require(int(hard_budget["max_model_submits_per_utc_day"]) <= 10, "HARD_TOTAL_SUBMIT_CAP_TOO_HIGH")
+    require(int(hard_budget["max_total_tokens_per_utc_day"]) <= 2_500_000, "HARD_TOTAL_TOKEN_CAP_TOO_HIGH")
+    require(1 <= int(hard_budget["token_reservation_per_turn"]) <= 250_000, "TURN_TOKEN_RESERVATION_INVALID")
     require(float(hard_budget["max_estimated_cost_usd_per_utc_day"]) <= 7.0, "HARD_TOTAL_ESTIMATED_COST_CAP_TOO_HIGH")
     require(hard_budget.get("user_input_may_bypass_hard_total") is False, "USER_CAN_BYPASS_HARD_TOTAL")
     budget = governor["autonomous_budget"]
     require(1 <= int(budget["max_submits_per_session"]) <= 2, "SESSION_SUBMIT_CAP_OUT_OF_RANGE")
     require(int(budget["max_submits_per_utc_day"]) <= 8, "DAILY_SUBMIT_CAP_TOO_HIGH")
     require(float(budget["max_estimated_cost_usd_per_utc_day"]) <= 5.0, "DAILY_COST_CAP_TOO_HIGH")
-    require(int(budget["min_seconds_between_submits"]) >= 600, "SUBMIT_INTERVAL_TOO_LOW")
+    require(int(budget["min_seconds_between_submits"]) >= 120, "SUBMIT_INTERVAL_TOO_LOW")
     require(int(budget["max_consecutive_no_material_progress"]) == 0, "NO_PROGRESS_BUDGET_NONZERO")
 
     active_lock = CONTROL / "EXECUTION_LOCK.json"
@@ -75,57 +79,108 @@ def main() -> int:
     require(bool(lock["primary"].get("selection_evidence")), "SELECTION_EVIDENCE_MISSING")
     require(isinstance(lock["primary"].get("writable_files"), list), "WRITABLE_FILES_MISSING")
 
+    # MAIN itself has no self-hosted shell/environment. The unprivileged
+    # executor account exists only for pre-authorized deterministic command
+    # wrappers run by the root-owned gateway.
     account = pwd.getpwnam(EXECUTOR_USER)
     require(account.pw_uid != 0, "EXECUTOR_IS_ROOT")
-
-    codex = TRUST / "codex"
-    require(codex.is_file() and codex.stat().st_uid == 0, "TRUSTED_CODEX_MISSING_OR_NOT_ROOT")
-    require(mode(codex) & 0o222 == 0, "TRUSTED_CODEX_WRITABLE")
-    expected_codex = (TRUST / "config/CODEX_EXECUTOR_BINARY.sha256").read_text(
-        encoding="utf-8"
-    ).split()[0]
-    actual_codex = subprocess.check_output(["sha256sum", str(codex)], text=True).split()[0]
-    require(actual_codex == expected_codex, "TRUSTED_CODEX_HASH_MISMATCH")
-    source_commit = (TRUST / "SOURCE_COMMIT").read_text(encoding="utf-8").strip()
-    require(len(source_commit) == 40 and all(c in "0123456789abcdef" for c in source_commit), "SOURCE_COMMIT_INVALID")
-
     sudo_info = subprocess.run(
         ["sudo", "-n", "-l", "-U", EXECUTOR_USER],
         text=True,
         capture_output=True,
     )
     sudo_text = (sudo_info.stdout + sudo_info.stderr).lower()
-    require("nopasswd" not in sudo_text and "may run the following commands" not in sudo_text, "EXECUTOR_HAS_SUDO")
+    require(
+        "nopasswd" not in sudo_text and "may run the following commands" not in sudo_text,
+        "EXECUTOR_HAS_SUDO",
+    )
 
-    workspace = Path("/workspace")
-    require(mode(workspace) & stat.S_ISVTX, "WORKSPACE_STICKY_BIT_MISSING")
-    repo_root = Path("/workspace/skatai-v2")
-    runtime_root = Path("/workspace/skatai-v2-runtime")
-    for protected in (CONTROL, TRUST, repo_root, runtime_root, active_lock, trusted_lock):
-        write_probe = subprocess.run(
-            ["runuser", "-u", EXECUTOR_USER, "--", "test", "-w", str(protected)]
-        )
-        require(write_probe.returncode != 0, "EXECUTOR_CAN_WRITE_PROTECTED_ROOT:" + str(protected))
-    for ref in lock["primary"]["writable_files"]:
-        p = mod._safe_evidence_path(ref)
-        require(p is not None and p.is_file(), "WRITABLE_FILE_INVALID:" + str(ref))
-        write_probe = subprocess.run(
-            ["runuser", "-u", EXECUTOR_USER, "--", "test", "-w", str(p)]
-        )
-        require(write_probe.returncode != 0, "WRITABLE_FILE_PREGRANTED_BEFORE_TURN:" + str(p))
+    gateway_path = TRUST / "main_tool_gateway.py"
+    require(gateway_path.is_file() and gateway_path.stat().st_uid == 0, "TOOL_GATEWAY_NOT_TRUSTED")
+    require(mode(gateway_path) & 0o022 == 0, "TOOL_GATEWAY_WRITABLE_BY_NONROOT")
+    tools = mod.function_tools()
+    tool_names = {row.get("name") for row in tools}
+    require(
+        tool_names == {
+            "get_active_lease", "read_text", "search_text", "list_paths",
+            "git_query", "apply_patch", "run_authorized_command",
+            "record_turn_outcome",
+        },
+        "FUNCTION_TOOL_SET_MISMATCH",
+    )
+    require(all(row.get("type") == "function" for row in tools), "NON_FUNCTION_TOOL_EXPOSED")
 
-    executor_base = Path("/var/lib/skatai-main-agent")
-    for p in (
-        executor_base / "codex-home",
-        executor_base / "outbox",
-        executor_base / "tmp",
-        executor_base / "work",
-    ):
-        require(p.is_dir() and p.stat().st_uid == account.pw_uid and mode(p) == 0o700, "EXECUTOR_PRIVATE_DIR_INVALID:" + str(p))
-        write_probe = subprocess.run(
-            ["runuser", "-u", EXECUTOR_USER, "--", "test", "-w", str(p)]
+    controller_text = (TRUST / "openai_platform_main_controller.py").read_text(encoding="utf-8")
+    require('"environment": {"type": "none"}' in controller_text, "FUNCTION_ONLY_ENVIRONMENT_NOT_ENFORCED")
+    require('"multi_agent": {"enabled": False}' in controller_text, "MULTI_AGENT_NOT_DISABLED")
+    require("start_executor(state" not in controller_text, "SELF_HOSTED_EXECUTOR_STILL_IN_MAIN_LOOP")
+
+    with tempfile.TemporaryDirectory(prefix="skatai-main-readiness-", dir="/var/lib") as td:
+        temp = Path(td)
+        permit_path = temp / "permit.json"
+        permit_id = "readiness-permit-0000000000000001"
+        permit_path.write_text(
+            json.dumps({
+                "schema": mod.WORK_PERMIT_SCHEMA,
+                "mode": "BOUNDED_GATE",
+                "approved": True,
+                "permit_id": permit_id,
+                "expires_at_epoch": int(time.time() + 300),
+                "execution_lock_sha256": mod.sha256_file(active_lock),
+                "primary_gate_id": lock["primary"]["gate_id"],
+                "goal_path_id": lock["primary"]["goal_path_id"],
+            }) + "\n",
+            encoding="utf-8",
         )
-        require(write_probe.returncode == 0, "EXECUTOR_PRIVATE_DIR_NOT_WRITABLE:" + str(p))
+        gateway = mod.ToolGateway(
+            repo_root=Path("/workspace/skatai-v2"),
+            runtime_root=Path("/workspace/skatai-v2-runtime"),
+            control_root=temp,
+            execution_lock=active_lock,
+            work_permit=permit_path,
+            governor=TRUST / "config/MAIN_EXECUTION_GOVERNOR.json",
+            turn_outcome=temp / "turn-outcome.json",
+            executor_user=EXECUTOR_USER,
+        )
+        tool_state = {
+            "work_permit_id": permit_id,
+            "turn_primary_gate_id": lock["primary"]["gate_id"],
+        }
+        try:
+            gateway.dispatch(
+                "apply_patch",
+                {"patch": "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-x\n+y\n"},
+                tool_state,
+            )
+        except RuntimeError as exc:
+            require("PATCH_PATH_NOT_AUTHORIZED" in str(exc), "UNAUTHORIZED_PATCH_WRONG_REJECTION")
+        else:
+            raise SystemExit("UNAUTHORIZED_PATCH_ACCEPTED")
+
+        try:
+            gateway.dispatch(
+                "run_authorized_command",
+                {"command_id": "definitely-not-authorized", "arguments": {}},
+                tool_state,
+            )
+        except RuntimeError as exc:
+            require("COMMAND_NOT_AUTHORIZED" in str(exc), "UNAUTHORIZED_COMMAND_WRONG_REJECTION")
+        else:
+            raise SystemExit("UNAUTHORIZED_COMMAND_ACCEPTED")
+
+        founding = gateway.dispatch(
+            "read_text",
+            {"path": "SKATAI_V2_FOUNDING_SPECIFICATION.md", "start_line": 1, "end_line": 3},
+            tool_state,
+        )
+        require(bool(founding.get("text")), "GATEWAY_READ_FAILED")
+
+    source_commit = (TRUST / "SOURCE_COMMIT").read_text(encoding="utf-8").strip()
+    require(
+        len(source_commit) == 40
+        and all(c in "0123456789abcdef" for c in source_commit),
+        "SOURCE_COMMIT_INVALID",
+    )
 
     legacy = Path("/workspace/openai-agent/platform-controller")
     for name in ("openai_agents_keywrap.pem", "openai_agents_keywrap.pub.pem", "public_jwk.json"):
@@ -159,13 +214,16 @@ def main() -> int:
         "daily_autonomous_submit_cap": int(budget["max_submits_per_utc_day"]),
         "daily_autonomous_estimated_cost_cap_usd": float(budget["max_estimated_cost_usd_per_utc_day"]),
         "hard_total_submit_cap": int(hard_budget["max_model_submits_per_utc_day"]),
+        "hard_total_token_cap": int(hard_budget["max_total_tokens_per_utc_day"]),
+        "turn_token_reservation": int(hard_budget["token_reservation_per_turn"]),
         "hard_total_estimated_cost_cap_usd": float(hard_budget["max_estimated_cost_usd_per_utc_day"]),
-        "cost_cap_basis": "incident_estimate_proxy_not_billing_api",
+        "cost_cap_basis": "token reservation plus conservative incident cost proxy",
         "session_submit_cap": int(budget["max_submits_per_session"]),
         "agent_instruction_bytes": prompt_bytes,
         "source_commit": source_commit,
         "idle_triggers_submit": bool(governor["progress"]["idle_alone_triggers_submit"]),
-        "executor_user": EXECUTOR_USER,
+        "execution_boundary": "FUNCTION_GATEWAY_ENVIRONMENT_NONE",
+        "executor_user_for_authorized_commands_only": EXECUTOR_USER,
         "hard_disabled": True,
         "reenable_approval_present": False,
     }

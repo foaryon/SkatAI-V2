@@ -17,6 +17,8 @@
   },
   "hard_total_budget": {
     "max_model_submits_per_utc_day": 10,
+    "max_total_tokens_per_utc_day": 2500000,
+    "token_reservation_per_turn": 250000,
     "max_estimated_cost_usd_per_utc_day": 7.0,
     "incident_estimated_cost_per_submit_usd": 0.7,
     "user_input_may_bypass_min_interval": true,
@@ -27,10 +29,16 @@
     "max_submits_per_session": 2,
     "max_estimated_cost_usd_per_utc_day": 5,
     "incident_estimated_cost_per_submit_usd": 0.7,
-    "min_seconds_between_submits": 600,
+    "min_seconds_between_submits": 120,
     "max_turn_seconds": 1200,
     "max_consecutive_no_material_progress": 0,
     "max_same_gate_followups_without_terminal": 3
+  },
+  "tool_budget": {
+    "max_tool_calls_per_turn": 40,
+    "max_side_effect_calls_per_turn": 8,
+    "max_identical_tool_calls_per_turn": 3,
+    "max_tool_output_bytes": 60000
   },
   "executor_security": {
     "user": "skatai-main-agent",

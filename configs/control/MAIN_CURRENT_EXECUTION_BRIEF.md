@@ -98,7 +98,7 @@ The target is the highest sustainable valid, deployment-safe games/hour, not a f
 
 ## Cost-discipline execution governance
 
-The 2026-09-25 MAIN cost incident established that idle-driven continuation and commit-sensitive progress are unacceptable. MAIN now operates only under the trusted execution governor, an authenticated root-owned execution lock, and a finite root-owned work permit. Exactly one PRIMARY gate is executable; a SECONDARY is allowed only when explicitly named and PRIMARY is externally blocked/waiting. Idle, commits, test passes, documentation, general audits and cleanup do not authorize another autonomous turn. Every turn must produce a nonce-bound outcome in the private executor outbox, and only material gate progress can authorize a follow-up within the same permit. The controller remains fail-closed until explicit reenable conditions are satisfied.
+The 2026-09-25 MAIN cost incident established that idle-driven continuation and commit-sensitive progress are unacceptable. MAIN now operates only under the trusted execution governor, an authenticated root-owned execution lock, and a finite root-owned work permit. Exactly one PRIMARY gate is executable; a SECONDARY is allowed only when explicitly named and PRIMARY is externally blocked/waiting. Idle, commits, test passes, documentation, general audits and cleanup do not authorize another autonomous turn. Every turn must produce a nonce-bound outcome through the controller's record_turn_outcome function, and only material gate progress can authorize a follow-up within the same permit. The controller remains fail-closed until explicit reenable conditions are satisfied.
 
 ## Resume behavior
 

@@ -46,28 +46,6 @@ done
 rm -f "$OLD_CTRL/session.json" "$OLD_CTRL/controller.pid" "$OLD_CTRL/exec-server.pid" "$OLD_CTRL/pause-submissions"
 rm -f "$OLD_AGENT/AGENT_REENABLE_APPROVED"
 
-# Restore any previous per-turn executor write grants before resetting
-# controller state. This is best-effort but root-owned and deterministic.
-if [ -f "$CONTROL_ROOT/executor-write-scope.json" ]; then
-  python3 - "$CONTROL_ROOT/executor-write-scope.json" <<'PY'
-import json, os, stat, sys
-from pathlib import Path
-p = Path(sys.argv[1])
-try:
-    raw = json.loads(p.read_text(encoding="utf-8"))
-except Exception:
-    raw = {"files": []}
-for row in raw.get("files", []):
-    try:
-        target = Path(row["path"])
-        if target.is_file():
-            os.chown(target, int(row["uid"]), int(row["gid"]))
-            os.chmod(target, int(row["mode"]))
-    except Exception:
-        pass
-PY
-fi
-
 # Fail closed after every explicit installation/migration. Reenable is a
 # separate operator decision bound to exact trusted policy hashes.
 cat >"$CONTROL_ROOT/AGENT_HARD_DISABLED" <<'EOF'

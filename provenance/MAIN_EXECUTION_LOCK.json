@@ -43,6 +43,34 @@
       "before_prefix": "UNKNOWN",
       "after_forbid_prefix": "UNKNOWN"
     },
+    "authorized_commands": [
+      {
+        "id": "audit_published_bidding_artifact",
+        "argv_prefix": [
+          "/usr/bin/python3",
+          "/workspace/skatai-v2/scripts/audit_bidding_artifact.py"
+        ],
+        "script": "scripts/audit_bidding_artifact.py",
+        "script_sha256": "310245bb9efb501914b8883b4dcd1422a72c434befc8031249be0e00b687a592",
+        "timeout_seconds": 1200,
+        "arg_schema": {
+          "manifest": {
+            "type": "path",
+            "kind": "file",
+            "flag": "--manifest"
+          },
+          "root": {
+            "type": "path",
+            "kind": "dir",
+            "flag": "--root"
+          },
+          "expected_manifest_sha256": {
+            "type": "sha256",
+            "flag": "--expected-manifest-sha256"
+          }
+        }
+      }
+    ],
     "writable_files": [
       "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json"
     ],

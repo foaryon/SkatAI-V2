@@ -31,6 +31,8 @@ def _governor():
         "enabled": True,
         "hard_total_budget": {
             "max_model_submits_per_utc_day": 10,
+            "max_total_tokens_per_utc_day": 2_500_000,
+            "token_reservation_per_turn": 250_000,
             "max_estimated_cost_usd_per_utc_day": 7.0,
             "incident_estimated_cost_per_submit_usd": 0.7,
             "user_input_may_bypass_min_interval": True,
@@ -41,10 +43,16 @@ def _governor():
             "max_submits_per_session": 2,
             "max_estimated_cost_usd_per_utc_day": 5.0,
             "incident_estimated_cost_per_submit_usd": 0.7,
-            "min_seconds_between_submits": 600,
+            "min_seconds_between_submits": 120,
             "max_turn_seconds": 1200,
             "max_consecutive_no_material_progress": 0,
             "max_same_gate_followups_without_terminal": 3,
+        },
+        "tool_budget": {
+            "max_tool_calls_per_turn": 40,
+            "max_side_effect_calls_per_turn": 8,
+            "max_identical_tool_calls_per_turn": 3,
+            "max_tool_output_bytes": 60000,
         },
         "executor_security": {
             "user": "skatai-main-agent",
@@ -124,8 +132,8 @@ def test_saved_agent_prompt_is_compact_and_points_to_binding_authority():
     assert len(text.encode("utf-8")) < 8_000
     assert "SKATAI_V2_FOUNDING_SPECIFICATION.md" in text
     assert "SKATAI_V2_WORK_PROMPT.md" in text
-    assert "MAIN_EXECUTION_LOCK.json" in text
-    assert "MAIN_TURN_OUTCOME.json" in text
+    assert "get_active_lease" in text
+    assert "record_turn_outcome" in text
 
 
 def test_progress_fingerprint_ignores_git_only_activity(tmp_path, monkeypatch):
@@ -303,20 +311,31 @@ def test_send_message_uses_http_idempotency_header(monkeypatch):
     assert "idempotency_key" not in body
 
 
-def test_executor_uses_persistent_codex_home(tmp_path, monkeypatch):
+def test_function_only_boundary_and_token_reservation():
     mod = _load_controller()
-    codex_home = tmp_path / "codex-home"
-    codex_home.mkdir()
-    monkeypatch.setattr(mod, "CODEX_HOME", codex_home)
-    monkeypatch.setattr(
-        mod,
-        "work_permit_valid",
-        lambda state=None, now=None: ({"permit_id": "test-permit-00000001"}, None),
-    )
-    env = mod.child_env("executor-key")
-    assert env["HOME"] == str(codex_home)
-    assert env["CODEX_HOME"] == str(codex_home)
-    assert env["CODEX_API_KEY"] == "executor-key"
+    text = Path(mod.__file__).read_text(encoding="utf-8")
+    assert '"environment": {"type": "none"}' in text
+    assert '"multi_agent": {"enabled": False}' in text
+    assert "start_executor(state" not in text
+    assert {row["name"] for row in mod.function_tools()} == {
+        "get_active_lease",
+        "read_text",
+        "search_text",
+        "list_paths",
+        "git_query",
+        "apply_patch",
+        "run_authorized_command",
+        "record_turn_outcome",
+    }
+
+    gov = _governor()
+    permit = {"max_total_tokens": 500_000}
+    state = {}
+    ok, reason = mod.reserve_turn_tokens(state, gov, permit, 1_790_000_000)
+    assert ok and reason is None
+    assert state["turn_token_reservation"] == 250_000
+    ok, reason = mod.token_reservation_status(state, gov, permit, 1_790_000_001)
+    assert not ok and reason == "outstanding_token_reservation"
 
 
 def test_logical_submit_key_is_stable_across_retry_and_sequence_changes():

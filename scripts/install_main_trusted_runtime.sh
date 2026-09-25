@@ -6,7 +6,6 @@ REPO=/workspace/skatai-v2
 BASE=/opt/skatai-main-controller
 RELEASES="$BASE/releases"
 CONTROL=/var/lib/skatai-main-controller
-CODEX_LINK=/workspace/openai-agent/bin/codex
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "TRUSTED_RUNTIME_INSTALL_REQUIRES_ROOT" >&2
@@ -46,6 +45,7 @@ extract() {
 }
 
 extract scripts/openai_platform_main_controller.py openai_platform_main_controller.py 755
+extract scripts/main_tool_gateway.py main_tool_gateway.py 755
 extract scripts/check_main_startup.py check_main_startup.py 755
 extract scripts/openai_agent_boot.sh openai_agent_boot.sh 755
 extract scripts/openai_platform_guardian.sh openai_platform_guardian.sh 755
@@ -63,26 +63,11 @@ extract configs/control/MAIN_AGENT_INSTRUCTIONS.md config/MAIN_AGENT_INSTRUCTION
 extract configs/control/MAIN_CONTINUE_EXECUTION_POLICY.txt config/MAIN_CONTINUE_EXECUTION_POLICY.txt 644
 extract configs/control/MAIN_EXECUTION_GOVERNOR.json config/MAIN_EXECUTION_GOVERNOR.json 644
 extract configs/control/MAIN_GOAL_POLICY.json config/MAIN_GOAL_POLICY.json 644
-extract configs/control/CODEX_EXECUTOR_BINARY.sha256 config/CODEX_EXECUTOR_BINARY.sha256 644
 extract provenance/MAIN_EXECUTION_LOCK.json config/INITIAL_EXECUTION_LOCK.json 644
 
 extract SKATAI_V2_FOUNDING_SPECIFICATION.md authority/SKATAI_V2_FOUNDING_SPECIFICATION.md 644
 extract SKATAI_V2_WORK_PROMPT.md authority/SKATAI_V2_WORK_PROMPT.md 644
 extract SKATAI_V2_MASTER_CONTINUE_MERGED.md authority/SKATAI_V2_MASTER_CONTINUE_MERGED.md 644
-
-expected_codex="$(git show "$head:configs/control/CODEX_EXECUTOR_BINARY.sha256" | awk 'NR==1{print $1}')"
-case "$expected_codex" in
-  [0-9a-f][0-9a-f]*) ;;
-  *) echo "CODEX_EXPECTED_HASH_INVALID" >&2; exit 1 ;;
-esac
-real_codex="$(readlink -f "$CODEX_LINK")"
-[ -f "$real_codex" ] || { echo "CODEX_SOURCE_MISSING" >&2; exit 1; }
-actual_codex="$(sha256sum "$real_codex" | awk '{print $1}')"
-[ "$actual_codex" = "$expected_codex" ] || {
-  echo "CODEX_BINARY_HASH_MISMATCH expected=$expected_codex actual=$actual_codex" >&2
-  exit 1
-}
-install -m 0555 -o root -g root "$real_codex" "$stage/codex"
 
 printf '%s\n' "$head" >"$stage/SOURCE_COMMIT"
 chmod 644 "$stage/SOURCE_COMMIT"
@@ -102,22 +87,9 @@ mv "$stage" "$release"
 ln -sfn "$release" "$BASE/current.new"
 mv -Tf "$BASE/current.new" "$BASE/current"
 
-# Root-owned active authority. The executor can read the immutable release copy
-# but cannot alter the active lock or any controller policy.
+# Root-owned active authority. MAIN itself has no writable/self-hosted
+# environment; all material effects cross the trusted function gateway.
 install -m 0600 -o root -g root "$release/config/INITIAL_EXECUTION_LOCK.json" "$CONTROL/EXECUTION_LOCK.json"
-
-# The pod workspace was historically world-writable. MAIN uses a distinct
-# unprivileged UID, so remove world-write from authoritative project/runtime
-# trees. Existing SentinelX-owned workers retain owner write access.
-# Prevent the executor from renaming/deleting project roots through the
-# historically world-writable /workspace parent while preserving shared-temp use.
-chmod +t /workspace
-
-for tree in "$REPO" /workspace/skatai-v2-runtime; do
-  [ -d "$tree" ] || continue
-  find "$tree" -xdev -type d -exec chmod o-w {} +
-  find "$tree" -xdev -type f -exec chmod o-w {} +
-done
 
 cat >/pre_start.sh <<'EOF'
 #!/usr/bin/env bash
