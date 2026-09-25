@@ -21,5 +21,12 @@ def test_stream_hash_and_both_scored_iss_records():
     evidence = validate_stream(io.BytesIO(payload), expected)
     assert evidence["counts"]["played"] == evidence["counts"]["match"] == 2
     assert evidence["counts"]["mismatch"] == 0
+    altered = dict(records[0], card_points=records[0]["card_points"] + 1)
+    corrupted_payload = (json.dumps(altered) + "\n").encode()
+    corrupted = validate_stream(
+        io.BytesIO(corrupted_payload), hashlib.sha256(corrupted_payload).hexdigest(),
+    )
+    assert corrupted["counts"]["point_mismatch"] == 1
+    assert corrupted["counts"]["match"] == 0
     with pytest.raises(ValueError, match="SOURCE_SHA256_MISMATCH"):
         validate_stream(io.BytesIO(payload), "0" * 64)

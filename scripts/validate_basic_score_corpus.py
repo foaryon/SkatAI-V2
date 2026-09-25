@@ -15,10 +15,10 @@ from pathlib import Path
 import sys
 import tempfile
 
-from skatai.game.rules import replay_tricks
+from skatai.game.rules import card_points, replay_tricks
 from skatai.selfplay.scoring import score_basic_game
 
-SCHEMA = "skatai.v2.evidence.basic-score-corpus-oracle.v1"
+SCHEMA = "skatai.v2.evidence.basic-score-corpus-oracle.v2"
 
 
 def compare_played_record(record: dict) -> dict:
@@ -30,12 +30,21 @@ def compare_played_record(record: dict) -> dict:
     replay = replay_tricks(
         record["plays"], game_type=str(record["game_type"]), declarer=declarer,
     )
+    final_skat = record["discards"] if record["discards"] is not None else record["skat_initial"]
+    reconstructed_points = replay["declarer_trick_points"] + sum(card_points(card) for card in final_skat)
+    reported_points = int(record["card_points"])
+    if reconstructed_points != reported_points:
+        return {
+            "identity": identity, "status": "POINT_MISMATCH",
+            "reported_points": reported_points,
+            "reconstructed_points": reconstructed_points,
+        }
     cards = (*record["initial_hands"][declarer], *record["skat_initial"])
     tricks = sum(t["winner"] == declarer for t in replay["completed_tricks"])
     try:
         score = score_basic_game(
             contract=contract, winning_bid=int(record["bid_level"]),
-            declarer_cards=cards, declarer_points=int(record["card_points"]),
+            declarer_cards=cards, declarer_points=reconstructed_points,
             declarer_tricks=tricks,
         )
     except ValueError as exc:
@@ -52,6 +61,7 @@ def compare_played_record(record: dict) -> dict:
 def validate_stream(stream, expected_sha256: str) -> dict:
     digest = hashlib.sha256()
     counts = {"total": 0, "played": 0, "match": 0, "mismatch": 0,
+              "point_mismatch": 0,
               "unsupported": 0, "incomplete": 0}
     details = []
     for raw in stream:
