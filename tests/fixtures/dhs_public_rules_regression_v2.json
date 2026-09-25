@@ -1,0 +1,41 @@
+{
+  "cases": [
+    {
+      "matadors": 3,
+      "outcome": "win",
+      "raw_sgf": "(;GM[Skat]PC[ISS2]CO[]SE[142961]ID[1707755]DT[2022-03-26/16:04:59/UTC]P0[xskat]P1[xskat:2]P2[@iI4t7tt]R0[777.9]R1[777.9]R2[1148.2]MV[w DK.DA.S7.H8.CT.ST.C9.C7.SK.CA.HQ.DJ.H9.CQ.SQ.S9.HT.CK.HK.D7.SA.D8.DQ.HJ.D9.DT.SJ.CJ.HA.S8.H7.C8 1 p 2 18 0 p 2 DHS 0 CA 1 CQ 2 DQ 2 HJ 0 DK 1 D7 2 SJ 0 DA 1 DJ 2 CJ 0 S7 1 H9 2 D9 0 ST 1 S9 2 DT 0 C7 1 HQ 2 D8 0 H8 1 SQ 2 HA 0 C9 1 HK 2 SA 0 SK 1 CK 2 S8 0 CT 1 HT ]R[d:2 win v:72 m:3 bidok p:120 t:10 s:1 z:1 p0:0 p1:0 p2:0 l:-1 to:-1 r:0] ;)",
+      "raw_sha256": "a7b9b8e5c93c727e5dc9f5d730c0d149725506d9a439aefbffdab5002a17b5c6",
+      "semantic_sha256": "a340cc53f3548341061d5cf0694c73d6754ec35ef1ad60f5db3b4db7d98510fd",
+      "signed_game_value": 72
+    },
+    {
+      "matadors": 2,
+      "outcome": "loss",
+      "raw_sgf": "(;GM[Skat]PC[International Skat Server]CO[]SE[48967]ID[1163253]DT[2012-03-31/08:54:30/UTC]P0[maedden]P1[xskat]P2[bernie]R0[0.0]R1[]R2[]MV[w SJ.DQ.CJ.D8.DA.S7.D7.DJ.C7.D9.CA.HJ.SK.SQ.ST.H8.H7.S9.CK.S8.HA.C8.HK.HT.HQ.CT.H9.CQ.SA.DT.C9.DK 1 18 0 y 1 20 0 y 1 22 0 y 1 p 2 p 0 DHS 0 CJ 1 HJ 2 DT 0 SJ 1 H7 2 H9 0 DJ 1 H8 2 C8 0 DA 1 S8 2 HA 0 DQ 1 ST 2 CQ 0 D9 1 SK 2 HQ 0 D8 1 CK 2 HK 0 D7 1 SQ 2 HT 0 S7 1 S9 2 SA 2 CT 0 C7 1 CA ]R[d:0 loss v:-108 m:2 bidok p:88 t:8 s:0 z:0 p0:0 p1:0 p2:0 l:-1 to:-1 r:0] ;)",
+      "raw_sha256": "925dc1752e43f97093a87d8a72f8d17b20ebd2854c9bcfc58489a87a09c88eac",
+      "semantic_sha256": "6e4142f4ab12e0017c93da2a46c526c11222d338131cd0d8fccc764ce8343898",
+      "signed_game_value": -108
+    },
+    {
+      "matadors": 1,
+      "outcome": "win",
+      "raw_sgf": "(;GM[Skat]PC[International Skat Server]CO[]SE[157154]ID[2888797]DT[2014-08-25/03:34:13/UTC]P0[bernie:2]P1[freakidz]P2[bernie]R0[]R1[0.0]R2[]MV[w HQ.CA.SQ.ST.CQ.H7.HA.SK.SJ.HT.D7.D8.DT.HJ.SA.CJ.DJ.S8.DQ.D9.H9.S9.C7.CT.DK.C8.CK.C9.H8.HK.DA.S7 1 18 0 y 1 20 0 y 1 22 0 p 2 p 1 DHS 0 HT 1 DT 2 H9 1 CJ 2 DK 0 SJ 1 HJ 2 S9 0 H7 1 DJ 2 C9 0 CQ 1 DQ 2 C8 0 HQ 1 D9 2 H8 0 SQ 1 D8 2 C7 0 SK 1 D7 2 HK 0 HA 1 SA 2 CK 0 ST 1 S8 2 CT 0 CA ]R[d:1 win v:54 m:1 bidok p:120 t:10 s:1 z:1 p0:0 p1:0 p2:0 l:-1 to:-1 r:0] ;)",
+      "raw_sha256": "1fc8bc28ea67741eec69f601e6bb5d28cc092cf97610f237eda30d31f4cefe9a",
+      "semantic_sha256": "52c39da8449cd17f0acca6ca5a856073b9c96b778698544448a9fbafe065dfab",
+      "signed_game_value": 54
+    }
+  ],
+  "exposure_correction_sha256": "9731d76b3da0303e4a6bcef3676e46f4d726a0b5f1e47f423910b97c2cccdc39",
+  "purpose": "Regression only; train-split public cases, not an independent acceptance holdout or training input",
+  "schema": "skatai.v2.rules.dhs-public-regression.v2",
+  "sources": [
+    {
+      "archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "evidence_sha256": "6263d5cefd08e88cda44f3b20c9f5fa9f6d107a201f1e83509d8cb3b736c7d42"
+    },
+    {
+      "archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "evidence_sha256": "e877a6db5d954d08b05ae169312178f868326742cd2b5f61923fc5e503b86756"
+    }
+  ]
+}

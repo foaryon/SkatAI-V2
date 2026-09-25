@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-09-25T07:09:20.301754+00:00",
+  "classification": "KNOWN_EXPOSED_EXTERNAL_BOT_HOLDOUT_FIXTURE",
+  "fixture": "tests/test_sgf.py:LIVE_SPLIT_PICKUP",
+  "fixture_date": "2026-09-23",
+  "r9_relation": "Historical 2026-09-23 fixture predates pinned R9; no R9 game or strength look was inspected.",
+  "raw_sha256": "f23a832122e38ec07422630b987679e0a38a795ee784b4b079484c96c4b4cbd4",
+  "schema": "skatai.v2.iss-protocol-fixture-holdout-exposure.v1",
+  "scope": "Protocol parser regression may retain the fixture; it is excluded from basic-score rules-oracle assertions and from any independent external holdout acceptance claim. Frozen split membership unchanged.",
+  "semantic_sha256": "5501129cb85fa0cca6a1caf8b70b6e58611a00f2b2b0b50a2c2e46c7f3bfa0de",
+  "split": "external_bot_holdout"
+}

@@ -185,6 +185,8 @@ def _read_pid1_environment() -> dict[str, str]:
     return values
 
 
+DEPLOY_KEY_FILE = Path("/run/skatai-v2-secrets/runpod_deploy_api_key")
+
 def runtime_environment() -> dict[str, str]:
     values = {key: os.environ[key] for key in PID1_KEYS if os.environ.get(key)}
     if PID1_KEYS - values.keys():
@@ -192,6 +194,17 @@ def runtime_environment() -> dict[str, str]:
         for key in PID1_KEYS:
             if key not in values and pid1.get(key):
                 values[key] = pid1[key]
+
+    # A running Pod normally receives only a pod-scoped RUNPOD_API_KEY,
+    # which is intentionally insufficient for creating a replacement Pod.
+    # Prefer an explicitly provisioned account/deploy key from a root-only
+    # runtime file when present. Never log or persist the key value.
+    try:
+        deploy_key = DEPLOY_KEY_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        deploy_key = ""
+    if deploy_key:
+        values["RUNPOD_API_KEY"] = deploy_key
     return values
 
 
@@ -437,6 +450,13 @@ def build_create_body(
         }
     )
     env = dict(body.get("env") or {})
+    # Never clone a resolved management credential from the source pod.
+    # Persist only the RunPod secret reference so the control plane resolves
+    # the value at replacement-pod startup.
+    env.pop("RUNPOD_DEPLOY_API_KEY", None)
+    env.pop("RUNPOD_SECRET_SkatAI-V2-Deploy", None)
+    env.pop("RUNPOD_SECRET_SkatAI_V2_Deploy", None)
+    env["RUNPOD_DEPLOY_API_KEY"] = "{{ RUNPOD_SECRET_SkatAI-V2-Deploy }}"
     env["SKATAI_UPGRADE_SOURCE_POD_ID"] = cfg.source_pod_id
     env["SKATAI_UPGRADE_WAIT_SECONDS"] = str(cfg.hold_seconds)
     env["SKATAI_RUNPOD_HUNTER_MANAGED"] = "1"
@@ -597,6 +617,7 @@ def run_iteration(api: RunpodApi, cfg: Config, *, claim: bool) -> dict[str, Any]
                         target=target.label,
                         cpu=cpu_id,
                         http=exc.status,
+                        message=exc.message,
                     )
                     continue
                 raise

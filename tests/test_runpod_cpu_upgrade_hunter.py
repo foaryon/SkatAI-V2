@@ -155,3 +155,49 @@ def test_config_uses_runtime_runpod_identity(tmp_path):
 def test_source_requires_image_or_template():
     with pytest.raises(RuntimeError):
         source_create_fields({"disk": 20})
+
+
+def test_runtime_environment_prefers_dedicated_deploy_key(tmp_path, monkeypatch):
+    import scripts.runpod_cpu_upgrade_hunter as hunter
+
+    key_file = tmp_path / "runpod_deploy_api_key"
+    key_file.write_text("account-key\n", encoding="utf-8")
+    monkeypatch.setattr(hunter, "DEPLOY_KEY_FILE", key_file)
+    monkeypatch.setenv("RUNPOD_API_KEY", "pod-scoped-key")
+    monkeypatch.setattr(hunter, "_read_pid1_environment", lambda: {})
+
+    env = hunter.runtime_environment()
+    assert env["RUNPOD_API_KEY"] == "account-key"
+
+
+def test_runtime_environment_keeps_pod_key_without_deploy_key(tmp_path, monkeypatch):
+    import scripts.runpod_cpu_upgrade_hunter as hunter
+
+    monkeypatch.setattr(hunter, "DEPLOY_KEY_FILE", tmp_path / "missing")
+    monkeypatch.setenv("RUNPOD_API_KEY", "pod-scoped-key")
+    monkeypatch.setattr(hunter, "_read_pid1_environment", lambda: {})
+
+    env = hunter.runtime_environment()
+    assert env["RUNPOD_API_KEY"] == "pod-scoped-key"
+
+
+def test_build_create_body_uses_secret_reference_not_resolved_deploy_key(tmp_path):
+    source = {
+        "image": "runpod/base:tag",
+        "disk": 20,
+        "ports": ["22/tcp"],
+        "env": {
+            "KEEP": "yes",
+            "RUNPOD_DEPLOY_API_KEY": "resolved-secret-value",
+        },
+        "startSsh": True,
+    }
+    body = build_create_body(
+        source,
+        cfg=_cfg(tmp_path),
+        target=Target(16, 32),
+        cpu_flavor_id="cpu5c",
+    )
+    assert body["env"]["KEEP"] == "yes"
+    assert body["env"]["RUNPOD_DEPLOY_API_KEY"] == "{{ RUNPOD_SECRET_SkatAI-V2-Deploy }}"
+    assert "resolved-secret-value" not in body["env"].values()

@@ -1,0 +1,149 @@
+{
+  "affected_probe_evidence": [
+    {
+      "name": "DHS_PUBLIC_ARCHIVE_HELDOUT_RESULT_20260925.json",
+      "sha256": "6263d5cefd08e88cda44f3b20c9f5fa9f6d107a201f1e83509d8cb3b736c7d42"
+    },
+    {
+      "name": "DHS_PUBLIC_ISS_ARCHIVE_FOLLOWUP_RESULT_20260925.json",
+      "sha256": "e877a6db5d954d08b05ae169312178f868326742cd2b5f61923fc5e503b86756"
+    }
+  ],
+  "aggregate_outcome_exposure": {
+    "iss_archive_eligible_loss": 5,
+    "iss_archive_eligible_win": 44,
+    "iss_archive_prior_case_exclusions": 2,
+    "skatgame_archive_eligible_loss": 0,
+    "skatgame_archive_eligible_win": 8
+  },
+  "captured_at": "2026-09-25T06:50:28.333773+00:00",
+  "classification": "FROZEN_EXTERNAL_BOT_HOLDOUT_EXPOSED_QUARANTINE_RULES_CLAIMS",
+  "discovered_at_source_commit": "9518a7a38ff2a38b7faf6f16fe337f4c536e67bb",
+  "exposed_identities": [
+    {
+      "raw_sha256": "22d3b35974f54bed7e90cee21de0b69e890063e52472da3df70217b607f49d51",
+      "semantic_sha256": "0255152cf8c2102a14e14f40851900d6bf43d6e2e0649fdb0e89d4ef4f540528",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "0bd968bcd589f873f113b1ede0686ba8348ca2c46ba1a786202adf2f6b05ff47",
+      "semantic_sha256": "07a8c5ed923f521b8b12e51d245b06f9b2a78ff4b5eb4c3b74a839c9440c8af2",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "18929d3a02f0df6ba510caae8420a03dad0764bd53a3f1a17d9643a0d0428c01",
+      "semantic_sha256": "0f6feed810337e64a8d17eeceddc0d3c21438f7a1c3907dddc8473eb3e9f1c64",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "c62de6387c610fb0470b1dc119717a79a26003da44a07db948142267b346b69c",
+      "semantic_sha256": "190c1f4acd38c3a15ea1dbd79669b33f040a027e43db5c98b75e377e3ce5add1",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "1e0db8b64a9da638c0b2ac5c181a7f35db3ad16954442ebd0666f109db13c44d",
+      "semantic_sha256": "1d0e1c514b810d9e3ef3a7b8a33fd729d5579a350d412c738f4ef8b6f95c2e2e",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "031b1577fb6647eb48b2cfa1910d736b6db1a50b665ccff9b72ccc11721d8d7b",
+      "semantic_sha256": "2b965c56428ebd1e564182a819ea4e8c8b0d0992a024611e09eba665f4362328",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "2993ef6efe6ed6f1718bd523c3764fcf496056001d6da96420581e032cb86dda",
+      "semantic_sha256": "48a1058353608e4cec8e709fb62d217ee1cf3e95ea5abb7254dd89094141c7b7",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "d22cad5d5980f7fe0eb74334a9f97a4e6c1d476da697d397f29825f80eeac6d6",
+      "semantic_sha256": "623b0e4135239c39e1e849a7fc22abb7a77d37ac1cc086fc28629d781311c475",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "0768da7fc1e9762f7ca78f81ecfc4f6c055f277c50fc8ff5faea5bb01fd37e11",
+      "semantic_sha256": "77eae18f1e416cc910526d5333bb3b8f1610238cca37104875b1417e122b2c83",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "1557c6bd2599f9a1efed2a0481cd713c756ba86f9c4eae4b482349f8466bad99",
+      "semantic_sha256": "79a8f250559c3dc42038ab5e8df2fcffb37ba7e4a209bad8f5bd65bbef073b95",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "10c7e084aec7ade5106d9c9f0a940ef3f338ff06016dfbac8d5ce7ff2ec6176e",
+      "semantic_sha256": "9c4aa3b58a89f30977af5ec681b565116bd681a719976072b5789b152ee59264",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "76e930497c261a7d2a82e5ffef2822415d7abf40fcd7530be51cc9957ab145d6",
+      "semantic_sha256": "a5152c6837bdadc589fd9035b468167064b1cff22152f7a2eb6d245a4b30b237",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "68dc137e0cafcfbbcd6fbbe495bbe05b9262684fcea2350458cbf7ed6c009516",
+      "semantic_sha256": "a8d532687f54127311cb113163bce13ed634ec1cafd050e4c78f89b0b232012e",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "8fd2b74349cd617b450492cfe6381b95b68c5631bac1f71ce3397ff39e25f6b5",
+      "semantic_sha256": "a909c2dde0ca61b1bbefc0fbe9c7f28244479b59cd89574978b179c54cb3de65",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "1883de800c84ee8785a32499189bc8fcb13cc5fdb598632a345ddd496ddfead8",
+      "semantic_sha256": "bcc9f3efab46c5d777db5c387986b9a26b27999a06e55da3189da20d9dd1b33c",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "e350cc7ed0c2ebd58f4b927eac2d0ff331eb07fa760ef68369be191ff8265292",
+      "semantic_sha256": "c02350170687ccd56d5c3d25f14cb60d86cedb65e3b5d133aaa70286cc71d644",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "a55fc8a4d62b9ad850c7e0ad1d762023cfa5b6b2fc214e7ac482b2fbcdadc360",
+      "semantic_sha256": "c040fd1883c399cbdd5d7a3ff6f0f89872f134c70bd34c3951bf4d671f5c03ac",
+      "source_archive_sha256": "d385f22369179387f5d217e336667d8002d9359cef5478463650325bc9b76bac",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "0b949552955ab6f1c5eb0cb379384bfcc79a07c1199188cf316681d4b3f17a22",
+      "semantic_sha256": "c1ca7b7d14dffe625e5be014cbc351a6cb151e82b31515342f858275ca849244",
+      "source_archive_sha256": "5b5d4a361f330ce0970f63b87d3ec8695d83cec7d01d8885612854b17934d0b2",
+      "split": "external_bot_holdout"
+    }
+  ],
+  "exposed_identity_count": 18,
+  "quarantine_scope": "Entire DHS outcome stratum from both registered July 2024 public archive files is unsuitable for future independent external-bot-holdout acceptance; original frozen split membership is preserved. This scope is broader than the 18 exact selected identities.",
+  "r9_scope": "No R9 score read or ISS action; frozen R9 campaign identities and treatment remain separate.",
+  "raw_sgf_in_this_record": false,
+  "required_correction": "Remove holdout raw from active regression fixture; enforce train split before future public archive rules selection. Preserve original immutable evidence and record scientific invalidation. Do not train on, tune to, or claim independent acceptance from the July archive DHS stratum.",
+  "schema": "skatai.v2.public-dhs-holdout-exposure.v1",
+  "selected_identity_count_note": "18 exact external-bot-holdout identities are listed from selected/scored cases; this is not the total number of DHS outcomes inspected by the archived selector.",
+  "selected_split_counts": {
+    "DHS_PUBLIC_ARCHIVE_HELDOUT_RESULT_20260925.json": {
+      "external_bot_holdout": 7,
+      "train": 1
+    },
+    "DHS_PUBLIC_ISS_ARCHIVE_FOLLOWUP_RESULT_20260925.json": {
+      "external_bot_holdout": 11,
+      "train": 2
+    }
+  }
+}

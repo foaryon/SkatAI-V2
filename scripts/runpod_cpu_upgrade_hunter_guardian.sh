@@ -5,6 +5,7 @@ umask 027
 BASE=/workspace/sentinelx-host
 REPO=/workspace/skatai-v2
 HUNTER="$REPO/scripts/runpod_cpu_upgrade_hunter.py"
+SECRET_PREP=/workspace/openai-agent/prepare-runtime-secrets.py
 LOG="$BASE/logs/runpod-cpu-hunter-guardian.log"
 LOCK=/run/lock/skatai-runpod-cpu-hunter-guardian.lock
 POLL_SECONDS=60
@@ -39,8 +40,17 @@ while true; do
   fi
 
   started="$(date +%s)"
-  log_event "hunter-start mode=watch-only targets=$TARGETS poll_s=$POLL_SECONDS"
-  python3 "$HUNTER" --targets "$TARGETS" --poll-seconds "$POLL_SECONDS" &
+  if [ -f "$SECRET_PREP" ]; then
+    python3 "$SECRET_PREP" >/dev/null 2>&1 || true
+  fi
+  claim_args=()
+  mode=watch-only
+  if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ]; then
+    claim_args=(--claim)
+    mode=claim-authorized
+  fi
+  log_event "hunter-start mode=$mode targets=$TARGETS poll_s=$POLL_SECONDS"
+  python3 "$HUNTER" "${claim_args[@]}" --targets "$TARGETS" --poll-seconds "$POLL_SECONDS" &
   child=$!
   wait "$child"
   rc=$?

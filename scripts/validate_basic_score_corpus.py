@@ -15,10 +15,11 @@ from pathlib import Path
 import sys
 import tempfile
 
+from skatai.data.bidding import split_for_game
 from skatai.game.rules import card_points, replay_tricks
 from skatai.selfplay.scoring import score_basic_game
 
-SCHEMA = "skatai.v2.evidence.basic-score-corpus-oracle.v2"
+SCHEMA = "skatai.v2.evidence.basic-score-corpus-oracle.v3"
 
 
 def compare_played_record(record: dict) -> dict:
@@ -61,7 +62,7 @@ def compare_played_record(record: dict) -> dict:
 def validate_stream(stream, expected_sha256: str) -> dict:
     digest = hashlib.sha256()
     counts = {"total": 0, "played": 0, "match": 0, "mismatch": 0,
-              "point_mismatch": 0,
+              "point_mismatch": 0, "excluded_split": 0,
               "unsupported": 0, "incomplete": 0}
     details = []
     for raw in stream:
@@ -71,6 +72,9 @@ def validate_stream(stream, expected_sha256: str) -> dict:
         if record.get("classification") != "PARSED_PLAYED_GAME":
             continue
         counts["played"] += 1
+        if split_for_game(record) != "train":
+            counts["excluded_split"] += 1
+            continue
         outcome = compare_played_record(record)
         counts[outcome["status"].lower()] += 1
         details.append(outcome)
@@ -83,7 +87,7 @@ def validate_stream(stream, expected_sha256: str) -> dict:
         "source_sha256": actual,
         "counts": counts,
         "played_results": details,
-        "use_restriction": "Scoring-rules research only; keep semantic identities and result targets out of policy training and strength evaluation.",
+        "use_restriction": "Train-split scoring-rules research only; keep semantic identities and result targets out of policy training and strength evaluation. Earlier mixed-split v2 oracle is quarantined.",
     }
 
 

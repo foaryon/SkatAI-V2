@@ -1,3 +1,4 @@
+from skatai.data.bidding import split_for_game
 from skatai.data.sgf import SGFParseError, parse_sgf_line, parse_properties
 from skatai.game.rules import replay_tricks
 from skatai.selfplay.scoring import score_basic_game
@@ -131,22 +132,22 @@ def test_live_iss_split_pickup_discard_representation_is_normalized():
     assert g["game_value"] == -144
 
 
-def test_basic_scorer_matches_two_independent_iss_result_records():
-    for raw in (PLAYED, LIVE_SPLIT_PICKUP):
-        parsed = parse_sgf_line("scoring-oracle", raw)
-        replay = replay_tricks(
-            parsed["plays"], game_type=parsed["game_type"],
-            declarer=parsed["declarer"],
-        )
-        declarer_tricks = sum(
-            trick["winner"] == parsed["declarer"]
-            for trick in replay["completed_tricks"]
-        )
-        cards = (*parsed["initial_hands"][parsed["declarer"]], *parsed["skat_initial"])
-        result = score_basic_game(
-            contract=parsed["contract_base"] + parsed["contract_modifiers"],
-            winning_bid=parsed["bid_level"], declarer_cards=cards,
-            declarer_points=parsed["card_points"], declarer_tricks=declarer_tricks,
-        )
-        assert result.signed_game_value == parsed["game_value"]
-        assert result.matadors == parsed["matadors"]
+def test_basic_scorer_matches_train_split_iss_result_record():
+    parsed = parse_sgf_line("scoring-oracle", PLAYED)
+    assert split_for_game(parsed) == "train"
+    replay = replay_tricks(
+        parsed["plays"], game_type=parsed["game_type"],
+        declarer=parsed["declarer"],
+    )
+    declarer_tricks = sum(
+        trick["winner"] == parsed["declarer"]
+        for trick in replay["completed_tricks"]
+    )
+    cards = (*parsed["initial_hands"][parsed["declarer"]], *parsed["skat_initial"])
+    result = score_basic_game(
+        contract=parsed["contract_base"] + parsed["contract_modifiers"],
+        winning_bid=parsed["bid_level"], declarer_cards=cards,
+        declarer_points=parsed["card_points"], declarer_tricks=declarer_tricks,
+    )
+    assert result.signed_game_value == parsed["game_value"]
+    assert result.matadors == parsed["matadors"]

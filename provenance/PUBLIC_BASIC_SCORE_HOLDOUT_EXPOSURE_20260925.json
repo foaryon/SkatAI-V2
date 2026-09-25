@@ -1,0 +1,131 @@
+{
+  "captured_at": "2026-09-25T06:58:33.550173+00:00",
+  "classification": "QUARANTINE_PRIOR_ORACLE",
+  "nontrain_count": 21,
+  "nontrain_identities": [
+    {
+      "raw_sha256": "2843117aec5a7ac096042a816b90a0ffe85d6ff7aa763a25d9a93063a7056c7a",
+      "semantic_sha256": "02a16ca82b484124aa3c7096e8011c8de9b15d7a4106dcc6f84b2764e80b57a8",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "3ade8ce97b76ac083ab225cee41314d25fd619d6319ee54f557b1e394efc1f77",
+      "semantic_sha256": "060c7390e9326605375daf5295102481e1d7bbda6eb187f84f18c76f53339329",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "6888cc2eba66cdafaaa3a20ef43d295dca035ebf3dabd8289b00621d1d7c5b43",
+      "semantic_sha256": "10082c6083a2a90ebc9b183c071612a06b6e5d2d35097aeba82e68e054736760",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "921baf729e68b80b2a80b196f224e0e0e2e02511c12876f687bb89a5d3c10ae0",
+      "semantic_sha256": "15a7c3eb95105c8664ec427ae79024aedaf0e9a24cb29857a042aff8a982e084",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "e4da89bb8c18f00b102bfa0c5c54bd13d0b056dec8149c47f5015cb62aea29fc",
+      "semantic_sha256": "1d0be4a235861bf27b6fb32a32efcf5acd87b76a332b5fc801ad9e9fb489280d",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "52d1fba7094110f0fd1594f172a66d4233b6f1db1116b9ef6edca8ac479a987a",
+      "semantic_sha256": "2f2911e4d8e871b6329fb407649f7b35f8b74e07915468e176adda562cb3d17c",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "4c453a448a515c80c7ee57ae505349a4956e9ad713ecf3d64626dd1681423cf5",
+      "semantic_sha256": "3fe1d1d5d3995c61233c11c573653ddc52d39e399771f1644df2d92195734035",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "e87821f71f1be40b6631f01b945ae0b2898bc6793c6b6b24d292212042c2aef7",
+      "semantic_sha256": "65a26174b4cb1bf441432697ec58d84fc006295b19596c177f5c46c15c159e90",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "4e7855ed6b94d2899692777a2243e0af1cb71436cdb69ba805bfa1115481582c",
+      "semantic_sha256": "733b018082e7395047e957ffe6e78230bb4e60b251f5beddce540cdea3dd1b6a",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "3d553328f41eb80fc812d113228a8609bf38cf868ea547d7ca3be463174cd9e9",
+      "semantic_sha256": "76a42961bfc5dd53d58aaafc49cb69ee1f607d80649906a499a8abb512ac24bc",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "41c019824a1446c1508c68ed2dbcc3a64c76eda2b188a4a5ba75af7ea7b581a8",
+      "semantic_sha256": "7a661215d2887e486c24dde5c61eb476dedd230d95ae25a747f5be74532dfc60",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "5dc98b1828e483c034fe65abac1e0d02b97e63cbf8e1fbdaaf87ce62f79a65e7",
+      "semantic_sha256": "8ce729ec87e23235442771a68e8b8d7c5d4ea6ee85bdc83b9a1b8898f77df524",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "0e4d476182e57b21f0df5cd9e7f9d4cce64c74056e3e30676080afe480e2ae8b",
+      "semantic_sha256": "941ba91a82a5f0a7c884bf40079a7190df245b66c3732ccdb16a1c99f4555ed1",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "42b0c21995571a95a6f39cdf520407ad36e96d52089a77b506d50b7084f0f7ef",
+      "semantic_sha256": "a9fe4487bb5c2c11bd86e7f2e99a9e11223cebe65c18fcdaaf5fdbccdb503e6d",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "a3dd3e23e071095b65736c590e817270dfb8eaa1e6ec971f511caabc28e1b0c6",
+      "semantic_sha256": "aa5a62560fc59c120add642406d656e62868836735fa22b86c66dfda926cecf6",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "5347f6d5c617abcf9f6d30f08d505acccf82dc52578ac21e897b62cd0a3cdb7d",
+      "semantic_sha256": "beaad996e69a63f70d9f3b835b8157c5402b154dc877b08beb473dd68091caf4",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "e64d889e2ff4e4124a4486bf1a90330cdd89d13af8f34e50c490e3976dc9087a",
+      "semantic_sha256": "c34c065161538e228f6be8984ea65db4ac6c33df4dbb53b410a391363588b27f",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "319f02ab9b1fbd28ba9120f30e1860fdb56a9fa1fdc7a335c758e7eac67a8aa3",
+      "semantic_sha256": "cf37e7c69ceee13e29c030bf39b7f8618b79076defec530c64b31bdf28de344a",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "3376849c2f42a1dfbea28749721743ea49095792721c01a17bc3791193e1fd0b",
+      "semantic_sha256": "d9073422ce0e719aa8924276f786929638820e738eb7594a169b56cbc3212802",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "1ca6df07f69776cbe5778da7ca80470e953f6f0aa134eaabd73eff423fc09f9a",
+      "semantic_sha256": "dc9576511dc26f71ff6cecf97ac90889c7eb4434ce111feff81733e01aa8be14",
+      "split": "external_bot_holdout"
+    },
+    {
+      "raw_sha256": "6c86363be43528adf0b830ab8e651ea1e68a1f1ecb3c0ada0726b27b315dadb5",
+      "semantic_sha256": "f238f6d3717a9b8b89b1b2753db5fc1f54e0957f18291fdf47cca4e7e462e2fc",
+      "split": "external_bot_holdout"
+    }
+  ],
+  "played_count": 36,
+  "played_identity_set_exact": true,
+  "prior_oracle_evidence_sha256": "ab77facbed54720db43a88da766980a9e82a1890c2fd2fd8d0c19ec7dcea3936",
+  "prior_scored_status_by_split": {
+    "external_bot_holdout:INCOMPLETE": 8,
+    "external_bot_holdout:MATCH": 13,
+    "train:INCOMPLETE": 7,
+    "train:MATCH": 8
+  },
+  "quarantine_scope": "Both public basic-score oracle passes over this accepted-extras asset are mixed-split research and cannot support independent acceptance. Thirteen matched scores and eight incomplete records belonged to frozen external-bot holdout; preserve identities and source evidence without changing frozen membership.",
+  "restriction": "Identity and split reconciliation only; no new scoring, training, or ISS strength look.",
+  "schema": "skatai.v2.public-basic-score-split-reconciliation.v1",
+  "source_object": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/accepted-extras.jsonl",
+  "source_rows_verified": 405946,
+  "source_sha256_verified": "e725c2d0aecbfef6e181eba597d9954240ab6c9d9a9f28568b835b67d79091cf",
+  "split_counts": {
+    "external_bot_holdout": 21,
+    "train": 15
+  }
+}
