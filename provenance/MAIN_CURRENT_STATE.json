@@ -10,15 +10,15 @@
   ],
   "captured_at": "2026-09-25T12:41:25Z",
   "completed_independent_gate": {
-    "classification": "CORRECT_SOURCE_IMPACT_UNKNOWN",
+    "classification": "PASS_FALSE_POSITIVE_RECONCILED",
     "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
     "task_id": "BIDDING_D3_SPLIT_INTEGRITY_CORRECTION"
   },
   "data_integrity": {
-    "bidding_historical_v1": "D3_CLAIM_SUSPENDED_PENDING_INTEGRITY_RECHECK",
+    "bidding_historical_v1": "D3_SEMANTICALLY_VALID_EXACT_MANIFEST_AUDIT_PASS",
     "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
     "frozen_b1_r9": "CONTINUE_UNCHANGED",
-    "new_training_and_promotion": "BLOCKED_UNTIL_EXACT_ARTIFACT_AUDIT",
+    "new_training_and_promotion": "NO_RETRAIN_FROM_THIS_FINDING; NO_PROMOTION_FROM_THIS_CORRECTION_ALONE; R9_GAMEPLAY_AND_INDEPENDENT_ACCEPTANCE_GATES_REQUIRED",
     "registry": "provenance/DATA_REGISTRY.json"
   },
   "git": {
@@ -64,7 +64,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Keep frozen R9 under independent supervisor and preregistered gate. Before any B1 promotion reconcile exact published bidding dataset calendar/role impact on isolated compute. In parallel continue bounded independent science/product work; package smoke and actual host integration remain separately blocked.",
+  "next_action": "Keep frozen R9 treatment and evidence unchanged under the independent supervisor; await the preregistered gameplay gate and independent acceptance requirements before any B1 promotion decision. The corrected exact-manifest D3 integrity audit is PASS and requires no B1 retraining from this finding. Package smoke and actual host integration remain separately blocked.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -80,13 +80,6 @@
       "required_input": "Authoritative repository, source archive, build artifact, or accessible path for the user Skat software",
       "scope": "Actual user Skat software integration only",
       "status": "AWAITING_SOURCE_REFERENCE"
-    },
-    {
-      "blocker_id": "BIDDING_D3_PUBLISHED_SPLIT_IMPACT_UNKNOWN",
-      "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
-      "next": "On isolated compute, fetch only exact manifest-listed shards and run scripts/audit_bidding_artifact.py using published manifest SHA-256; preserve report and reconcile anomalies",
-      "scope": "B1 promotion and later use of published historical bidding dataset",
-      "status": "AWAITING_EXACT_ARTIFACT_AUDIT"
     }
   ],
   "product_software_research": {

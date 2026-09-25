@@ -2,14 +2,14 @@
   "schema": "skatai.v2.bidding-d3-split-integrity-correction.v1",
   "captured_at": "2026-09-25T12:39:54Z",
   "task_id": "BIDDING_D3_SPLIT_INTEGRITY_CORRECTION",
-  "classification": "CORRECT_SOURCE_IMPACT_UNKNOWN",
+  "classification": "PASS_FALSE_POSITIVE_RECONCILED",
   "current_evidence": {
     "parent_source_commit": "88df368",
     "frozen_dataset": "provenance/BIDDING_DATASET_HISTORICAL_V1.json",
     "frozen_split": "provenance/BIDDING_SPLIT_V1.json",
     "published_manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
     "remote_matching_files_reported": 74,
-    "published_shard_count": "verify from exact manifest"
+    "published_shard_count": 72
   },
   "goal_or_hypothesis": "Future bidding materialization must quarantine calendar-invalid dates and impossible actor/role observations; assess whether either defect exists in the already published D3 artifact.",
   "nearest_gate": "Trusted frozen bidding dataset and B1 promotion eligibility",
@@ -32,10 +32,12 @@
     "focused_tests": "20 passed in 2.08s",
     "audit_fixture": "Exact manifest and shard hashes verified; four invalid calendar rows stayed in quarantine; deliberate role corruption yielded REVIEW_REQUIRED",
     "python_compile": "PASS",
-    "git_diff_check": "PASS"
+    "git_diff_check": "PASS",
+    "corrected_exact_manifest_audit": "PASS; report SHA-256 fa77a685845bb5b60b9e43e12aeee411f5e29555363b8ede423c9b23d9aebc90; 72 manifest-listed shards; actor-role, feature-target, invalid-calendar-date and split mismatches all 0",
+    "aggregate_actor_role_impact": "1,403,419 legal Forehand self-offer rows; residual mismatch 0; report SHA-256 fdb0079992a2f44ac07d3226d01b379d95915902979b07b152077def8ae67dbe"
   },
-  "published_dataset_impact": "UNKNOWN: current pod lacks authorized isolated compute provisioning and network volume is near its reported limit; no scan or reclassification of the frozen manifest-listed shards was performed.",
-  "scientific_decision": "NO_STRENGTH_DECISION; R9 may continue, but B1 promotion requires published-dataset integrity reconciliation in addition to its preregistered gameplay gate.",
-  "next_on_success": "Stage exact manifest-listed shards on isolated compute, run scripts/audit_bidding_artifact.py with the published manifest SHA-256, preserve report and reconcile any nonzero anomaly before B1 promotion.",
+  "published_dataset_impact": "D3_SEMANTICALLY_VALID: exact published manifest cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc and all 72 listed shards verified. Corrected exact-manifest audit PASS (SHA-256 fa77a685845bb5b60b9e43e12aeee411f5e29555363b8ede423c9b23d9aebc90): actor-role, feature-target, invalid-calendar-date and split mismatches all 0. The superseded strict audit flagged 1,403,419 protocol-legal Forehand self-offer rows; aggregate impact report SHA-256 fdb0079992a2f44ac07d3226d01b379d95915902979b07b152077def8ae67dbe confirms residual mismatch 0. See provenance/BIDDING_D3_SELF_OFFER_AUDIT_CORRECTION_20260925.json.",
+  "scientific_decision": "NO_STRENGTH_DECISION; no B1 retraining required from this finding and no B1 promotion authorized by this correction alone. Frozen R9 treatment and evidence continue unchanged without reset or reinterpretation; promotion still requires the preregistered R9 gameplay gate and all independent acceptance requirements.",
+  "next_on_success": "Exact-manifest correction reconciled; retain the preserved audit and aggregate impact reports. Await the preregistered R9 gameplay gate and independent acceptance requirements before any B1 promotion decision.",
   "next_on_failure_or_inconclusive": "Keep frozen artifact and R9 evidence; quarantine affected training claims and reproduce a corrected versioned dataset/candidate if necessary."
 }
