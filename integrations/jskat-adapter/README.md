@@ -44,6 +44,14 @@ SKATAI_V2_PYTHONPATH=/path/to/skatai-v2/src   # source-worktree/dev only
 
 `SKATAI_V2_RELEASE_ID` is optional but should be set in deployment so a wrong release fails closed. The timeout is a safety ceiling, not an acceptance latency target.
 
+### Installed product runtime staging
+
+Production must not depend on `SKATAI_V2_PYTHONPATH` or an arbitrary source checkout. The staged product path builds the SkatAI V2 wheel with a fixed `SOURCE_DATE_EPOCH`, installs it into a dedicated Python 3.11 runtime, and installs the deployment dependencies separately. For the frozen B0/B1 SkatZero runtime currently under validation, those dependencies are `torch==2.1.2+cpu` and `numpy==1.26.4`.
+
+On the 2026-09-25 main pod, two independent wheel builds from runtime commit `dd4dad654f5ad70c2210727db06c8bdd19c2db9e` were byte-identical (`SHA-256 18672614ec4d05795d6a718cb709fea153f796c7d83c56a3ae2df25b64419fe8`). A fresh Python 3.11.13 environment loaded `skatai` from `site-packages` with both `PYTHONPATH` and `SKATAI_V2_PYTHONPATH` removed, then passed the real Java-to-Python all-phase integration test against the staged `V2-B0-package-v3` release.
+
+The runtime wheel and `.skatmodel` are separate identities. The staged B0 package is source commit `5029c5c5ff15966606465d2f8b82a7e83901e981` with package SHA-256 `290f6bb06a648eb8d7aa9213145144314132960d2d5188efb76582e069397352`; the newer host/runtime wheel is bound separately by commit and wheel hash. A final accepted product bundle must record both identities (or rebuild them from one accepted source boundary), include the target-platform Python runtime, and pass Windows 11 deployment validation. End users must not be expected to install `uv` or assemble this runtime manually.
+
 The B0 host service uses one persistent SkatZero worker by default. On the 2026-09-25 main pod, the verified B0 package showed about 5.3 s for the first BID computation and microsecond-level reuse of the exact max-bid cache; the prior cold-process path was roughly 99 s under concurrent R9 load. Final product latency acceptance remains a separate gate and should use the accepted learned bidding release rather than treating this B0 number as the target.
 
 ## JSkat application integration
