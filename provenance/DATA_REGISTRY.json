@@ -59,6 +59,20 @@
       "point_parity_finding": "42 of 96 learner rows and 420 cardplay decisions fail deployed point-view parity; source replay and split evidence remain historical engineering evidence only",
       "status": "POINT_PARITY_FAILURE_NO_TRAINING_OR_STRENGTH_USE",
       "trust": "D1_EXPLORATORY_ONLY"
+    },
+    {
+      "active_training_use": false,
+      "asset_id": "v5-point-parity-private-seed-pilot-20260925",
+      "kind": "exploratory_private_seed_selfplay",
+      "producer_source_commit": "9081c9b32abf2a2a654857984d9b19b348239982",
+      "evidence_sha256": "556496e3b6782d3b5d0ef03d8dc82bce5060f9560c7a10da5d19c5a59868bc67",
+      "learner_manifest": "s3://skatai-v2/evidence/selfplay/v5-point-parity-20260925-d84fa232bda8ef16/V5_POINT_PARITY_PILOT_20260925.learner-manifest.json",
+      "learner_sha256": "d84fa232bda8ef1616aec155d02df0890e36ae55b82ac5dfc8d12f46220077d9",
+      "split_manifest": "s3://skatai-v2/evidence/selfplay/v5-point-parity-20260925-d84fa232bda8ef16/split-manifest-3f36699118f9d577.json",
+      "split_sha256": "3f36699118f9d577dbc8e6aea6c87cbe05bf19089a2c2994d082ff67900c9871",
+      "private_provenance_prefix": "s3://skatai-v2/provenance/private/selfplay/v5-point-parity-20260925-d84fa232bda8ef16/",
+      "status": "POINT_PARITY_REPLAY_AND_SPLIT_VERIFIED_NO_TRAINING_APPROVAL",
+      "trust": "D1_EXPLORATORY_ONLY"
     }
   ],
   "schema": "skatai.v2.data-registry.v1"
