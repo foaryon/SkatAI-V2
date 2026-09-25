@@ -22,6 +22,21 @@ def test_evidence_mirror_recovers_persisted_remote_root(tmp_path, monkeypatch):
     assert HetznerEvidenceMirror(local_root=tmp_path).remote_root == expected
 
 
+def test_evidence_mirror_readiness_probe_has_bounded_timeout(tmp_path, monkeypatch):
+    import subprocess
+    from skatai.iss.gate_worker import HetznerEvidenceMirror
+
+    def stalled(*args, **kwargs):
+        assert args[0][:3] == ["rclone", "lsd", ":s3:skatai-v2"]
+        assert kwargs["timeout"] == 30.0
+        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(subprocess, "run", stalled)
+    outcome = HetznerEvidenceMirror(local_root=tmp_path).probe()
+    assert outcome["ok"] is False
+    assert outcome["reason"] == "RCLONE_READINESS_TIMEOUT"
+
+
 def row(game_id, arm, stack, seat, score=0.0):
     return {
         "game_id": game_id,
