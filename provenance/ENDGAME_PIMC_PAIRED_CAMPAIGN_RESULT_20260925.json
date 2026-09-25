@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-09-25T11:53:38.069421+00:00",
+  "classification": "CONCLUDE",
+  "conclusion_file": "provenance/ENDGAME_PIMC_PAIRED_CAMPAIGN_CONCLUSION_20260925.json",
+  "conclusion_sha256": "0939d05e98836388785416ab7b46f23bc1b1278597440d687d190e8f9a1da89b",
+  "decision": "INCONCLUSIVE",
+  "pod_deletion_verified": true,
+  "pod_id": "ncj3ula4s9r33d",
+  "remote_readback_verified": true,
+  "result_object": "s3://skatai-v2/evidence/endgame-pimc/paired-screen/endgame-pimc-campaign-20260925-v1/6ce8622661a86a0384e50c771942cbaf54a70f728cc5310783f4fcb353d3e622.json",
+  "result_sha256": "6ce8622661a86a0384e50c771942cbaf54a70f728cc5310783f4fcb353d3e622",
+  "schema": "skatai.v2.endgame-pimc-paired-campaign-evidence.v1",
+  "scientific_scope": "Frozen 30-deal hand-contract paired screen, not strength acceptance; no disjoint confirmation triggered by precommitted rule",
+  "source_commit": "c246c022db7d31fb380a5e39c842de3bf34da44e",
+  "task_id": "ENDGAME_PIMC_PAIRED_CAMPAIGN_30_DEALS",
+  "task_sha256": "434c455f09fd7ecab24a88f82c319954af0f7fad755c16a622b64f8081cc93ee",
+  "validator_roundoff_note": "Recomputed summary differed in floating last digits only; tolerance 1e-12, exact identities and coverage retained"
+}

@@ -1,0 +1,21 @@
+{
+  "acceptance_decision": "NOT_AUTHORIZED",
+  "approximate_95pct_t_interval": [
+    -0.6740705560004754,
+    0.8074038893338087
+  ],
+  "candidate_game_count": 1620,
+  "changed_game_count": 1045,
+  "decision": "INCONCLUSIVE",
+  "independent_deal_count": 30,
+  "limits": "One frozen research campaign with correlated positions clustered by deal; any favorable result requires disjoint confirmation and deployment gates.",
+  "mean_candidate_delta": 0.06666666666666664,
+  "position_count": 540,
+  "positions_sha256": "54584685eb161432dcd449a290fd1b1423e09c8fc380952b9afa4ce5b8dd6dbb",
+  "result_sha256": "6ce8622661a86a0384e50c771942cbaf54a70f728cc5310783f4fcb353d3e622",
+  "schema": "skatai.v2.endgame-pimc-campaign-conclusion.v1",
+  "standard_error": 0.362178020235804,
+  "strength_claim_authorized": false,
+  "task_id": "ENDGAME_PIMC_PAIRED_CAMPAIGN_30_DEALS",
+  "task_sha256": "434c455f09fd7ecab24a88f82c319954af0f7fad755c16a622b64f8081cc93ee"
+}

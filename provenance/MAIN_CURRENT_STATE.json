@@ -6,44 +6,22 @@
       "owner": "independent fail-closed supervisor, restored S3/HOME launch environment",
       "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
       "task_id": "B1_EXTERNAL_ISS_R9"
-    },
-    {
-      "classification": "CONTINUE",
-      "cost_bound_usd": 0.045,
-      "max_wall_seconds": 2700,
-      "pinned_source_commit": "c246c022db7d31fb380a5e39c842de3bf34da44e",
-      "pod_id": "ncj3ula4s9r33d",
-      "runtime_root": "/workspace/skatai-v2-runtime/isolated-science/endgame-pimc-campaign-20260925-v1",
-      "task_id": "ENDGAME_PIMC_PAIRED_CAMPAIGN_30_DEALS",
-      "task_sha256": "434c455f09fd7ecab24a88f82c319954af0f7fad755c16a622b64f8081cc93ee"
-    },
-    {
-      "attempt": 2,
-      "classification": "CONTINUE",
-      "cost_bound_usd": 0.045,
-      "max_wall_seconds": 2700,
-      "pinned_source_commit": "b990471d6504e9f6c7e52f630fd12c523e8ae317",
-      "pod_id": "2afma2v8oqd044",
-      "prior_failure_evidence": "provenance/B0_HOST_SMOKE_ATTEMPT_20260925.json",
-      "runtime_root": "/workspace/skatai-v2-runtime/isolated-science/b0-host-smoke-20260925-v2",
-      "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE",
-      "task_sha256": "2885d8ca7e71ea89c3d26ff5bfaa4f9885106f14ac0d05b94a19e11a3e076219"
     }
   ],
-  "captured_at": "2026-09-25T11:51:43.053606+00:00",
+  "captured_at": "2026-09-25T11:53:38.069421+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
-    "decision": "OPERATIONAL_PASS_SCIENTIFICALLY_INCONCLUSIVE",
-    "evidence": "provenance/ENDGAME_PIMC_PAIRED_SCREEN_RESULT_20260925.json",
-    "result_sha256": "0cb959ce80055792ec6086410dd7c52b34dc8d755a7fb875ceaf8160c3f25fa3",
-    "task_id": "ENDGAME_PIMC_PAIRED_SCREEN_6"
+    "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
+    "result_sha256": "d4811408007adebdb58dc5a68b22b915af85312324079c5cb619bb1b60322df8",
+    "status": "FOUR_PHASE_HOST_SMOKE_PASS_ACTUAL_HOST_PENDING",
+    "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE"
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through b990471",
+    "remote_state": "pushed through 767c5e0; result provenance pending commit",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "b990471d6504e9f6c7e52f630fd12c523e8ae317",
-    "worktree_state": "clean before state update"
+    "verified_head_before_this_manifest": "767c5e0e623f1b575c834a4371ff6d212916f875",
+    "worktree_state": "result provenance pending commit"
   },
   "nearest_gates": [
     {
@@ -51,7 +29,7 @@
       "gate": "B1 R9 preregistered external decision"
     },
     {
-      "dependency": "Observation-only endgame PIMC train-label proxy recorded; freeze paired B0 positions and run isolated gameplay screen before a strength hypothesis.",
+      "dependency": "30-deal observation-only endgame PIMC treatment inconclusive under precommitted clustered rule; result preserved, no promotion or automatic confirmation.",
       "gate": "Weakness-driven cardplay challenger protocol and paired B0 gameplay"
     },
     {
@@ -59,7 +37,7 @@
       "gate": "V5 exploratory train-partition artifact check"
     },
     {
-      "dependency": "Current-source host smoke on isolated compute and actual user host software; current-source package rebuild verified locally",
+      "dependency": "Current-source staged B0 package passed four-phase JSONL smoke on isolated CPU; actual user Skat software source/access and deployment latency gate remain.",
       "gate": "Current-source release package and actual Skat host integration"
     },
     {
@@ -71,7 +49,7 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "Await terminal events for isolated 30-deal PIMC campaign and corrected four-phase host smoke. Reconcile result hashes and pod deletion; apply frozen campaign decision. R9 remains frozen under independent supervisor.",
+  "next_action": "Find authoritative user Skat host source/access for stable interface integration if available; R9 stays frozen under supervisor until clean 300-per-arm gate, then staged 1->2->4 throughput epochs. Avoid extending inconclusive PIMC without a new weakness hypothesis.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -83,10 +61,10 @@
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {
     "estimated_unit_price_usd_per_hour": 0.06,
-    "isolated_host_pod_id": "2afma2v8oqd044",
-    "isolated_pod_id": "ncj3ula4s9r33d",
-    "last_pod_deleted": false,
-    "last_pod_id": "ncj3ula4s9r33d"
+    "isolated_host_pod_id": null,
+    "isolated_pod_id": null,
+    "last_pod_deleted": true,
+    "last_pod_id": "2afma2v8oqd044"
   },
   "schema": "skatai.v2.main-current-state.v1"
 }

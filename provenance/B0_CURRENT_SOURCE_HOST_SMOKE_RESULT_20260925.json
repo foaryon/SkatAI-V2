@@ -1,0 +1,31 @@
+{
+  "actual_user_host_integration": false,
+  "captured_at": "2026-09-25T11:53:38.069421+00:00",
+  "classification": "CONCLUDE",
+  "legal_actions_verified": true,
+  "limits": [
+    "No accepted release claim",
+    "No actual user host software tested",
+    "No deployment latency distribution"
+  ],
+  "manifest_sha256": "f65b1b63081da2d6fdb8e9a70d5a63adf5aae1aa699555b8fc40a1fed05f6ab0",
+  "package_bytes": 111810560,
+  "package_sha256": "c94406c2ad9a82b29e771c8f283fa6867072de0e0d2de348ec441ed33a8d2d76",
+  "phases": [
+    "BID",
+    "DECLARATION",
+    "DISCARD",
+    "PLAY_CARD"
+  ],
+  "pod_deletion_verified": true,
+  "pod_id": "2afma2v8oqd044",
+  "release_status": "BASELINE_PACKAGE_STAGED",
+  "remote_readback_verified": true,
+  "response_count": 4,
+  "result_object": "s3://skatai-v2/evidence/product-host-smoke/b0-host-smoke-20260925-v2/d4811408007adebdb58dc5a68b22b915af85312324079c5cb619bb1b60322df8.json",
+  "result_sha256": "d4811408007adebdb58dc5a68b22b915af85312324079c5cb619bb1b60322df8",
+  "schema": "skatai.v2.current-source-b0-host-smoke-evidence.v1",
+  "source_commit": "b990471d6504e9f6c7e52f630fd12c523e8ae317",
+  "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE",
+  "task_sha256": "2885d8ca7e71ea89c3d26ff5bfaa4f9885106f14ac0d05b94a19e11a3e076219"
+}

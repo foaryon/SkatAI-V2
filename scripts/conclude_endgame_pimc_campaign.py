@@ -6,11 +6,22 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 from skatai.evaluation.cardplay_campaign import frozen_hand_positions, summarize_position_results
 
 T_CRITICAL_95_DF29 = 2.045229642
+
+
+def _same_summary(left, right) -> bool:
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(
+            _same_summary(left[key], right[key]) for key in left
+        )
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return math.isclose(left, right, rel_tol=0.0, abs_tol=1e-12)
+    return left == right
 
 
 def _verified_json(path: Path, expected_sha256: str) -> dict:
@@ -34,7 +45,7 @@ def conclude(task: dict, result: dict, *, task_sha256: str, result_sha256: str) 
             or result["b0_upstream_commit"] != task["b0_upstream_commit"]):
         raise ValueError("PIMC_CAMPAIGN_IDENTITY_MISMATCH")
     summary = summarize_position_results(position_set, result["results"])
-    if result["cluster_summary"] != summary:
+    if not _same_summary(result["cluster_summary"], summary):
         raise ValueError("PIMC_CAMPAIGN_SUMMARY_MISMATCH")
     rows = [row for position in result["results"] for row in position["rows"]]
     if result["candidate_seat_deltas"] != [row["candidate_delta"] for row in rows]:
