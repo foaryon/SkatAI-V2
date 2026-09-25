@@ -5,6 +5,10 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
+from skatai.selfplay.learner_dataset import load_bounded_learner_pilot
+
 
 def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     root = Path(__file__).parents[1]
@@ -33,3 +37,12 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     assert "private_seed_file" not in learner_manifest and "raw_file" not in learner_manifest
     assert all("deal_seed" not in row and "deal_sha256" not in row for row in learner_rows)
     assert all(len({decision["seat"] for decision in row["decisions"]}) == 1 for row in learner_rows)
+    assert len(load_bounded_learner_pilot(
+        prefix.with_suffix(".learner-manifest.json"), learner_path,
+    )) == 2
+    learner_rows[0]["deal_seed"] = private["games"][0]["deal_seed"]
+    learner_path.write_text("".join(json.dumps(x) + "\n" for x in learner_rows))
+    learner_manifest["learner_sha256"] = hashlib.sha256(learner_path.read_bytes()).hexdigest()
+    prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
+    with pytest.raises(ValueError, match="LEARNER_RECORD_INVALID"):
+        load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
