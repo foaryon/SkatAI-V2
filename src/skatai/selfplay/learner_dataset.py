@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 from skatai.game.bidding import BID_VALUES
+from skatai.game.rules import card_points, game_type_from_contract, replay_tricks
 from skatai.runtime.interface import (
     BiddingObservation, CardplayObservation, DeclarationObservation,
     DiscardObservation,
@@ -75,6 +76,17 @@ def _validate_decision(item: dict, seat: int, contract: str, threshold: float) -
         expected = CardplayObservation.create(**view)
         if expected.contract != contract or item["action"] not in expected.legal_cards:
             raise ValueError("LEARNER_CARDPLAY_ACTION_ILLEGAL")
+        replayed = replay_tricks(
+            expected.played_cards,
+            game_type=game_type_from_contract(expected.contract),
+            declarer=expected.declarer,
+        )
+        declarer_points = int(replayed["declarer_trick_points"])
+        if expected.seat == expected.declarer and not expected.blind_hand:
+            declarer_points += sum(card_points(card) for card in expected.skat_cards)
+        if (expected.points_self != declarer_points
+                or expected.points_other != replayed["defender_trick_points"]):
+            raise ValueError("LEARNER_CARDPLAY_POINT_STATE_MISMATCH")
     else:
         raise ValueError("LEARNER_PHASE_UNSUPPORTED")
     observed_seat = expected.actor if phase == "BID" else expected.seat
