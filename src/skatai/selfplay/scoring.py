@@ -43,7 +43,7 @@ def _matadors(cards: set[str], base: str) -> int:
         if (card in cards) != with_top:
             break
         count += 1
-    return count
+    return count if with_top else -count
 
 
 def score_basic_game(
@@ -82,7 +82,7 @@ def score_basic_game(
     else:
         schneider = declarer_points <= 30
         schwarz = declarer_tricks == 0
-    level = matadors + 1 + int(hand) + int(schneider) + int(schwarz)
+    level = abs(matadors) + 1 + int(hand) + int(schneider) + int(schwarz)
     natural = BASE_VALUES[base] * level
     overbid = winning_bid > natural
     if overbid:

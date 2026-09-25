@@ -27,6 +27,13 @@ def test_hearts_token_is_distinct_from_hand_modifier():
     assert score("HH").game_level == score("H").game_level + 1
 
 
+def test_without_top_jack_uses_signed_matador_provenance():
+    without_club_jack = tuple(card for card in DECK if card != "CJ")[:12]
+    result = score("G", cards=without_club_jack)
+    assert result.matadors == -1
+    assert result.game_level == 2
+
+
 @pytest.mark.parametrize(
     "contract,bid,value", [("N", 23, 23), ("NH", 35, 35),
                            ("NO", 46, 46), ("NHO", 59, 59)],
