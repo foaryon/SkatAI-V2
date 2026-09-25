@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-09-25T11:19:14.827211Z",
+  "classification": "READY_TO_LAUNCH",
+  "failure": "Record bounded failure; no selection/strength claim; stop pod and preserve evidence",
+  "frozen_b0_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+  "goal": "Obtain hash-bound train-only historical-action disagreement diagnostic for weakness selection; no strength or training claim",
+  "input_sample_object": "s3://skatai-v2/datasets/research/cardplay-train-range-sample/c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805.jsonl",
+  "input_sample_sha256": "c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805",
+  "integrity_gates": [
+    "Distinct ISOLATED_SCIENCE role fences MAIN and R9 startup",
+    "Pinned separate Git worktree",
+    "Expected sample and selection SHA-256 verified before B0 inference",
+    "Result stays in shared runtime until Hetzner hash/readback verifies",
+    "Pod delete requested after job; MAIN reconciles unknown delete outcome"
+  ],
+  "nearest_gate": "Weakness-driven cardplay treatment selection before paired B0 gameplay",
+  "pod_state": "NOT_CREATED",
+  "resource_bound": {
+    "cpu_vcpu": 2,
+    "estimated_max_compute_usd": 0.045,
+    "expected_max_wall_seconds": 2700,
+    "max_input_staging_bytes": 2000000000,
+    "memory_gb": 4,
+    "runpod_cpu_id": "cpu3c",
+    "unit_price_per_vcpu_hour_usd": 0.03
+  },
+  "runner_sha256": "55ced4f926da795d7a2b052b3e20f6fdc964f1861db341437b561fc43dc16dec",
+  "runtime_root": "/workspace/skatai-v2-runtime/isolated-science/cardplay-diagnostic-20260925-v1",
+  "schema": "skatai.v2.isolated-cardplay-diagnostic-task.v1",
+  "scientific_scope": "Historical agreement diagnostic only, not a strength metric or promotion gate",
+  "selection_sha256": "2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a",
+  "source_commit": "PENDING_THIS_COMMIT",
+  "success": "72 selected events yield a durable result and no illegal B0 action",
+  "task_id": "CARDPLAY_B0_DIAGNOSTIC_72_ISOLATED"
+}
