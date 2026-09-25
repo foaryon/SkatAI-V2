@@ -649,7 +649,8 @@ class HetznerEvidenceMirror:
             stage = Path(tmpdir)
             metadata: list[dict[str, Any]] = []
             seen_remote: set[str] = set()
-            immutable_paths: list[str] = []
+            game_paths: list[str] = []
+            manifest_paths: list[str] = []
             current_paths: list[str] = []
 
             for local, remote_rel in items:
@@ -670,8 +671,10 @@ class HetznerEvidenceMirror:
                 seen_remote.add(remote_rel)
                 if remote_rel.startswith("current/"):
                     current_paths.append(remote_rel)
+                elif remote_rel.startswith("manifests/"):
+                    manifest_paths.append(remote_rel)
                 else:
-                    immutable_paths.append(remote_rel)
+                    game_paths.append(remote_rel)
 
                 data = local.read_bytes()
                 expected = hashlib.sha256(data).hexdigest()
@@ -691,7 +694,10 @@ class HetznerEvidenceMirror:
                 )
 
             for label, paths, immutable in (
-                ("IMMUTABLE", immutable_paths, True),
+                ("IMMUTABLE", game_paths, True),
+                # The manifest is the publication marker. Verify every game
+                # object remotely before exposing its manifest to readers.
+                ("MANIFEST", manifest_paths, True),
                 ("CURRENT", current_paths, False),
             ):
                 if not paths:

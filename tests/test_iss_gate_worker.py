@@ -1322,6 +1322,45 @@ def test_immutable_remote_conflict_stops_before_current_write(tmp_path, monkeypa
     assert "--immutable" in calls[0]
 
 
+def test_mirror_manifest_published_only_after_game_readback(tmp_path, monkeypatch):
+    import subprocess
+    from pathlib import Path
+    import pytest
+    import skatai.iss.gate_worker as gw
+
+    game = tmp_path / "game.txt"
+    manifest = tmp_path / "manifest.json"
+    current = tmp_path / "current.json"
+    for path in (game, manifest, current):
+        path.write_text(path.name)
+    files = [(game, "games/g.txt"), (manifest, "manifests/g.json"),
+             (current, "current/state.json")]
+    calls = []
+    fail_game_check = True
+
+    def fake_run(args, **kwargs):
+        nonlocal fail_game_check
+        selected = Path(args[args.index("--files-from") + 1]).read_text().splitlines()
+        calls.append((args[1], selected))
+        code = 9 if fail_game_check and args[1] == "check" else 0
+        return subprocess.CompletedProcess(args, code, stdout="", stderr="failed" if code else "")
+
+    monkeypatch.setattr(gw.subprocess, "run", fake_run)
+    mirror = gw.HetznerEvidenceMirror(local_root=tmp_path)
+    with pytest.raises(gw.ISSGateWorkerError, match="MIRROR_BATCH_IMMUTABLE_VERIFY_FAILED:9"):
+        mirror.upload_batch_verified(files)
+    assert calls == [("copy", ["games/g.txt"]), ("check", ["games/g.txt"])]
+
+    calls.clear()
+    fail_game_check = False
+    mirror.upload_batch_verified(files)
+    assert calls == [
+        ("copy", ["games/g.txt"]), ("check", ["games/g.txt"]),
+        ("copy", ["manifests/g.json"]), ("check", ["manifests/g.json"]),
+        ("copy", ["current/state.json"]), ("check", ["current/state.json"]),
+    ]
+
+
 def test_mirror_policy_environment_is_bounded():
     from skatai.iss.gate_worker import mirror_policy_from_environment
 
