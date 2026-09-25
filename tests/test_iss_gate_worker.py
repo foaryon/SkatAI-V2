@@ -8,6 +8,19 @@ from skatai.iss.gate_worker import (
 )
 
 
+def test_pinned_repo_cannot_fall_back_to_default_evidence_root(tmp_path, monkeypatch):
+    import pytest
+    from skatai.iss.gate_worker import GatePaths, ISSGateWorkerError
+
+    monkeypatch.setenv("SKATAI_V2_ROOT", str(tmp_path / "pinned-r9"))
+    monkeypatch.delenv("ISS_GATE_RUNTIME_ROOT", raising=False)
+    with pytest.raises(ISSGateWorkerError, match="EXPLICIT_GATE_RUNTIME_ROOT"):
+        GatePaths.defaults()
+    evidence_root = tmp_path / "external-gate-r9"
+    monkeypatch.setenv("ISS_GATE_RUNTIME_ROOT", str(evidence_root))
+    assert GatePaths.defaults().runtime_root == evidence_root
+
+
 def test_evidence_mirror_recovers_persisted_remote_root(tmp_path, monkeypatch):
     import json
     from skatai.iss.gate_worker import HetznerEvidenceMirror
