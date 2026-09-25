@@ -67,12 +67,14 @@ def audit_artifact(manifest_path: Path, root: Path, expected_manifest_sha256: st
         reader = pq.ParquetFile(path)
         for batch in reader.iter_batches(
             batch_size=65536,
-            columns=["date", "split", "actor", "bidder", "answerer", "decision_role"],
+            columns=["date", "split", "actor", "bidder", "answerer", "decision_role",
+                     "hand_mask", "bid_index", "target_continue"],
         ):
             cols = batch.to_pydict()
-            for raw, observed_split, actor, bidder, answerer, role in zip(
+            for raw, observed_split, actor, bidder, answerer, role, hand_mask, bid_index, target in zip(
                 cols["date"], cols["split"], cols["actor"], cols["bidder"],
-                cols["answerer"], cols["decision_role"], strict=True,
+                cols["answerer"], cols["decision_role"], cols["hand_mask"],
+                cols["bid_index"], cols["target_continue"], strict=True,
             ):
                 shard_rows += 1
                 expected_split = _date_split(str(raw))
@@ -86,6 +88,10 @@ def audit_artifact(manifest_path: Path, root: Path, expected_manifest_sha256: st
                         or role not in (0, 1)
                         or actor != (bidder if role == 0 else answerer)):
                     anomalies["actor_role_mismatch_rows"] += 1
+                if (hand_mask is None or hand_mask.bit_count() != 10
+                        or bid_index is None or not 0 <= bid_index < 64
+                        or target not in (0, 1)):
+                    anomalies["feature_target_mismatch_rows"] += 1
         if shard_rows != shard["rows"]:
             raise ValueError("BIDDING_AUDIT_SHARD_ROW_COUNT_MISMATCH")
         counts[split] += shard_rows
@@ -99,12 +105,13 @@ def audit_artifact(manifest_path: Path, root: Path, expected_manifest_sha256: st
         "anomalies": {
             key: anomalies[key] for key in (
                 "invalid_calendar_date_rows", "split_mismatch_rows",
-                "actor_role_mismatch_rows",
+                "actor_role_mismatch_rows", "feature_target_mismatch_rows",
             )
         },
         "status": (
             "PASS" if not (
                 anomalies["split_mismatch_rows"] or anomalies["actor_role_mismatch_rows"]
+                or anomalies["feature_target_mismatch_rows"]
             ) else "REVIEW_REQUIRED"
         ),
     }

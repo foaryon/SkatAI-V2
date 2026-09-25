@@ -80,6 +80,8 @@ def test_pinned_artifact_audit_counts_quarantine_and_detects_role_corruption(tmp
     table = pq.read_table(shard_path)
     idx = table.schema.get_field_index("decision_role")
     table = table.set_column(idx, "decision_role", pa.array([1] * 4, type=pa.uint8()))
+    idx = table.schema.get_field_index("hand_mask")
+    table = table.set_column(idx, "hand_mask", pa.array([0] * 4, type=pa.uint32()))
     pq.write_table(table, shard_path)
     stored = json.loads(path.read_text())
     stored_shard = next(s for s in stored["shards"] if s["split"] == "train")
@@ -87,4 +89,7 @@ def test_pinned_artifact_audit_counts_quarantine_and_detects_role_corruption(tmp
     stored_shard["bytes"] = shard_path.stat().st_size
     path.write_text(json.dumps(stored, sort_keys=True) + "\n")
     changed_manifest_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
-    assert audit_artifact(path, root, changed_manifest_sha256)["status"] == "REVIEW_REQUIRED"
+    changed = audit_artifact(path, root, changed_manifest_sha256)
+    assert changed["status"] == "REVIEW_REQUIRED"
+    assert changed["anomalies"]["actor_role_mismatch_rows"] > 0
+    assert changed["anomalies"]["feature_target_mismatch_rows"] == 4
