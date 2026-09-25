@@ -27,6 +27,8 @@ def load_controller():
     mod.CONTINUE = REPO / "configs/control/MAIN_CONTINUE_EXECUTION_POLICY.txt"
     mod.GOVERNOR = REPO / "configs/control/MAIN_EXECUTION_GOVERNOR.json"
     mod.GOAL_POLICY = REPO / "configs/control/MAIN_GOAL_POLICY.json"
+    mod.GATE_QUEUE = REPO / "configs/control/MAIN_GATE_QUEUE.json"
+    mod.GATE_DIR = REPO / "configs/control/main_gates"
     mod.MASTER_PROMPT = REPO / "SKATAI_V2_MASTER_CONTINUE_MERGED.md"
     mod.FOUNDING_SPEC = REPO / "SKATAI_V2_FOUNDING_SPECIFICATION.md"
     mod.WORK_PROMPT = REPO / "SKATAI_V2_WORK_PROMPT.md"
@@ -45,6 +47,10 @@ def main() -> int:
 
     governor = m.load_governor()
     lock = m.load_execution_lock()
+    queue = m.load_gate_queue()
+    active_queue_entry = m.gate_queue_entry_for_lock(queue)
+    require(active_queue_entry is not None and int(active_queue_entry["index"]) == 0, "INITIAL_GATE_QUEUE_BINDING_INVALID")
+    results["gate_queue_validation"] = "PASS"
     goal_policy = json.loads(m.GOAL_POLICY.read_text(encoding="utf-8"))
     valid_goal_ids = {row["id"] for row in goal_policy["goal_path"]}
     require(lock["primary"]["goal_path_id"] in valid_goal_ids, "UNEXPECTED_PRIMARY_GOAL")
@@ -172,9 +178,13 @@ def main() -> int:
             "max_autonomous_submits_total": 2,
             "max_total_tokens": 500000,
             "allowed_trigger_types": ["PRIMARY_NEXT_STEP"],
-            "execution_lock_sha256": m.sha256_file(m.EXECUTION_LOCK),
-            "primary_gate_id": lock["primary"]["gate_id"],
-            "goal_path_id": lock["primary"]["goal_path_id"],
+            "gate_queue_sha256": m.sha256_file(m.GATE_QUEUE),
+            "gate_queue_start_index": 0,
+            "max_gate_rotations": len(queue["entries"]) - 1,
+            "authorized_gates": [
+                {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
+                for entry in queue["entries"]
+            ],
         }
         m.WORK_PERMIT.write_text(json.dumps(permit) + "\n", encoding="utf-8")
         checked, why = m.work_permit_valid()
@@ -254,9 +264,13 @@ def main() -> int:
                 "approved": True,
                 "permit_id": gateway_permit_id,
                 "expires_at_epoch": int(time.time() + 300),
-                "execution_lock_sha256": m.sha256_file(m.EXECUTION_LOCK),
-                "primary_gate_id": lock["primary"]["gate_id"],
-                "goal_path_id": lock["primary"]["goal_path_id"],
+                "gate_queue_sha256": m.sha256_file(m.GATE_QUEUE),
+                "gate_queue_start_index": 0,
+                "max_gate_rotations": len(queue["entries"]) - 1,
+                "authorized_gates": [
+                    {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
+                    for entry in queue["entries"]
+                ],
             }) + "\n",
             encoding="utf-8",
         )

@@ -35,6 +35,7 @@ def main() -> int:
     p.add_argument("--max-autonomous", type=int, default=4)
     p.add_argument("--max-total-tokens", type=int, default=1_000_000)
     p.add_argument("--ttl-minutes", type=int, default=240)
+    p.add_argument("--max-gate-rotations", type=int, default=2)
     p.add_argument("--allow-user-input", action="store_true")
     p.add_argument("--allow-external-events", action="store_true")
     args = p.parse_args()
@@ -46,6 +47,8 @@ def main() -> int:
         raise SystemExit("MAIN_PERMIT_MAX_TOTAL_TOKENS_INVALID")
     if not (5 <= args.ttl_minutes <= 720):
         raise SystemExit("MAIN_PERMIT_TTL_INVALID")
+    if not (0 <= args.max_gate_rotations <= 15):
+        raise SystemExit("MAIN_PERMIT_GATE_ROTATIONS_INVALID")
 
     check = subprocess.run(
         ["python3", str(READINESS)],
@@ -68,6 +71,17 @@ def main() -> int:
     now = time.time()
     policy_hashes = mod.approval_policy_hashes()
     lock = mod.load_execution_lock()
+    queue = mod.load_gate_queue()
+    active_entry = mod.gate_queue_entry_for_lock(queue)
+    if active_entry is None:
+        raise SystemExit("MAIN_ACTIVE_LOCK_NOT_IN_TRUSTED_GATE_QUEUE")
+    start_index = int(active_entry["index"])
+    end_index = min(len(queue["entries"]) - 1, start_index + args.max_gate_rotations)
+    authorized_gates = [
+        {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
+        for entry in queue["entries"][start_index : end_index + 1]
+    ]
+    actual_rotations = max(0, len(authorized_gates) - 1)
     approval = {
         "schema": mod.REENABLE_APPROVAL_SCHEMA,
         "policy_epoch": mod.POLICY_EPOCH,
@@ -94,9 +108,10 @@ def main() -> int:
         "max_autonomous_submits_total": args.max_autonomous,
         "max_total_tokens": args.max_total_tokens,
         "allowed_trigger_types": triggers,
-        "execution_lock_sha256": mod.sha256_file(mod.EXECUTION_LOCK),
-        "primary_gate_id": lock["primary"]["gate_id"],
-        "goal_path_id": lock["primary"]["goal_path_id"],
+        "gate_queue_sha256": mod.sha256_file(mod.GATE_QUEUE),
+        "gate_queue_start_index": start_index,
+        "max_gate_rotations": actual_rotations,
+        "authorized_gates": authorized_gates,
         "reason": args.reason,
     }
     atomic_json(APPROVAL, approval)
@@ -119,7 +134,7 @@ def main() -> int:
         "MAIN_REENABLE_APPROVED_AND_ACTIVATED "
         f"permit_id={permit['permit_id']} "
         f"max_total={args.max_total} max_autonomous={args.max_autonomous} "
-        f"ttl_minutes={args.ttl_minutes}"
+        f"gate_rotations={actual_rotations} ttl_minutes={args.ttl_minutes}"
     )
     return 0
 

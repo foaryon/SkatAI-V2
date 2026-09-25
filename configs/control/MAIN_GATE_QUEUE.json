@@ -1,0 +1,28 @@
+{
+  "schema": "skatai.v2.main-gate-queue.v1",
+  "captured_at": "2026-09-26T00:00:00Z",
+  "policy": "ordered_finite_preauthorized_queue",
+  "entries": [
+    {
+      "index": 0,
+      "gate_id": "MAIN_STATE_RECONCILIATION",
+      "goal_path_id": "G7_FULL_AFK",
+      "lock_file": "gates/00-main_state_reconciliation.json",
+      "lock_sha256": "85532d916e58f959d2b2d51e7a20ae1fd1c7dd270ef98191a03a23d29c45abe3"
+    },
+    {
+      "index": 1,
+      "gate_id": "BUDGETS_ENFORCED_ACCEPTANCE",
+      "goal_path_id": "G7_FULL_AFK",
+      "lock_file": "gates/01-budgets_enforced_acceptance.json",
+      "lock_sha256": "0ec074e88b1190a95ac0eac606c145a80484cfe64fcf524c95449dbc26c54805"
+    },
+    {
+      "index": 2,
+      "gate_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
+      "goal_path_id": "G7_FULL_AFK",
+      "lock_file": "gates/02-anti_pseudo_v2_acceptance.json",
+      "lock_sha256": "b744f6b22884e7ffb1211ce5a8fe480e1235276062b311a5f2b2c8c2202e02f7"
+    }
+  ]
+}

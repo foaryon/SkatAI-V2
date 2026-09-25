@@ -1,0 +1,73 @@
+{
+  "schema": "skatai.v2.main-execution-lock.v2",
+  "captured_at": "2026-09-26T00:00:00Z",
+  "reason": "Pre-authorized deterministic MAIN gate queue entry.",
+  "primary": {
+    "gate_id": "BUDGETS_ENFORCED_ACCEPTANCE",
+    "status": "EXECUTABLE",
+    "goal_path_id": "G7_FULL_AFK",
+    "objective": "Decide whether current bounded controller/governor/token-accounting evidence satisfies the end-state BUDGETS_ENFORCED criterion.",
+    "end_state_contribution": "Closes or precisely narrows the cost-governance prerequisite for sustained FULL-AFK operation.",
+    "selection_basis": "The original cost incident is preserved, but recovery provenance now records verified turn closure, actual-usage settlement and conservative fallback behavior plus a successful post-fix turn.",
+    "selection_evidence": [
+      "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+      "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
+      "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
+      "configs/control/MAIN_EXECUTION_GOVERNOR.json",
+      "scripts/openai_platform_main_controller.py",
+      "provenance/MAIN_END_STATE_SCORECARD.json"
+    ],
+    "evidence": [
+      "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+      "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
+      "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
+      "configs/control/MAIN_EXECUTION_GOVERNOR.json",
+      "scripts/openai_platform_main_controller.py",
+      "provenance/MAIN_END_STATE_SCORECARD.json"
+    ],
+    "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a bounded evidence/control task.",
+    "allowed_material_effects": [
+      "READ_ONLY_INSPECTION",
+      "PROVENANCE_WRITE"
+    ],
+    "executor_capabilities": [],
+    "progress_contract": {
+      "kind": "JSON_FIELD_TRANSITION",
+      "path": "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+      "field": "classification",
+      "before_prefix": "OPEN",
+      "after_forbid_prefix": "OPEN"
+    },
+    "authorized_commands": [],
+    "writable_files": [
+      "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+      "provenance/MAIN_END_STATE_SCORECARD.json"
+    ],
+    "completion": [
+      "Decision distinguishes bounded-controller enforcement from any separate OpenAI-account billing ceiling.",
+      "Evidence includes actual-usage settlement and fail-closed reservation fallback.",
+      "Scorecard is updated only if the evidence supports the stated acceptance level.",
+      "No budget or permit limits are increased."
+    ],
+    "next_action": "Call get_active_lease first. Verify only the listed governor/controller/recovery evidence. Decide ACCEPT/REJECT/INCONCLUSIVE, update the budget provenance and scorecard consistently, record_turn_outcome, and yield."
+  },
+  "secondary": null,
+  "external_dependencies": [
+    {
+      "event_watch": {
+        "type": "R9_GATE",
+        "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
+        "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
+        "expected_next_per_arm_target": 300,
+        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+      },
+      "gate_id": "B1_EXTERNAL_ISS_R9",
+      "goal_path_id": "G4_CONTROLLED_EVALUATION",
+      "owner": "independent fail-closed supervisor",
+      "rule": "No model polling and no R9 mutation from this PRIMARY.",
+      "status": "WAITING_EXTERNAL"
+    }
+  ],
+  "switching_rule": "Terminal classification returns control to the trusted deterministic gate queue selector. The model cannot select or alter the next gate."
+}

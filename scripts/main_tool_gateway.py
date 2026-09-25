@@ -254,7 +254,7 @@ class ToolGateway:
     def _assert_active_permit(self, state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         lock = self._lock()
         permit = self._permit()
-        if permit.get("schema") != "skatai.v2.main-work-permit.v1":
+        if permit.get("schema") != "skatai.v2.main-work-permit.v2":
             raise RuntimeError("TOOL_PERMIT_SCHEMA_INVALID")
         if permit.get("mode") != "BOUNDED_GATE" or permit.get("approved") is not True:
             raise RuntimeError("TOOL_PERMIT_NOT_ACTIVE")
@@ -263,13 +263,22 @@ class ToolGateway:
                 raise RuntimeError("TOOL_PERMIT_EXPIRED")
         except (KeyError, TypeError, ValueError):
             raise RuntimeError("TOOL_PERMIT_EXPIRY_INVALID")
-        if permit.get("execution_lock_sha256") != sha256_file(self.execution_lock):
-            raise RuntimeError("TOOL_PERMIT_LOCK_HASH_MISMATCH")
         primary = lock["primary"]
-        if permit.get("primary_gate_id") != primary.get("gate_id"):
-            raise RuntimeError("TOOL_PERMIT_GATE_MISMATCH")
-        if permit.get("goal_path_id") != primary.get("goal_path_id"):
-            raise RuntimeError("TOOL_PERMIT_GOAL_MISMATCH")
+        active_sha = sha256_file(self.execution_lock)
+        entries = permit.get("authorized_gates")
+        if not isinstance(entries, list) or not entries:
+            raise RuntimeError("TOOL_PERMIT_AUTHORIZED_GATES_INVALID")
+        match = next(
+            (
+                row for row in entries
+                if row.get("lock_sha256") == active_sha
+                and row.get("gate_id") == primary.get("gate_id")
+                and row.get("goal_path_id") == primary.get("goal_path_id")
+            ),
+            None,
+        )
+        if match is None:
+            raise RuntimeError("TOOL_PERMIT_ACTIVE_GATE_NOT_AUTHORIZED")
         permit_id = str(permit.get("permit_id") or "")
         if state.get("work_permit_id") not in {None, permit_id}:
             raise RuntimeError("TOOL_PERMIT_STATE_MISMATCH")
@@ -285,7 +294,8 @@ class ToolGateway:
             for k in (
                 "permit_id", "mode", "expires_at_epoch", "max_model_submits_total",
                 "max_autonomous_submits_total", "max_total_tokens",
-                "allowed_trigger_types", "primary_gate_id", "goal_path_id",
+                "allowed_trigger_types", "gate_queue_start_index", "max_gate_rotations",
+                "authorized_gates",
             )
         }
         policy_hashes = permit.get("policy_hashes") or {}
@@ -293,7 +303,7 @@ class ToolGateway:
             k: policy_hashes.get(k)
             for k in (
                 "founding_spec", "work_prompt", "master_prompt", "goal_policy",
-                "agent_instructions", "governor", "execution_lock",
+                "agent_instructions", "governor", "gate_queue",
             )
             if policy_hashes.get(k)
         }

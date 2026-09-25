@@ -73,6 +73,11 @@ def main() -> int:
     require(active_lock.stat().st_uid == 0 and mode(active_lock) == 0o600, "ACTIVE_EXECUTION_LOCK_PERMISSIONS")
     require(trusted_lock.is_file(), "TRUSTED_EXECUTION_LOCK_MISSING")
     require(mod.sha256_file(active_lock) == mod.sha256_file(trusted_lock), "ACTIVE_EXECUTION_LOCK_NOT_TRUSTED")
+    queue = mod.load_gate_queue()
+    active_entry = mod.gate_queue_entry_for_lock(queue)
+    require(active_entry is not None, "ACTIVE_EXECUTION_LOCK_NOT_IN_GATE_QUEUE")
+    require(int(active_entry["index"]) == 0, "INITIAL_EXECUTION_LOCK_NOT_QUEUE_HEAD")
+    require(mod.sha256_file(active_lock) == queue["entries"][0]["lock_sha256"], "QUEUE_HEAD_LOCK_HASH_MISMATCH")
     lock = mod.load_execution_lock()
     require(lock["secondary"] is None or lock["primary"]["status"] in mod.EXTERNAL_WAIT_CLASSIFICATIONS, "WIP_LOCK_INVALID")
     require(bool(lock["primary"].get("end_state_contribution")), "END_STATE_CONTRIBUTION_MISSING")
@@ -126,9 +131,13 @@ def main() -> int:
                 "approved": True,
                 "permit_id": permit_id,
                 "expires_at_epoch": int(time.time() + 300),
-                "execution_lock_sha256": mod.sha256_file(active_lock),
-                "primary_gate_id": lock["primary"]["gate_id"],
-                "goal_path_id": lock["primary"]["goal_path_id"],
+                "gate_queue_sha256": mod.sha256_file(mod.GATE_QUEUE),
+                "gate_queue_start_index": 0,
+                "max_gate_rotations": len(queue["entries"]) - 1,
+                "authorized_gates": [
+                    {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
+                    for entry in queue["entries"]
+                ],
             }) + "\n",
             encoding="utf-8",
         )

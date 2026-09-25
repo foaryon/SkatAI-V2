@@ -27,6 +27,8 @@ PROMPT = TRUSTED_ROOT / "config/MAIN_AGENT_INSTRUCTIONS.md"
 CONTINUE = TRUSTED_ROOT / "config/MAIN_CONTINUE_EXECUTION_POLICY.txt"
 GOVERNOR = TRUSTED_ROOT / "config/MAIN_EXECUTION_GOVERNOR.json"
 GOAL_POLICY = TRUSTED_ROOT / "config/MAIN_GOAL_POLICY.json"
+GATE_QUEUE = TRUSTED_ROOT / "config/MAIN_GATE_QUEUE.json"
+GATE_DIR = TRUSTED_ROOT / "config/gates"
 MASTER_PROMPT = TRUSTED_ROOT / "authority/SKATAI_V2_MASTER_CONTINUE_MERGED.md"
 FOUNDING_SPEC = TRUSTED_ROOT / "authority/SKATAI_V2_FOUNDING_SPECIFICATION.md"
 WORK_PROMPT = TRUSTED_ROOT / "authority/SKATAI_V2_WORK_PROMPT.md"
@@ -52,13 +54,14 @@ TOOL_RESULT_DIR = CONTROL_ROOT / "tool-results"
 EXECUTOR_USER = "skatai-main-agent"
 BASE = "https://api.openai.com/v1"
 SERVICE_TIER = "flex"
-POLICY_EPOCH = "goal-cost-discipline-v3-20260925"
+POLICY_EPOCH = "goal-cost-discipline-v4-gate-queue-20260926"
 TURN_OUTCOME_SCHEMA = "skatai.v2.main-turn-outcome.v2"
 LOCK_SCHEMA = "skatai.v2.main-execution-lock.v2"
 GOVERNOR_SCHEMA = "skatai.v2.main-execution-governor.v2"
 GOAL_POLICY_SCHEMA = "skatai.v2.main-goal-policy.v1"
-REENABLE_APPROVAL_SCHEMA = "skatai.v2.main-reenable-approval.v1"
-WORK_PERMIT_SCHEMA = "skatai.v2.main-work-permit.v1"
+GATE_QUEUE_SCHEMA = "skatai.v2.main-gate-queue.v1"
+REENABLE_APPROVAL_SCHEMA = "skatai.v2.main-reenable-approval.v2"
+WORK_PERMIT_SCHEMA = "skatai.v2.main-work-permit.v2"
 TERMINAL_CLASSIFICATIONS = {"ACCEPT", "REJECT", "INCONCLUSIVE", "CONCLUDED"}
 EXTERNAL_WAIT_CLASSIFICATIONS = {"BLOCKED_EXTERNAL", "WAITING_EXTERNAL"}
 
@@ -307,6 +310,7 @@ def approval_policy_hashes():
         "agent_instructions": PROMPT,
         "governor": GOVERNOR,
         "goal_policy": GOAL_POLICY,
+        "gate_queue": GATE_QUEUE,
         "master_prompt": MASTER_PROMPT,
         "founding_spec": FOUNDING_SPEC,
         "work_prompt": WORK_PROMPT,
@@ -319,7 +323,6 @@ def approval_policy_hashes():
         "user_input_submitter": TRUSTED_ROOT / "submit_main_user_input.py",
         "readiness_validator": TRUSTED_ROOT / "validate_main_agent_readiness.py",
         "tool_gateway": TRUSTED_ROOT / "main_tool_gateway.py",
-        "execution_lock": EXECUTION_LOCK,
     }
     return {name: sha256_file(path) for name, path in paths.items()}
 
@@ -397,18 +400,37 @@ def work_permit_valid(state=None, now=None):
         return None, "work_permit_external_event_without_autonomous_budget"
     if not EXECUTION_LOCK.is_file():
         return None, "work_permit_execution_lock_missing"
-    if raw.get("execution_lock_sha256") != sha256_file(EXECUTION_LOCK):
-        return None, "work_permit_execution_lock_changed"
     try:
-        lock = load_execution_lock()
-    except Exception:
-        return None, "work_permit_execution_lock_invalid"
-    if raw.get("primary_gate_id") != lock["primary"]["gate_id"]:
-        return None, "work_permit_primary_gate_mismatch"
-    if raw.get("goal_path_id") != lock["primary"]["goal_path_id"]:
-        return None, "work_permit_goal_path_mismatch"
-    if state is not None and state.get("work_permit_id") not in {None, permit_id}:
-        return None, "work_permit_state_id_mismatch"
+        queue = load_gate_queue()
+        if raw.get("gate_queue_sha256") != sha256_file(GATE_QUEUE):
+            return None, "work_permit_gate_queue_changed"
+        active_entry = gate_queue_entry_for_lock(queue)
+        if active_entry is None:
+            return None, "work_permit_active_lock_not_in_queue"
+        allowed = authorized_gate_entries(raw)
+        allowed_by_index = {int(e["index"]): e for e in allowed}
+        active_index = int(active_entry["index"])
+        permit_entry = allowed_by_index.get(active_index)
+        if permit_entry is None:
+            return None, "work_permit_active_gate_not_authorized"
+        for key in ("gate_id", "goal_path_id", "lock_sha256"):
+            if permit_entry.get(key) != active_entry.get(key):
+                return None, "work_permit_active_gate_identity_mismatch"
+        if int(raw.get("gate_queue_start_index", -1)) != min(allowed_by_index):
+            return None, "work_permit_gate_queue_start_invalid"
+        max_rotations = int(raw.get("max_gate_rotations", -1))
+        if max_rotations < 0 or max_rotations > len(allowed) - 1:
+            return None, "work_permit_gate_rotation_limit_invalid"
+        if max(allowed_by_index) - min(allowed_by_index) > max_rotations:
+            return None, "work_permit_gate_rotation_window_invalid"
+    except Exception as exc:
+        return None, "work_permit_gate_queue_invalid:" + str(exc)
+    if state is not None:
+        if state.get("work_permit_id") not in {None, permit_id}:
+            return None, "work_permit_state_id_mismatch"
+        rotations = int(state.get("gate_rotations_used") or 0)
+        if rotations > int(raw.get("max_gate_rotations") or 0):
+            return None, "work_permit_gate_rotations_exhausted"
     return raw, None
 
 def work_permit_budget_status(state, permit, kind):
@@ -451,8 +473,8 @@ def load_goal_policy():
         raise RuntimeError("GOAL_POLICY_PATH_INVALID")
     return raw
 
-def load_execution_lock():
-    raw = strict_json_load(EXECUTION_LOCK)
+def load_execution_lock(path=None):
+    raw = strict_json_load(EXECUTION_LOCK if path is None else Path(path))
     if raw.get("schema") != LOCK_SCHEMA:
         raise RuntimeError("EXECUTION_LOCK_SCHEMA_MISMATCH")
     goal_policy = load_goal_policy()
@@ -598,6 +620,110 @@ def load_execution_lock():
         if len(str(watch.get("expected_source_commit") or "")) != 40:
             raise RuntimeError("EXECUTION_LOCK_EVENT_WATCH_SOURCE_INVALID")
     return raw
+
+def load_gate_queue():
+    raw = strict_json_load(GATE_QUEUE)
+    if raw.get("schema") != GATE_QUEUE_SCHEMA:
+        raise RuntimeError("GATE_QUEUE_SCHEMA_MISMATCH")
+    entries = raw.get("entries")
+    if not isinstance(entries, list) or not (1 <= len(entries) <= 16):
+        raise RuntimeError("GATE_QUEUE_ENTRIES_INVALID")
+    seen_gates = set()
+    seen_hashes = set()
+    for expected_index, entry in enumerate(entries):
+        if not isinstance(entry, dict) or entry.get("index") != expected_index:
+            raise RuntimeError("GATE_QUEUE_INDEX_INVALID")
+        gate_id = str(entry.get("gate_id") or "")
+        goal_id = str(entry.get("goal_path_id") or "")
+        rel = str(entry.get("lock_file") or "")
+        expected_sha = str(entry.get("lock_sha256") or "")
+        if not gate_id or gate_id in seen_gates:
+            raise RuntimeError("GATE_QUEUE_GATE_INVALID")
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_sha) or expected_sha in seen_hashes:
+            raise RuntimeError("GATE_QUEUE_HASH_INVALID")
+        path = (GATE_DIR / rel.removeprefix("gates/")).resolve(strict=False)
+        try:
+            path.relative_to(GATE_DIR.resolve())
+        except ValueError:
+            raise RuntimeError("GATE_QUEUE_PATH_INVALID")
+        if not path.is_file() or sha256_file(path) != expected_sha:
+            raise RuntimeError("GATE_QUEUE_LOCK_IDENTITY_INVALID")
+        lock = load_execution_lock(path)
+        primary = lock["primary"]
+        if primary.get("gate_id") != gate_id or primary.get("goal_path_id") != goal_id:
+            raise RuntimeError("GATE_QUEUE_LOCK_METADATA_MISMATCH")
+        seen_gates.add(gate_id)
+        seen_hashes.add(expected_sha)
+    return raw
+
+def gate_queue_entry_for_lock(queue=None, lock_path=None):
+    queue = load_gate_queue() if queue is None else queue
+    path = EXECUTION_LOCK if lock_path is None else Path(lock_path)
+    active_sha = sha256_file(path)
+    lock = load_execution_lock(path)
+    primary = lock["primary"]
+    for entry in queue["entries"]:
+        if (
+            entry.get("lock_sha256") == active_sha
+            and entry.get("gate_id") == primary.get("gate_id")
+            and entry.get("goal_path_id") == primary.get("goal_path_id")
+        ):
+            return entry
+    return None
+
+def authorized_gate_entries(permit):
+    entries = permit.get("authorized_gates")
+    if not isinstance(entries, list) or not entries:
+        raise RuntimeError("WORK_PERMIT_AUTHORIZED_GATES_INVALID")
+    return entries
+
+def rotate_to_next_authorized_gate(state, permit, outcome):
+    queue = load_gate_queue()
+    current = gate_queue_entry_for_lock(queue)
+    if current is None:
+        return False, "active_lock_not_in_gate_queue"
+    allowed = authorized_gate_entries(permit)
+    allowed_by_index = {int(e["index"]): e for e in allowed}
+    current_index = int(current["index"])
+    if current_index not in allowed_by_index:
+        return False, "active_gate_not_authorized_by_permit"
+    if outcome.get("primary_gate_id") != current.get("gate_id"):
+        return False, "outcome_gate_not_active_queue_gate"
+    next_index = current_index + 1
+    if next_index not in allowed_by_index:
+        return False, "gate_queue_exhausted"
+    qentry = queue["entries"][next_index]
+    pentry = allowed_by_index[next_index]
+    for key in ("gate_id", "goal_path_id", "lock_sha256"):
+        if pentry.get(key) != qentry.get(key):
+            return False, "permit_queue_entry_mismatch"
+    src = (GATE_DIR / str(qentry["lock_file"]).removeprefix("gates/")).resolve()
+    if sha256_file(src) != qentry["lock_sha256"]:
+        return False, "next_gate_lock_hash_mismatch"
+    next_lock = load_execution_lock(src)
+    tmp = EXECUTION_LOCK.with_suffix(".json.next")
+    tmp.write_bytes(src.read_bytes())
+    os.chown(tmp, 0, 0)
+    os.chmod(tmp, 0o600)
+    if sha256_file(tmp) != qentry["lock_sha256"]:
+        tmp.unlink(missing_ok=True)
+        return False, "next_gate_copy_hash_mismatch"
+    os.replace(tmp, EXECUTION_LOCK)
+    state["gate_queue_index"] = next_index
+    state["gate_rotations_used"] = int(state.get("gate_rotations_used") or 0) + 1
+    state["autonomy_followup_authorized"] = True
+    state["autonomy_hold_reason"] = None
+    state["initial_sent"] = False
+    state["same_gate_followups"] = 0
+    state["last_followup_signature"] = None
+    state["last_followup_gate"] = None
+    state["pending_external_event"] = None
+    log(
+        "gate_rotated "
+        f"from={current['gate_id']} to={next_lock['primary']['gate_id']} "
+        f"index={next_index} rotations={state['gate_rotations_used']}"
+    )
+    return True, None
 
 def _json_field(raw, dotted):
     cur = raw
@@ -880,6 +1006,38 @@ def read_turn_outcome(expected_nonce, governor):
     if raw.get("progress_kind") not in allowed:
         return None, "turn_outcome_progress_kind_invalid"
     return raw, None
+
+def terminal_outcome_allows_rotation(outcome, lock, governor, state=None):
+    state = state or {}
+    if outcome.get("classification") not in TERMINAL_CLASSIFICATIONS:
+        return False, "not_terminal"
+    if not outcome.get("material_progress"):
+        return False, "terminal_without_material_progress"
+    if outcome.get("progress_kind") not in governor["progress"]["allowed_progress_kinds"]:
+        return False, "terminal_nonconsequential_progress"
+    if state.get("turn_event_key") and outcome.get("event_key") != state.get("turn_event_key"):
+        return False, "turn_outcome_event_mismatch"
+    if state.get("turn_trigger_type") and outcome.get("trigger_type") != state.get("turn_trigger_type"):
+        return False, "turn_outcome_trigger_mismatch"
+    if state.get("turn_primary_gate_id") and outcome.get("primary_gate_id") != state.get("turn_primary_gate_id"):
+        return False, "turn_outcome_gate_mismatch"
+    if state.get("turn_goal_path_id") and outcome.get("goal_path_id") != state.get("turn_goal_path_id"):
+        return False, "turn_outcome_goal_mismatch"
+    if outcome.get("primary_gate_id") != lock["primary"]["gate_id"]:
+        return False, "terminal_gate_not_current"
+    if outcome.get("goal_path_id") != lock["primary"]["goal_path_id"]:
+        return False, "terminal_goal_not_current"
+    if state.get("turn_trigger_type") != "USER_DIRECTIVE":
+        contract_ok, contract_reason = progress_contract_status(state)
+        if not contract_ok:
+            return False, contract_reason
+    evidence_ok, verified_paths = controller_verifiable_evidence(
+        outcome.get("evidence"), since=state.get("turn_started_at")
+    )
+    if not evidence_ok:
+        return False, "terminal_without_fresh_verifiable_evidence"
+    outcome["_controller_verified_evidence"] = verified_paths
+    return True, None
 
 def outcome_allows_followup(outcome, lock, governor, state=None):
     state = state or {}
@@ -1779,6 +1937,8 @@ def main():
                 state["permit_actual_total_tokens"] = 0
                 state["permit_reserved_total_tokens"] = 0
                 state["turn_token_reservation"] = 0
+                state["gate_queue_index"] = int(permit["gate_queue_start_index"])
+                state["gate_rotations_used"] = 0
                 state["initial_sent"] = False
                 state["awaiting_turn_outcome"] = False
                 state["autonomy_followup_authorized"] = False
@@ -1895,14 +2055,27 @@ def main():
                     log("autonomy_hold reason=" + outcome_error)
                 else:
                     lock = load_execution_lock()
-                    allowed, reason = outcome_allows_followup(
-                        outcome, lock, governor, state
-                    )
+                    rotated = False
+                    if outcome.get("classification") in TERMINAL_CLASSIFICATIONS:
+                        terminal_ok, terminal_reason = terminal_outcome_allows_rotation(
+                            outcome, lock, governor, state
+                        )
+                        if terminal_ok:
+                            rotated, reason = rotate_to_next_authorized_gate(
+                                state, permit, outcome
+                            )
+                            allowed = bool(rotated)
+                        else:
+                            allowed, reason = False, terminal_reason
+                    else:
+                        allowed, reason = outcome_allows_followup(
+                            outcome, lock, governor, state
+                        )
                     state["last_turn_outcome"] = outcome
                     state["last_progress_fingerprint"] = progress_fingerprint()
                     state["autonomy_followup_authorized"] = bool(allowed)
                     state["autonomy_hold_reason"] = None if allowed else reason
-                    if allowed:
+                    if allowed and not rotated:
                         state["last_followup_signature"] = outcome.get(
                             "_controller_followup_signature"
                         )
@@ -1919,6 +2092,8 @@ def main():
                         + str(outcome.get("material_progress"))
                         + " followup="
                         + str(bool(allowed))
+                        + " rotated="
+                        + str(bool(rotated))
                         + ("" if allowed else " reason=" + str(reason))
                     )
                 state["turn_started_at"] = None

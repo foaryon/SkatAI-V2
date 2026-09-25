@@ -1,0 +1,73 @@
+{
+  "schema": "skatai.v2.main-execution-lock.v2",
+  "captured_at": "2026-09-26T00:00:00Z",
+  "reason": "Pre-authorized deterministic MAIN gate queue entry.",
+  "primary": {
+    "gate_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
+    "status": "EXECUTABLE",
+    "goal_path_id": "G7_FULL_AFK",
+    "objective": "Evaluate current V2 against the founding anti-Pseudo-V2 acceptance rule using current source/runtime authority boundaries.",
+    "end_state_contribution": "Verifies that clean V2 remains independently operable and does not silently rely on V1 runtime/state/authority.",
+    "selection_basis": "The founding specification requires an explicit anti-Pseudo-V2 acceptance gate; current scorecard still marks it NOT_YET_VERIFIED.",
+    "selection_evidence": [
+      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "SKATAI_V2_FOUNDING_SPECIFICATION.md",
+      "SKATAI_V2_WORK_PROMPT.md",
+      "provenance/MAIN_END_STATE_SCORECARD.json",
+      "scripts/openai_platform_main_controller.py",
+      "scripts/main_tool_gateway.py"
+    ],
+    "evidence": [
+      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "SKATAI_V2_FOUNDING_SPECIFICATION.md",
+      "SKATAI_V2_WORK_PROMPT.md",
+      "provenance/MAIN_END_STATE_SCORECARD.json",
+      "scripts/openai_platform_main_controller.py",
+      "scripts/main_tool_gateway.py"
+    ],
+    "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a bounded evidence/control task.",
+    "allowed_material_effects": [
+      "READ_ONLY_INSPECTION",
+      "PROVENANCE_WRITE"
+    ],
+    "executor_capabilities": [],
+    "progress_contract": {
+      "kind": "JSON_FIELD_TRANSITION",
+      "path": "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "field": "classification",
+      "before_prefix": "OPEN",
+      "after_forbid_prefix": "OPEN"
+    },
+    "authorized_commands": [],
+    "writable_files": [
+      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "provenance/MAIN_END_STATE_SCORECARD.json"
+    ],
+    "completion": [
+      "Decision explicitly checks active V2 runtime/source/authority independence from V1, not filenames or historical labels.",
+      "Any remaining active V1 dependency is named precisely.",
+      "Scorecard is updated only to the supported status.",
+      "No V1 artifact is promoted merely because it exists."
+    ],
+    "next_action": "Call get_active_lease first. Inspect only current V2 source/runtime references needed for the anti-Pseudo-V2 test. Decide ACCEPT/REJECT/INCONCLUSIVE, update provenance and scorecard, record_turn_outcome, and yield."
+  },
+  "secondary": null,
+  "external_dependencies": [
+    {
+      "event_watch": {
+        "type": "R9_GATE",
+        "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
+        "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
+        "expected_next_per_arm_target": 300,
+        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+      },
+      "gate_id": "B1_EXTERNAL_ISS_R9",
+      "goal_path_id": "G4_CONTROLLED_EVALUATION",
+      "owner": "independent fail-closed supervisor",
+      "rule": "No model polling and no R9 mutation from this PRIMARY.",
+      "status": "WAITING_EXTERNAL"
+    }
+  ],
+  "switching_rule": "Terminal classification returns control to the trusted deterministic gate queue selector. The model cannot select or alter the next gate."
+}

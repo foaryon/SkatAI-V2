@@ -1,7 +1,7 @@
 {
   "schema": "skatai.v2.main-execution-governor.v2",
   "enabled": true,
-  "policy_epoch": "goal-cost-discipline-v3-20260925",
+  "policy_epoch": "goal-cost-discipline-v4-gate-queue-20260926",
   "restart_requires": {
     "hard_disable_absent": true,
     "reenable_approved_present": true,

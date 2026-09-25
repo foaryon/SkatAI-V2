@@ -16,6 +16,8 @@ def _load_controller():
     mod.CONTINUE = root / "configs/control/MAIN_CONTINUE_EXECUTION_POLICY.txt"
     mod.GOVERNOR = root / "configs/control/MAIN_EXECUTION_GOVERNOR.json"
     mod.GOAL_POLICY = root / "configs/control/MAIN_GOAL_POLICY.json"
+    mod.GATE_QUEUE = root / "configs/control/MAIN_GATE_QUEUE.json"
+    mod.GATE_DIR = root / "configs/control/main_gates"
     mod.MASTER_PROMPT = root / "SKATAI_V2_MASTER_CONTINUE_MERGED.md"
     mod.FOUNDING_SPEC = root / "SKATAI_V2_FOUNDING_SPECIFICATION.md"
     mod.WORK_PROMPT = root / "SKATAI_V2_WORK_PROMPT.md"
@@ -27,7 +29,7 @@ def _load_controller():
 def _governor():
     return {
         "schema": "skatai.v2.main-execution-governor.v2",
-        "policy_epoch": "goal-cost-discipline-v3-20260925",
+        "policy_epoch": "goal-cost-discipline-v4-gate-queue-20260926",
         "enabled": True,
         "hard_total_budget": {
             "max_model_submits_per_utc_day": 10,
@@ -654,3 +656,83 @@ def test_terminal_outcome_is_allowed_at_round_cap(tmp_path, monkeypatch):
     assert result["turn_tool_rounds"] == max_rounds
     assert result["turn_tool_calls"] == 1
     assert result["turn_side_effect_calls"] == 1
+
+
+def test_hash_bound_gate_queue_rotates_only_preauthorized_entries(tmp_path, monkeypatch):
+    mod = _load_controller()
+    queue = mod.load_gate_queue()
+    assert len(queue["entries"]) >= 3
+    active = tmp_path / "EXECUTION_LOCK.json"
+    first = mod.GATE_DIR / queue["entries"][0]["lock_file"].removeprefix("gates/")
+    active.write_bytes(first.read_bytes())
+    mod.EXECUTION_LOCK = active
+    mod.LOG = tmp_path / "controller.log"
+    monkeypatch.setattr(mod.os, "chown", lambda *args: None)
+
+    authorized = [
+        {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
+        for entry in queue["entries"]
+    ]
+    permit = {"authorized_gates": authorized}
+    state = {"gate_queue_index": 0, "gate_rotations_used": 0}
+
+    outcome0 = {"primary_gate_id": queue["entries"][0]["gate_id"]}
+    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome0)
+    assert ok and reason is None
+    assert mod.sha256_file(active) == queue["entries"][1]["lock_sha256"]
+    assert state["gate_queue_index"] == 1
+    assert state["gate_rotations_used"] == 1
+    assert state["autonomy_followup_authorized"] is True
+    assert state["initial_sent"] is False
+
+    outcome1 = {"primary_gate_id": queue["entries"][1]["gate_id"]}
+    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome1)
+    assert ok and reason is None
+    assert mod.sha256_file(active) == queue["entries"][2]["lock_sha256"]
+    assert state["gate_queue_index"] == 2
+    assert state["gate_rotations_used"] == 2
+
+    outcome2 = {"primary_gate_id": queue["entries"][2]["gate_id"]}
+    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome2)
+    assert not ok and reason == "gate_queue_exhausted"
+    assert mod.sha256_file(active) == queue["entries"][2]["lock_sha256"]
+
+
+def test_work_permit_rejects_lock_outside_authorized_gate_queue(tmp_path, monkeypatch):
+    mod = _load_controller()
+    queue = mod.load_gate_queue()
+    active = tmp_path / "EXECUTION_LOCK.json"
+    first = mod.GATE_DIR / queue["entries"][0]["lock_file"].removeprefix("gates/")
+    active.write_bytes(first.read_bytes())
+    permit_path = tmp_path / "permit.json"
+    mod.EXECUTION_LOCK = active
+    mod.WORK_PERMIT = permit_path
+    mod.HARD_DISABLE = tmp_path / "hard-disabled"
+    mod.GATE_QUEUE = Path(__file__).resolve().parents[1] / "configs/control/MAIN_GATE_QUEUE.json"
+    mod.GATE_DIR = Path(__file__).resolve().parents[1] / "configs/control/main_gates"
+    monkeypatch.setattr(mod, "approval_policy_hashes", lambda: {"queue": "validation"})
+
+    only_second = queue["entries"][1]
+    permit = {
+        "schema": mod.WORK_PERMIT_SCHEMA,
+        "policy_epoch": mod.POLICY_EPOCH,
+        "policy_hashes": {"queue": "validation"},
+        "permit_id": "queue-test-permit-000000000001",
+        "mode": "BOUNDED_GATE",
+        "approved": True,
+        "expires_at_epoch": 9999999999,
+        "max_model_submits_total": 2,
+        "max_autonomous_submits_total": 2,
+        "max_total_tokens": 500000,
+        "allowed_trigger_types": ["PRIMARY_NEXT_STEP"],
+        "gate_queue_sha256": mod.sha256_file(mod.GATE_QUEUE),
+        "gate_queue_start_index": 1,
+        "max_gate_rotations": 0,
+        "authorized_gates": [{
+            k: only_second[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")
+        }],
+    }
+    permit_path.write_text(json.dumps(permit) + "\n", encoding="utf-8")
+    checked, reason = mod.work_permit_valid()
+    assert checked is None
+    assert reason == "work_permit_active_gate_not_authorized"

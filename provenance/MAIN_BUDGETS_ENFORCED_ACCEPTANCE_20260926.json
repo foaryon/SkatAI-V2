@@ -1,0 +1,9 @@
+{
+  "schema": "skatai.v2.budgets-enforced-acceptance.v1",
+  "captured_at": "2026-09-26T00:00:00Z",
+  "task_id": "BUDGETS_ENFORCED_ACCEPTANCE",
+  "classification": "OPEN",
+  "question": "Do the recovered controller, governor, token-settlement and successful post-fix turn establish the BUDGETS_ENFORCED acceptance criterion?",
+  "verification": "PENDING",
+  "decision": "PENDING"
+}

@@ -32,7 +32,7 @@ install -d -m 755 -o root -g root "$BASE" "$RELEASES"
 release="$RELEASES/$head"
 stage="$RELEASES/.stage-$head-$$"
 rm -rf "$stage"
-install -d -m 755 -o root -g root "$stage" "$stage/config" "$stage/authority"
+install -d -m 755 -o root -g root "$stage" "$stage/config" "$stage/config/gates" "$stage/authority"
 
 extract() {
   src="$1"
@@ -64,6 +64,10 @@ extract configs/control/MAIN_AGENT_INSTRUCTIONS.md config/MAIN_AGENT_INSTRUCTION
 extract configs/control/MAIN_CONTINUE_EXECUTION_POLICY.txt config/MAIN_CONTINUE_EXECUTION_POLICY.txt 644
 extract configs/control/MAIN_EXECUTION_GOVERNOR.json config/MAIN_EXECUTION_GOVERNOR.json 644
 extract configs/control/MAIN_GOAL_POLICY.json config/MAIN_GOAL_POLICY.json 644
+extract configs/control/MAIN_GATE_QUEUE.json config/MAIN_GATE_QUEUE.json 644
+extract configs/control/main_gates/00-main_state_reconciliation.json config/gates/00-main_state_reconciliation.json 644
+extract configs/control/main_gates/01-budgets_enforced_acceptance.json config/gates/01-budgets_enforced_acceptance.json 644
+extract configs/control/main_gates/02-anti_pseudo_v2_acceptance.json config/gates/02-anti_pseudo_v2_acceptance.json 644
 extract provenance/MAIN_EXECUTION_LOCK.json config/INITIAL_EXECUTION_LOCK.json 644
 
 extract SKATAI_V2_FOUNDING_SPECIFICATION.md authority/SKATAI_V2_FOUNDING_SPECIFICATION.md 644
