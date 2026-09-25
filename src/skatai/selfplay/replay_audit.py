@@ -11,6 +11,7 @@ import hashlib
 import json
 
 from skatai.selfplay.learner_dataset import _validate_decision
+from skatai.selfplay.cardplay import make_deal
 from skatai.selfplay.game import run_game
 from skatai.selfplay.scoring import score_basic_episode
 from skatai.selfplay.trajectory import SCHEMA
@@ -31,11 +32,40 @@ def audit_captured_record(record: dict, *, seed: int) -> dict:
         raise ValueError("REPLAY_DECISION_TRACE_HASH_MISMATCH")
     # Replay against the producer alone can reproduce the producer's semantic
     # mistake. Check all-seat public point views independently first.
+    contract = record.get("contract")
+    open_hand = None
+    if contract is not None and "O" in contract:
+        declarer = record["declarer"]
+        if declarer not in (0, 1, 2):
+            raise ValueError("REPLAY_OUVERT_DECLARER_INVALID")
+        deal = make_deal(seed)
+        original = (*deal.hands[declarer], *deal.skat)
+        discards = [
+            tuple(item["action"]) for item in decisions
+            if item["phase"] == "DISCARD" and item["seat"] == declarer
+        ]
+        if len(discards) > 1:
+            raise ValueError("REPLAY_OUVERT_DISCARD_COUNT_INVALID")
+        open_hand = (
+            tuple(card for card in original if card not in discards[0])
+            if discards else deal.hands[declarer]
+        )
+        if len(open_hand) != 10:
+            raise ValueError("REPLAY_OUVERT_HAND_INVALID")
     for item in decisions:
         if item["phase"] == "CARDPLAY":
             _validate_decision(
                 item, item["seat"], record["contract"], record["threshold"],
             )
+            if open_hand is not None:
+                view = item["observation"]
+                played = {
+                    card for actor, card in view["played_cards"]
+                    if actor == record["declarer"]
+                }
+                expected = {card for card in open_hand if card not in played}
+                if set(view["open_hand_cards"]) != expected:
+                    raise ValueError("REPLAY_OUVERT_PUBLIC_HAND_MISMATCH")
 
     class Cursor:
         def __init__(self) -> None:

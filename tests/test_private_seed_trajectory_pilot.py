@@ -90,3 +90,89 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
     with pytest.raises(ValueError, match="LEARNER_RECORD_INVALID"):
         load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
+
+
+@pytest.mark.parametrize("contract,pickup", [("NO", True), ("NHO", False)])
+def test_ouvert_capture_audit_and_learner_reject_false_public_hand(
+    tmp_path, contract, pickup,
+):
+    from dataclasses import asdict
+    from skatai.game.bidding import BID_VALUES
+    from skatai.selfplay.cardplay import RandomLegalPolicy, make_deal
+    from skatai.selfplay.trajectory import capture_basic_game, declarer_learner_view
+
+    class Bid18:
+        def probability_continue(self, view):
+            return float(BID_VALUES[view.bid_index] <= 18)
+
+    class Declare:
+        def choose_contract(self, view):
+            return "PICKUP" if pickup and not view.picked_up_skat else contract
+
+    class Discard:
+        def choose_discard(self, view):
+            return view.hand12[:2]
+
+    seed = 20260925
+    raw = capture_basic_game(
+        seed, source_commit="a" * 40,
+        policy_ids={phase: (phase,) * 3 for phase in
+                    ("BID", "DECLARATION", "DISCARD", "CARDPLAY")},
+        bidding_policies=[Bid18() for _ in range(3)],
+        declaration_policies=[Declare() for _ in range(3)],
+        discard_policies=[Discard() for _ in range(3)],
+        cardplay_policies=[RandomLegalPolicy(seed + seat) for seat in range(3)],
+        legal_contracts=(contract,),
+    )
+    assert raw.contract == contract
+    raw_row = json.loads(json.dumps(asdict(raw)))
+    assert audit_captured_record(raw_row, seed=seed)["contract"] == contract
+    assert all(
+        len(item.observation["open_hand_cards"]) == 10 - sum(
+            actor == raw.declarer for actor, _ in item.observation["played_cards"]
+        )
+        for item in raw.decisions if item.phase == "CARDPLAY"
+    )
+
+    learner = json.loads(json.dumps(asdict(declarer_learner_view(
+        raw,
+        policy_family_ids={phase: phase for phase in
+                           ("BID", "DECLARATION", "DISCARD", "CARDPLAY")},
+    ))))
+    data_path = tmp_path / "ouvert.learner.jsonl"
+    manifest_path = tmp_path / "ouvert.learner-manifest.json"
+
+    def load_row(row):
+        data_path.write_text(json.dumps(row) + "\n")
+        manifest_path.write_text(json.dumps({
+            "schema": "skatai.v2.selfplay.learner-seat-pilot-manifest.v1",
+            "source_commit": "a" * 40,
+            "count": 1,
+            "learner_schema": "skatai.v2.selfplay.learner-seat.v1",
+            "learner_file": data_path.name,
+            "learner_sha256": hashlib.sha256(data_path.read_bytes()).hexdigest(),
+            "trust_level": "D1_EXPLORATORY_ONLY",
+            "restrictions": ["no training"],
+        }))
+        return load_bounded_learner_pilot(manifest_path, data_path)
+
+    assert len(load_row(learner)) == 1
+    wrong = json.loads(json.dumps(learner))
+    view = next(d["observation"] for d in wrong["decisions"] if d["phase"] == "CARDPLAY")
+    foreign = next(card for card in make_deal(seed).hands[(raw.declarer + 1) % 3]
+                   if card not in view["open_hand_cards"])
+    view["open_hand_cards"][0] = foreign
+    with pytest.raises(ValueError, match="LEARNER_OUVERT_DECLARER_HAND_MISMATCH"):
+        load_row(wrong)
+
+    privileged = json.loads(json.dumps(asdict(raw)))
+    raw_view = next(d["observation"] for d in privileged["decisions"]
+                    if d["phase"] == "CARDPLAY")
+    foreign_raw = next(card for card in make_deal(seed).hands[(raw.declarer + 1) % 3]
+                       if card not in raw_view["open_hand_cards"])
+    raw_view["open_hand_cards"][0] = foreign_raw
+    privileged["decision_trace_sha256"] = hashlib.sha256(json.dumps(
+        privileged["decisions"], sort_keys=True, separators=(",", ":"),
+    ).encode()).hexdigest()
+    with pytest.raises(ValueError, match="REPLAY_OUVERT_PUBLIC_HAND_MISMATCH"):
+        audit_captured_record(privileged, seed=seed)

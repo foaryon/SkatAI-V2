@@ -76,6 +76,16 @@ def _validate_decision(item: dict, seat: int, contract: str, threshold: float) -
         expected = CardplayObservation.create(**view)
         if expected.contract != contract or item["action"] not in expected.legal_cards:
             raise ValueError("LEARNER_CARDPLAY_ACTION_ILLEGAL")
+        played_by_declarer = {
+            card for actor, card in expected.played_cards
+            if actor == expected.declarer
+        }
+        if "O" in contract:
+            if (len(expected.open_hand_cards) != 10 - len(played_by_declarer)
+                    or set(expected.open_hand_cards) & played_by_declarer):
+                raise ValueError("LEARNER_OUVERT_PUBLIC_HAND_INVALID")
+        elif expected.open_hand_cards:
+            raise ValueError("LEARNER_NONOUVERT_PUBLIC_HAND_INVALID")
         replayed = replay_tricks(
             expected.played_cards,
             game_type=game_type_from_contract(expected.contract),
@@ -142,5 +152,12 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
             if not isinstance(decision["ordinal"], int) or decision["ordinal"] <= previous:
                 raise ValueError("LEARNER_DECISION_ORDER_INVALID")
             previous = decision["ordinal"]
+            if (decision["phase"] == "CARDPLAY"
+                    and decision["observation"]["declarer"] != row["seat"]):
+                raise ValueError("LEARNER_CARDPLAY_NOT_DECLARER")
             _validate_decision(decision, row["seat"], row["contract"], row["threshold"])
+            if decision["phase"] == "CARDPLAY":
+                view = decision["observation"]
+                if "O" in row["contract"] and set(view["open_hand_cards"]) != set(view["hand"]):
+                    raise ValueError("LEARNER_OUVERT_DECLARER_HAND_MISMATCH")
     return rows
