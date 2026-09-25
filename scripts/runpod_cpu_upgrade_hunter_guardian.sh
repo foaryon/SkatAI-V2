@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -u
+umask 027
+
+BASE=/workspace/sentinelx-host
+REPO=/workspace/skatai-v2
+HUNTER="$REPO/scripts/runpod_cpu_upgrade_hunter.py"
+LOG="$BASE/logs/runpod-cpu-hunter-guardian.log"
+LOCK=/run/lock/skatai-runpod-cpu-hunter-guardian.lock
+POLL_SECONDS=60
+TARGETS="16/32,8/16"
+
+mkdir -p "$BASE/logs" /run/lock "$BASE/runpod-cpu-upgrade-hunter" 2>/dev/null || true
+
+log_event() {
+  printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >>"$LOG" 2>/dev/null || true
+}
+
+exec 9>"$LOCK" || exit 1
+if ! flock -n 9; then
+  exit 0
+fi
+
+child=""
+cleanup() {
+  if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
+    kill -TERM "$child" 2>/dev/null || true
+    wait "$child" 2>/dev/null || true
+  fi
+}
+trap 'cleanup; exit 0' INT TERM
+
+failures=0
+while true; do
+  if [ ! -f "$HUNTER" ]; then
+    log_event "hunter-missing path=$HUNTER retry_s=30"
+    sleep 30
+    continue
+  fi
+
+  started="$(date +%s)"
+  log_event "hunter-start mode=watch-only targets=$TARGETS poll_s=$POLL_SECONDS"
+  python3 "$HUNTER" --targets "$TARGETS" --poll-seconds "$POLL_SECONDS" &
+  child=$!
+  wait "$child"
+  rc=$?
+  child=""
+
+  lived=$(( $(date +%s) - started ))
+  if [ "$lived" -ge 300 ]; then
+    failures=0
+    delay=10
+  else
+    failures=$((failures + 1))
+    delay=$((10 * failures))
+    [ "$delay" -gt 120 ] && delay=120
+  fi
+  log_event "hunter-exit rc=$rc lived_s=$lived restart_s=$delay failures=$failures"
+  sleep "$delay"
+done
