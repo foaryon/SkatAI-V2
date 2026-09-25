@@ -59,6 +59,30 @@ chmod 600 "$CONTROL_ROOT/AGENT_HARD_DISABLED"
 rm -f "$CONTROL_ROOT/AGENT_REENABLE_APPROVED" "$CONTROL_ROOT/ACTIVE_WORK_PERMIT.json"
 rm -f "$CONTROL_ROOT/EXECUTION_LOCK.json" "$CONTROL_ROOT/executor-write-scope.json"
 
+# A trusted-runtime cutover must not overlap controller authority epochs.
+# First let the old controller/guardian observe the hard-disable naturally.
+main_pids() {
+  pgrep -f '^python3 /opt/skatai-main-controller/current/openai_platform_main_controller\.py$' 2>/dev/null || true
+  pgrep -f '^bash /opt/skatai-main-controller/current/openai_platform_guardian\.sh$' 2>/dev/null || true
+}
+for _ in $(seq 1 45); do
+  [ -z "$(main_pids)" ] && break
+  sleep 1
+done
+remaining="$(main_pids)"
+if [ -n "$remaining" ]; then
+  # Bounded graceful fallback for a controller blocked in I/O or a stale guardian.
+  kill -TERM $remaining 2>/dev/null || true
+  for _ in $(seq 1 10); do
+    [ -z "$(main_pids)" ] && break
+    sleep 1
+  done
+fi
+if [ -n "$(main_pids)" ]; then
+  echo "MAIN_CONTROL_PLANE_QUIESCE_FAILED" >&2
+  exit 1
+fi
+
 # Keep the old marker only as defense-in-depth; it is not authoritative.
 cat >"$OLD_AGENT/AGENT_HARD_DISABLED" <<'EOF'
 HARD_DISABLED=1
