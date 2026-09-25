@@ -7,6 +7,7 @@ import math
 import random
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from statistics import NormalDist
 from typing import Iterable, Mapping, Sequence
@@ -164,6 +165,18 @@ def stratified_bootstrap_interval(
     }
 
 
+@lru_cache(maxsize=3)
+def _frozen_prefix_interval(
+    games: tuple[ISSGameOutcome, ...], replicates: int, seed: int,
+    confidence: float,
+) -> tuple[float, float]:
+    """Reuse only a byte-equivalent frozen look's bootstrap within a process."""
+    interval = stratified_bootstrap_interval(
+        games, replicates=replicates, seed=seed, confidence=confidence
+    )
+    return interval["low"], interval["high"]
+
+
 def decide_external_gate(
     games: Sequence[ISSGameOutcome],
     *,
@@ -194,9 +207,17 @@ def decide_external_gate(
             arm_used[g.arm] += 1
 
     estimate = stratified_difference(selected)
-    interval = stratified_bootstrap_interval(
-        selected, replicates=replicates, seed=seed, confidence=CONFIDENCE
+    low, high = _frozen_prefix_interval(
+        tuple(selected), replicates, seed, CONFIDENCE
     )
+    interval = {
+        "replicates": replicates,
+        "seed": seed,
+        "confidence": CONFIDENCE,
+        "alpha": 1.0 - CONFIDENCE,
+        "low": low,
+        "high": high,
+    }
 
     if interval["low"] > 0.0:
         status = "COMPLETE"
