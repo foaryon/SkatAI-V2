@@ -33,7 +33,13 @@ def test_root_bootstrap_passes_credentials_only_in_child_environment(monkeypatch
 
     binary, argv, env = calls[0]
     assert binary == "setpriv"
-    assert argv[-1].endswith("supervise_frozen_r9.py")
+    supervisor_index = argv.index("/usr/bin/python3") + 1
+    assert argv[supervisor_index].endswith("supervise_frozen_r9.py")
+    assert argv[supervisor_index + 1:] == [
+        "--frozen-repo", "/workspace/skatai-v2-wt-r9-game-not-started",
+        "--launcher", "/workspace/skatai-v2-runtime/iss/external-gate-r9/launch-r9-pinned.sh",
+        "--env-file", "/workspace/skatai-v2-runtime/iss/iss-runtime.env",
+    ]
     assert env["HOME"] == "/var/lib/sentinelx"
     assert env["XDG_CONFIG_HOME"] == "/var/lib/sentinelx/.config"
     assert env["AWS_ACCESS_KEY_ID"] == "private-id"

@@ -51,6 +51,7 @@ extract scripts/openai_agent_boot.sh openai_agent_boot.sh 755
 extract scripts/openai_platform_guardian.sh openai_platform_guardian.sh 755
 extract scripts/prepare_main_executor_user.sh prepare_main_executor_user.sh 755
 extract scripts/prepare_runtime_secrets.py prepare_runtime_secrets.py 755
+extract scripts/prepare_r9_runtime_secrets.py prepare_r9_runtime_secrets.py 755
 extract scripts/submit_main_user_input.py submit_main_user_input.py 755
 extract scripts/validate_main_agent_readiness.py validate_main_agent_readiness.py 755
 extract scripts/validate_main_controller_logic.py validate_main_controller_logic.py 755

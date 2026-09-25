@@ -7,10 +7,12 @@ RUNTIME=/workspace/skatai-v2-runtime/iss/external-gate-r9
 ENV_FILE=/workspace/skatai-v2-runtime/iss/iss-runtime.env
 SUPERVISOR="$HERE/supervise_frozen_r9.py"
 LAUNCH_BOOT="$HERE/launch_frozen_r9_supervisor.py"
-SECRET_PREP="$HERE/prepare_runtime_secrets.py"
+SECRET_PREP="$HERE/prepare_r9_runtime_secrets.py"
 LOG="$RUNTIME/supervisor-boot.log"
-EXPECTED_SOURCE_COMMIT=c77b401f3665ebd64c7c62491e122d8ccdfd22f1
-EXPECTED_LAUNCHER_SHA256=a9e083770b37092e54efe2c495547658a4972479177ed76869774e8e52c143ac
+FROZEN_REPO=/workspace/skatai-v2-wt-r9-game-not-started
+LAUNCHER="$RUNTIME/launch-r9-pinned.sh"
+EXPECTED_SOURCE_COMMIT=5c4b6f977ebdf883e836e95eb0530121b99394e7
+EXPECTED_LAUNCHER_SHA256=b76fd0159f72b08af303bf06692d5a73ed1c05baf1d3e35e4141f4c241c87b3d
 
 mkdir -p "$RUNTIME"
 log() { printf '%s %s
@@ -55,5 +57,8 @@ fi
 export SKATAI_R9_EXPECTED_SOURCE_COMMIT="$EXPECTED_SOURCE_COMMIT"
 export SKATAI_R9_EXPECTED_LAUNCHER_SHA256="$EXPECTED_LAUNCHER_SHA256"
 export SKATAI_R9_SUPERVISOR_PATH="$SUPERVISOR"
+export SKATAI_R9_FROZEN_REPO="$FROZEN_REPO"
+export SKATAI_R9_LAUNCHER="$LAUNCHER"
+export SKATAI_R9_ENV_FILE="$ENV_FILE"
 setsid nohup /usr/bin/python3 "$LAUNCH_BOOT" >>"$LOG" 2>&1 </dev/null &
 log "trusted-supervisor-started pid=$!"

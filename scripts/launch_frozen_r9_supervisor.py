@@ -28,12 +28,26 @@ def main() -> None:
         "SKATAI_R9_SUPERVISOR_PATH",
         str(Path(__file__).resolve().with_name("supervise_frozen_r9.py")),
     )
+    frozen_repo = os.environ.get(
+        "SKATAI_R9_FROZEN_REPO",
+        "/workspace/skatai-v2-wt-r9-game-not-started",
+    )
+    launcher = os.environ.get(
+        "SKATAI_R9_LAUNCHER",
+        "/workspace/skatai-v2-runtime/iss/external-gate-r9/launch-r9-pinned.sh",
+    )
+    env_file = os.environ.get(
+        "SKATAI_R9_ENV_FILE",
+        "/workspace/skatai-v2-runtime/iss/iss-runtime.env",
+    )
     os.execvpe(
         "setpriv",
         [
             "setpriv", f"--reuid={account.pw_uid}", f"--regid={account.pw_gid}",
-            "--init-groups", "--", "/usr/bin/python3",
-            supervisor,
+            "--init-groups", "--", "/usr/bin/python3", supervisor,
+            "--frozen-repo", frozen_repo,
+            "--launcher", launcher,
+            "--env-file", env_file,
         ],
         environment,
     )
