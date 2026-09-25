@@ -717,6 +717,130 @@ def test_active_table_error_is_persisted_as_protocol_failure_and_stops_worker(tm
     assert worker.table_id is None
 
 
+def test_idle_game_not_started_retires_table_after_destroy(tmp_path):
+    import json
+    from types import SimpleNamespace
+
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from skatai.iss.gate_worker import ExternalGateWorker
+
+    protocol = tmp_path / "service.jsonl"
+    protocol.write_text('{"direction":"in","line":"terminal"}\n')
+    events = []
+    sent = []
+    worker = object.__new__(ExternalGateWorker)
+    worker.paths = SimpleNamespace(runtime_root=tmp_path)
+    worker.source_commit = "a" * 40
+    worker.evidence = SimpleNamespace(
+        protocol_journal=protocol,
+        _file_size=lambda path: path.stat().st_size,
+        append_connection_event=lambda *args, **kwargs: events.append((args, kwargs)),
+    )
+    worker.effect_guard = ISSAuthorityGuard(ISSEffectJournal(tmp_path / "effects.jsonl"))
+    worker.assignment_by_game = {}
+    worker.client = SimpleNamespace(send_service_command=sent.append)
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+zoot"
+    worker._table_password = "ephemeral"
+    worker._expected_new_table_id = None
+    worker._mirror_pause_requested = False
+    worker.mirror_writebehind = SimpleNamespace(backpressure_required=lambda: False)
+    worker.evidence._write_mirror_status = lambda **kwargs: events.append(("status", kwargs))
+
+    event = SimpleNamespace(fields={"text": "play : _game_not_started"})
+    table = SimpleNamespace(table_id="T", game_sequence=1,
+                            viewer_name="SkatAI", in_progress=False)
+    worker._on_table_error(event, table)
+    marker = tmp_path / "mirror-departure-pending.json"
+    pending = json.loads(marker.read_text())
+    assert pending["protocol_offset"] == protocol.stat().st_size
+    assert pending["reason"] == "IDLE_PLAY_GAME_NOT_STARTED"
+    assert sent == ["table T SkatAI leave"]
+    assert worker.desired_stack is None and worker._mirror_pause_requested
+    assert worker._on_destroy("T") is True
+    assert not marker.exists()
+    assert worker.table_id is None and not worker._mirror_pause_requested
+
+
+def test_idle_game_not_started_refuses_unresolved_effect_or_active_table(tmp_path):
+    import pytest
+    from types import SimpleNamespace
+
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from skatai.iss.gate_worker import ExternalGateWorker, ISSGateWorkerError
+    from tests.test_iss_effects import request_result
+
+    protocol = tmp_path / "service.jsonl"
+    protocol.write_text("\n")
+    journal = ISSEffectJournal(tmp_path / "effects.jsonl")
+    req, result = request_result()
+    journal.begin(req, result, external_state_hash="a" * 64,
+                  table_id="T", game_sequence=1, protocol_sequence=4,
+                  wire_action="18", outbound_line="table T SkatAI play 18")
+    worker = object.__new__(ExternalGateWorker)
+    worker.paths = SimpleNamespace(runtime_root=tmp_path)
+    worker.source_commit = "a" * 40
+    worker.evidence = SimpleNamespace(protocol_journal=protocol,
+                                      _file_size=lambda path: path.stat().st_size)
+    worker.effect_guard = ISSAuthorityGuard(journal)
+    worker.assignment_by_game = {}
+    sent = []
+    worker.client = SimpleNamespace(send_service_command=sent.append)
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+zoot"
+    worker._table_password = "ephemeral"
+    worker._mirror_pause_requested = False
+    event = SimpleNamespace(fields={"text": "play : _game_not_started"})
+    table = SimpleNamespace(table_id="T", game_sequence=1,
+                            viewer_name="SkatAI", in_progress=False)
+    with pytest.raises(ISSGateWorkerError, match="WITHOUT_ACTIVE_GAME"):
+        worker._on_table_error(event, table)
+    assert not sent
+    journal.abort_stale(journal.pending()[0].effect_id, reason="test")
+    table.in_progress = True
+    with pytest.raises(ISSGateWorkerError, match="WITHOUT_ACTIVE_GAME"):
+        worker._on_table_error(event, table)
+    assert not sent
+
+
+def test_idle_departure_send_failure_retains_unknown_marker(tmp_path):
+    import pytest
+    from types import SimpleNamespace
+
+    from skatai.iss.effects import ISSAuthorityGuard, ISSEffectJournal
+    from skatai.iss.gate_worker import ExternalGateWorker, reconcile_mirror_departure
+
+    protocol = tmp_path / "service.jsonl"
+    protocol.write_text('{"direction":"in","line":"terminal"}\n')
+    worker = object.__new__(ExternalGateWorker)
+    worker.paths = SimpleNamespace(runtime_root=tmp_path)
+    worker.source_commit = "a" * 40
+    worker.evidence = SimpleNamespace(
+        protocol_journal=protocol,
+        _file_size=lambda path: path.stat().st_size,
+        append_connection_event=lambda *args, **kwargs: None,
+    )
+    worker.effect_guard = ISSAuthorityGuard(ISSEffectJournal(tmp_path / "effects.jsonl"))
+    worker.assignment_by_game = {}
+    def unknown_send(_command):
+        raise OSError("connection lost after possible send")
+    worker.client = SimpleNamespace(send_service_command=unknown_send)
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+zoot"
+    worker._table_password = "ephemeral"
+    worker._mirror_pause_requested = False
+    event = SimpleNamespace(fields={"text": "play : _game_not_started"})
+    table = SimpleNamespace(table_id="T", game_sequence=1,
+                            viewer_name="SkatAI", in_progress=False)
+    with pytest.raises(OSError, match="possible send"):
+        worker._on_table_error(event, table)
+    marker = tmp_path / "mirror-departure-pending.json"
+    assert marker.exists() and worker._mirror_pause_requested
+    assert not reconcile_mirror_departure(marker, protocol,
+                                          source_commit=worker.source_commit)
+    assert marker.exists()
+
+
 
 def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch):
     from types import SimpleNamespace

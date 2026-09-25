@@ -2248,6 +2248,49 @@ class ExternalGateWorker:
         active = self.assignment_by_game.get(key)
         error_text = str(event.fields.get("text") or "").strip()
         if active is None:
+            # ISS can reject a late PLAY after the previous game's terminal
+            # record has been durably closed. Retire only the verified idle
+            # table; an active game or unresolved effect still fails closed.
+            if (
+                error_text == "play : _game_not_started"
+                and self.table_id == table.table_id
+                and not table.in_progress
+                and not any(k[0] == table.table_id for k in self.assignment_by_game)
+                and not any(s.table_id == table.table_id
+                            for s in self.effect_guard.journal.pending())
+                and self.desired_stack is not None
+            ):
+                marker = self.paths.runtime_root / "mirror-departure-pending.json"
+                if marker.exists():
+                    raise ISSGateWorkerError("IDLE_TABLE_DEPARTURE_ALREADY_PENDING")
+                _atomic_json(
+                    marker,
+                    {
+                        "schema": "skatai.v2.iss-mirror-departure-pending.v2",
+                        "source_commit": self.source_commit,
+                        "table_id": table.table_id,
+                        "viewer_name": table.viewer_name,
+                        "game_sequence": table.game_sequence,
+                        "game_id": None,
+                        "reason": "IDLE_PLAY_GAME_NOT_STARTED",
+                        "protocol_offset": self.evidence._file_size(
+                            self.evidence.protocol_journal
+                        ),
+                    },
+                )
+                self._mirror_pause_requested = True
+                self.desired_stack = None
+                self._table_password = None
+                self.evidence.append_connection_event(
+                    "IDLE_TABLE_DEPARTURE_REQUESTED",
+                    table_id=table.table_id,
+                    game_sequence=table.game_sequence,
+                    reason=error_text,
+                )
+                self.client.send_service_command(
+                    command_leave(table.table_id, table.viewer_name)
+                )
+                return
             raise ISSGateWorkerError(
                 f"ISS_TABLE_ERROR_WITHOUT_ACTIVE_GAME:{table.table_id}:"
                 f"{table.game_sequence}:{error_text}"
