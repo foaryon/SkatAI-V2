@@ -42,6 +42,21 @@
       "object_prefix": "s3://skatai-v2/canonical/public-refresh/2024-07/final-v1/",
       "status": "QUALIFIED_WITH_QUARANTINE",
       "trust": "D3_SEMANTICALLY_CLASSIFIED"
+    },
+    {
+      "active_training_use": false,
+      "asset_id": "basic-trajectory-pilot-v4-20260925",
+      "kind": "exploratory_private_seed_selfplay",
+      "producer_source_commit": "ee5cea03b364fbe528fa8f0bc38318ec9269761f",
+      "learner_manifest": "s3://skatai-v2/evidence/selfplay/basic-trajectory-pilot-v4-20260925/BASIC_TRAJECTORY_PILOT_V4_20260925.learner-manifest.json",
+      "learner_sha256": "ab6fbccd3c99118037d935d23cacd8aa4eb9e6592c552e9b005d89a39eba15e8",
+      "split_manifest": "s3://skatai-v2/evidence/selfplay/basic-trajectory-pilot-v4-20260925/split-manifest-762026c0e83460f1141c1f75fbc3aaef7d533069ef4b0f37cc1bab04ed16e2c7.json",
+      "split_sha256": "762026c0e83460f1141c1f75fbc3aaef7d533069ef4b0f37cc1bab04ed16e2c7",
+      "private_provenance_prefix": "s3://skatai-v2/provenance/private/selfplay/basic-trajectory-pilot-v4-20260925/",
+      "semantic_replay_evidence_sha256": "b8c9d13dbf10684dfd6b43b19a8a08019ba082dab7634e9cc07bf10797f24bc7",
+      "split_decision_evidence_sha256": "ce9bac5416ec27de28b57743417b5da59785565813d83691ec97b293460c3ec5",
+      "status": "REPLAY_AND_SPLIT_VERIFIED_NO_TRAINING_APPROVAL",
+      "trust": "D1_EXPLORATORY_ONLY"
     }
   ],
   "schema": "skatai.v2.data-registry.v1"
