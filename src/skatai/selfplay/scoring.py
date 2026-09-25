@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
-from skatai.selfplay.cardplay import DECK, make_deal
+from skatai.selfplay.cardplay import DECK, PICKUP_SCHEMA, SCHEMA as HAND_SCHEMA, make_deal
 from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS
 from skatai.selfplay.game import GameEpisode
 
@@ -117,6 +117,9 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or declaration.declarer != episode.bidding.winner
             or declaration.winning_bid != episode.bidding.winning_bid):
         raise ValueError("EPISODE_IDENTITY_MISMATCH")
+    expected_play_schema = PICKUP_SCHEMA if declaration.picked_up_skat else HAND_SCHEMA
+    if play.schema != expected_play_schema:
+        raise ValueError("EPISODE_PLAY_MODE_MISMATCH")
     original = set((*deal.hands[declaration.declarer], *deal.skat))
     if declaration.picked_up_skat:
         if (declaration.contract not in PICKUP_CONTRACTS
@@ -165,9 +168,16 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or play.declarer_final_points != play.declarer_trick_points + skat_points
             or play.declarer_final_points + play.defender_trick_points != 120):
         raise ValueError("EPISODE_REPLAY_OR_POINT_MISMATCH")
+    declarer_tricks = sum(w == play.declarer for w in winners)
+    expected_play_win = (
+        declarer_tricks == 0 if game_type == "NULL"
+        else play.declarer_final_points >= 61
+    )
+    if play.declarer_won != expected_play_win:
+        raise ValueError("EPISODE_PLAY_WIN_FLAG_MISMATCH")
     return score_basic_game(
         contract=play.contract, winning_bid=declaration.winning_bid,
         declarer_cards=(*declaration.final_hand, *declaration.final_skat),
         declarer_points=play.declarer_final_points,
-        declarer_tricks=sum(w == play.declarer for w in winners),
+        declarer_tricks=declarer_tricks,
     )

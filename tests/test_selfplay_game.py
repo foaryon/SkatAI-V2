@@ -4,7 +4,7 @@ import pytest
 
 from skatai.game.bidding import BID_VALUES
 from skatai.game.rules import card_points
-from skatai.selfplay.cardplay import RandomLegalPolicy, make_deal, run_cardplay
+from skatai.selfplay.cardplay import PICKUP_SCHEMA, SCHEMA as HAND_SCHEMA, RandomLegalPolicy, make_deal, run_cardplay
 from skatai.selfplay.declaration import run_declaration
 from skatai.selfplay.game import run_game
 from skatai.selfplay.scoring import score_basic_episode
@@ -84,6 +84,15 @@ def test_auction_declaration_and_legal_cardplay(seed, pickup):
     scored = score_basic_episode(result)
     assert scored.signed_game_value != 0
     assert scored.won == (scored.signed_game_value > 0)
+    with pytest.raises(ValueError, match="EPISODE_PLAY_WIN_FLAG_MISMATCH"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, declarer_won=not result.cardplay.declarer_won),
+        ))
+    wrong_schema = HAND_SCHEMA if pickup else PICKUP_SCHEMA
+    with pytest.raises(ValueError, match="EPISODE_PLAY_MODE_MISMATCH"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, schema=wrong_schema),
+        ))
     with pytest.raises(ValueError, match="EPISODE_REPLAY_OR_POINT_MISMATCH"):
         score_basic_episode(replace(
             result, cardplay=replace(result.cardplay, declarer_final_points=0),
