@@ -7,6 +7,7 @@ runtime treatment, not the default B0 transport or an accepted release.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -17,7 +18,9 @@ import sys
 import threading
 
 
-def _serve(root: Path) -> None:
+def _serve(root: Path, expected_api_sha256: str) -> None:
+    if hashlib.sha256((root / "api.py").read_bytes()).hexdigest() != expected_api_sha256:
+        raise RuntimeError("SKATZERO_SESSION_SOURCE_HASH_MISMATCH")
     sys.path.insert(0, str(root))
     spec = importlib.util.spec_from_file_location("skatzero_frozen_api", root / "api.py")
     if spec is None or spec.loader is None:
@@ -52,9 +55,13 @@ def _serve(root: Path) -> None:
 class SkatZeroSessionRunner:
     """One serialized child reuses imports; each upstream call resets game state."""
 
-    def __init__(self, root: Path, python_executable: Path, *, timeout_s: float = 120.0):
+    def __init__(self, root: Path, python_executable: Path,
+                 expected_api_sha256: str, *, timeout_s: float = 120.0):
         self.root = Path(root)
         self.python_executable = Path(python_executable)
+        if len(expected_api_sha256) != 64:
+            raise ValueError("SKATZERO_SESSION_EXPECTED_HASH_INVALID")
+        self.expected_api_sha256 = expected_api_sha256
         self.timeout_s = float(timeout_s)
         self._lock = threading.Lock()
         self._sequence = 0
@@ -80,9 +87,11 @@ class SkatZeroSessionRunner:
             return
         if not (self.root / "api.py").is_file() or not self.python_executable.is_file():
             raise FileNotFoundError("SKATZERO_SESSION_ASSET_MISSING")
+        if hashlib.sha256((self.root / "api.py").read_bytes()).hexdigest() != self.expected_api_sha256:
+            raise RuntimeError("SKATZERO_SESSION_SOURCE_HASH_MISMATCH")
         self._child = subprocess.Popen(
             [str(self.python_executable), "-u", str(Path(__file__).resolve()),
-             "--server", str(self.root)],
+             "--server", str(self.root), self.expected_api_sha256],
             cwd=self.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, text=True, bufsize=1,
         )
@@ -134,6 +143,6 @@ class SkatZeroSessionRunner:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3 or sys.argv[1] != "--server":
+    if len(sys.argv) != 4 or sys.argv[1] != "--server":
         raise SystemExit(2)
-    _serve(Path(sys.argv[2]).resolve())
+    _serve(Path(sys.argv[2]).resolve(), sys.argv[3])
