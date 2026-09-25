@@ -736,6 +736,16 @@ class ISSSkatAIDecisionProvider:
         if not auction.state.finished:
             state = auction.state
             if state.expected_actor != seat:
+                # B0 max-bid depends only on the immutable initial hand and
+                # seat. If the backend exposes a prefetch hook, use opponent
+                # turn/network time to populate that cache. This is strictly
+                # local computation: no DecisionRequest/effect/ISS action is
+                # created before our actual turn.
+                prefetch = getattr(
+                    self.ai.bidding, "prefetch_max_bid", None
+                )
+                if callable(prefetch):
+                    prefetch(initial_hand, seat)
                 return None
             obs = BiddingObservation.create(
                 initial_hand,

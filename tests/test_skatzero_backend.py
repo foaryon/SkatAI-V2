@@ -198,3 +198,122 @@ def test_cardplay_maps_absolute_iss_seats_to_relative_skatzero_roles():
     assert args[3] == "1"
     assert args[11] == "1"
     assert args[13] == "0DA,1D7,2DT,2H7"
+
+
+class _FakeRunner:
+    def __init__(self, lines):
+        self.lines = list(lines)
+        self.calls = []
+
+    def run(self, args, *, timeout_s):
+        self.calls.append((list(args), float(timeout_s)))
+        return list(self.lines)
+
+
+def test_b0_backend_can_use_persistent_runner_without_cli(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("cold CLI must not run when warm runner is supplied")
+
+    monkeypatch.setattr(backend, "_run_cli", forbidden)
+    runner = _FakeRunner(["diagnostic", "72"])
+    p = backend.FrozenB0BiddingPolicy(
+        Path("/r"), Path("/p"), runner=runner
+    )
+    obs = BiddingObservation.create(
+        HAND10, actor=0, bidder=0, answerer=0,
+        bid_index=0, decision_role="BIDDER"
+    )
+    assert p.probability_continue(obs) == 1.0
+    assert len(runner.calls) == 1
+    assert runner.calls[0][0][0] == "BID"
+
+
+def test_cardplay_can_use_persistent_runner_without_cli(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("cold CLI must not run when warm runner is supplied")
+
+    monkeypatch.setattr(backend, "_run_cli", forbidden)
+    runner = _FakeRunner(["D8 81.29", "After recursion:", "D8"])
+    p = backend.FrozenB0CardplayPolicy(
+        Path("/r"), Path("/p"), runner=runner
+    )
+    assert p.play_card(smoke_observation()) == "D8"
+    assert len(runner.calls) == 1
+    assert runner.calls[0][0][0] == "CARDPLAY"
+
+
+def test_b0_max_bid_deduplicates_identical_inflight_requests():
+    import threading
+    import time
+    import concurrent.futures
+
+    started = threading.Event()
+    release = threading.Event()
+
+    class Runner:
+        def __init__(self):
+            self.calls = 0
+            self.lock = threading.Lock()
+        def run(self, args, *, timeout_s):
+            with self.lock:
+                self.calls += 1
+            started.set()
+            assert release.wait(2.0)
+            return ["72"]
+
+    runner = Runner()
+    p = backend.FrozenB0BiddingPolicy(
+        Path("/r"), Path("/p"), runner=runner, timeout_s=2.0
+    )
+    hand = tuple(HAND10)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(p.max_bid, hand, 0)
+        assert started.wait(1.0)
+        f2 = ex.submit(p.max_bid, hand, 0)
+        time.sleep(0.05)
+        assert runner.calls == 1
+        release.set()
+        assert f1.result(timeout=1.0) == 72
+        assert f2.result(timeout=1.0) == 72
+
+    assert runner.calls == 1
+
+
+def test_b0_max_bid_waiter_retries_after_owner_failure():
+    import threading
+    import concurrent.futures
+
+    first_started = threading.Event()
+    release_first = threading.Event()
+
+    class Runner:
+        def __init__(self):
+            self.calls = 0
+            self.lock = threading.Lock()
+        def run(self, args, *, timeout_s):
+            with self.lock:
+                self.calls += 1
+                call = self.calls
+            if call == 1:
+                first_started.set()
+                assert release_first.wait(2.0)
+                raise backend.SkatAIInterfaceError("synthetic owner failure")
+            return ["72"]
+
+    runner = Runner()
+    p = backend.FrozenB0BiddingPolicy(
+        Path("/r"), Path("/p"), runner=runner, timeout_s=2.0
+    )
+    hand = tuple(HAND10)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(p.max_bid, hand, 0)
+        assert first_started.wait(1.0)
+        f2 = ex.submit(p.max_bid, hand, 0)
+        release_first.set()
+        with pytest.raises(backend.SkatAIInterfaceError):
+            f1.result(timeout=1.0)
+        assert f2.result(timeout=1.0) == 72
+
+    assert runner.calls == 2

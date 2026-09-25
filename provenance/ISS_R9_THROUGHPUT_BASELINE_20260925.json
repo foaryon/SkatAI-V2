@@ -1,0 +1,96 @@
+{
+  "authority": {
+    "active_games": 1,
+    "table_slots": 0
+  },
+  "captured_unix_ns": 1790331448264454041,
+  "connection_events": {
+    "CONNECTED": 12,
+    "CONNECTION_CLOSED": 2,
+    "FOREIGN_TABLE_EVENT_IGNORED": 2029
+  },
+  "decision_latency_ms": {
+    "BID": {
+      "max": 109397.622616,
+      "median": 0.484619,
+      "min": 0.003966,
+      "n": 1197,
+      "p95": 34548.562114800014,
+      "p99": 67403.53504563998
+    },
+    "DECLARATION": {
+      "max": 105631.177212,
+      "median": 5233.435149,
+      "min": 1212.04645,
+      "n": 279,
+      "p95": 64005.88406509999,
+      "p99": 83022.33431037996
+    },
+    "DISCARD": {
+      "max": 0.057014,
+      "median": 0.01358,
+      "min": 0.010045,
+      "n": 130,
+      "p95": 0.028558099999999996,
+      "p99": 0.037191729999999985
+    },
+    "PLAY_CARD": {
+      "max": 5561.316653,
+      "median": 1568.9393455,
+      "min": 1120.431751,
+      "n": 3582,
+      "p95": 2297.4760770999997,
+      "p99": 2825.1120348900004
+    }
+  },
+  "deployment_epoch": null,
+  "effects": {
+    "chain_valid": true,
+    "error": null,
+    "events": 15562,
+    "pending": 0
+  },
+  "games": {
+    "duplicate_game_ids": 0,
+    "ledger_rows": 381,
+    "recent_completion_gap_s": {
+      "max": 1498.3893263,
+      "median": 190.93323903,
+      "min": 45.458515322,
+      "n": 49,
+      "p95": 687.9056253017977,
+      "p99": 1187.9494230785574
+    },
+    "recent_games_per_hour": 14.486640802062277,
+    "recent_window": 50,
+    "scored": 374,
+    "scored_by_arm": {
+      "B0": 187,
+      "B1": 187
+    },
+    "status_counts": {
+      "INFRA_FAILURE": 4,
+      "PROTOCOL_FAILURE": 3,
+      "SCORED": 374
+    }
+  },
+  "mirror": {
+    "lag_s": {
+      "max": null,
+      "median": null,
+      "min": null,
+      "n": 0,
+      "p95": null,
+      "p99": null
+    },
+    "receipt_tracking_present": false,
+    "receipts": 0,
+    "scored_games_without_receipt": null,
+    "status": null
+  },
+  "runtime": "/workspace/skatai-v2-runtime/iss/external-gate-r9",
+  "schema": "skatai.v2.iss-throughput-metrics.v1",
+  "source_commits": [
+    "c77b401f3665ebd64c7c62491e122d8ccdfd22f1"
+  ]
+}

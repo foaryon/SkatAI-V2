@@ -1,0 +1,72 @@
+{
+  "schema": "skatai.v2.iss-throughput-multitable-staged.v1",
+  "captured_at": "2026-09-25T09:50:00Z",
+  "status": "STAGED_NOT_LIVE_R9",
+  "branch": "feat/iss-throughput-multitable-v1",
+  "live_r9_modified": false,
+  "live_r9_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+  "design": {
+    "tables": "configurable; candidate target 4",
+    "inference_workers": "configurable; candidate target 4",
+    "torch_threads_per_worker": 1,
+    "inference": "warm persistent SkatZero processes",
+    "iss_event_loop": "decision inference offloaded asynchronously per table",
+    "effect_authority": "short journal/prepare/send sections serialized; inference remains parallel",
+    "quota": "in-flight primary games reserve strata before concurrent starts",
+    "table_lifecycle": "durable per-table slots plus per-table departure reconciliation",
+    "mirror": "durable local outbox plus asynchronous batched Hetzner write-behind",
+    "stale_inference": "discard and recompute unless table-state hash/protocol sequence still match"
+  },
+  "verified_bottlenecks_removed": [
+    "one Python/SkatZero model load per card decision",
+    "slow inference blocking every table on the single ISS network event loop",
+    "global mutable B0/B1 arm selector",
+    "hard single-active-game authority restriction",
+    "synchronous remote mirror/readback before next game",
+    "PyTorch/BLAS oversubscription in multi-process warm workers",
+    "slot scheduler generator-consumption bug that duplicated stack allocation",
+    "blind READY replay after reconnect in ambiguous lifecycle state",
+    "unbounded worker churn on deterministic request errors"
+  ],
+  "cardplay_probe": {
+    "final_action": "DJ",
+    "original_cold_seconds": 4.323,
+    "earlier_unbounded_four_worker_req_per_s": 0.801,
+    "four_workers_one_torch_thread": {
+      "round_wall_seconds": [
+        0.081,
+        0.108
+      ],
+      "mean_requests_per_second": 42.46,
+      "all_final_actions_equal": true,
+      "rss_total_mb": 1064.2
+    },
+    "four_workers_two_torch_threads": {
+      "round_wall_seconds": [
+        0.255,
+        0.327
+      ],
+      "mean_requests_per_second": 13.746,
+      "all_final_actions_equal": true,
+      "rss_total_mb": 1059.8
+    }
+  },
+  "verification": {
+    "full_pytest": "486 passed",
+    "focused_pytest": "122 passed",
+    "duplicate_definition_ast_audit": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "scientific_boundary": [
+    "Do not mix this runtime into the currently frozen live R9 treatment.",
+    "Warm/multi-table runtime is a new deployment epoch and requires matched validation before scored use.",
+    "First frozen R9 strength look remains closed until 300 scored games per arm."
+  ],
+  "next_validation": [
+    "add safe B0 max-bid prefetch to hide first-bid simulation latency where ISS turn order permits",
+    "create pinned candidate launcher with separate runtime root",
+    "fault-inject multi-table reconnect, process restart, worker crash, and Hetzner outage/backpressure",
+    "run 1->2->4 table live non-contaminating deployment validation only at a safe scientific boundary",
+    "compare games/hour plus p50/p95/p99 latency, evidence lag, CPU PSI/RSS, and integrity counters"
+  ]
+}

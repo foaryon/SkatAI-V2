@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-09-25T07:25:48.994844+00:00",
+  "change": "Closed game enqueued locally; pressure causes LEAVE at game boundary; confirmed table destroy returns session to a background-drain wait; new table only after backlog below bound.",
+  "classification": "CORRECT_STAGED_ONLY",
+  "gate": "ISS evidence transfer without protocol-thread remote I/O or new-game admission under spool pressure",
+  "invariants": [
+    "pinned R9 c77b401 unchanged",
+    "no strength look opened",
+    "no live ISS worker switch"
+  ],
+  "live_switch_authorized": false,
+  "parent_source_commit": "c0958a960ead94e0151e46b6d2cad469c2e2f4dd",
+  "remaining_gates": [
+    "disconnect during pending table destruction requires reconciliation qualification",
+    "matched throughput and evidence-lag comparison before live switch"
+  ],
+  "schema": "skatai.v2.staged-engineering-evidence.v1",
+  "task_id": "ISS_MIRROR_WRITEBEHIND_PROTOCOL_PAUSE",
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q --disable-warnings --maxfail=1",
+    "diff_check": "pass",
+    "focused_cases": [
+      "closed-game then leave",
+      "confirmed destroy before pause",
+      "background drain before reconnect",
+      "backlog threshold"
+    ],
+    "passed": 429
+  }
+}

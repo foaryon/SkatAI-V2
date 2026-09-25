@@ -1,0 +1,41 @@
+{
+  "full_pytest": "501 passed",
+  "live_r9_modified": false,
+  "multitable_backpressure": {
+    "property": "no new table admitted under pressure; active game may close durably; idle tables retire; admission resumes only after clean drain",
+    "result": "PASS",
+    "tests": [
+      "test_multitable_backpressure_finishes_active_game_then_retires_idle_tables",
+      "test_multitable_wait_for_mirror_capacity_clears_pause_after_clean_drain"
+    ]
+  },
+  "schema": "skatai.v2.iss-throughput-fault-validation.v1",
+  "status": "PASS",
+  "storage_outage_backpressure": {
+    "property": "local durable backlog retained during outage; manifests drain exactly once after recovery",
+    "result": "PASS",
+    "test": "test_writebehind_storage_outage_retains_games_then_drains_without_duplicates"
+  },
+  "worker_crash_trials": [
+    {
+      "baseline_action": "DJ",
+      "configured_workers": 1,
+      "pool_available_workers": 1,
+      "recovered_action": "DJ",
+      "recovery_request_seconds": 1.514,
+      "same_action": true,
+      "schema": "skatai.v2.skatzero-worker-crash-fault.v1",
+      "worker_pid_changed": true
+    },
+    {
+      "elapsed_s": 1.457,
+      "fault": "SIGKILL warm worker before request",
+      "first_pid": 33228,
+      "replacement_happened": true,
+      "replacement_pid": 33299,
+      "result_action": "DJ",
+      "schema": "skatai.v2.iss-warm-worker-real-crash-test.v1",
+      "status": "PASS"
+    }
+  ]
+}

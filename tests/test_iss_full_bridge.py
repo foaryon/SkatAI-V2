@@ -136,3 +136,27 @@ def test_hand_ouvert_wire_reveals_exact_ten_cards_deterministically():
     assert d is not None
     assert d.wire_action.startswith("NHO.")
     assert len(d.wire_action.split(".")) == 11
+
+
+class PrefetchBid(Bid):
+    def __init__(self):
+        self.prefetched = []
+    def prefetch_max_bid(self, hand, seat):
+        self.prefetched.append((tuple(hand), int(seat)))
+        return 72
+
+
+def test_b0_prefetch_uses_opponent_turn_without_creating_decision():
+    t = table()
+    apply(t, f"w {DEAL_SEAT2}")
+    bidding = PrefetchBid()
+    provider = ISSSkatAIDecisionProvider(
+        SkatAI(bidding, DeclarePickupThenGrand(), DiscardSkat(), PlayFirst()),
+        release_id="R-B0",
+    )
+
+    # Initial auction actor is seat 1; our known player hand is seat 2.
+    assert provider.next_decision(t) is None
+    assert bidding.prefetched == [
+        (("HJ", "C9", "SK", "S8", "S7", "HT", "DA", "DK", "D9", "D7"), 2)
+    ]

@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-09-25T07:32:36.634229+00:00",
+  "change": "Atomically persist departure identity before LEAVE; clear only after matching DESTROY; transport loss or restart with unresolved marker fails closed.",
+  "classification": "CORRECT_STAGED_ONLY",
+  "gate": "No duplicate/new external action after ambiguous LEAVE-before-DESTROY disconnect during mirror pressure",
+  "invariants": [
+    "Pinned R9 untouched",
+    "No strength look",
+    "No live switch"
+  ],
+  "live_switch_authorized": false,
+  "parent_source_commit": "6d16a2e7d660e2a79629d922b76e25bdb15da86e",
+  "remaining_gates": [
+    "Automated reconciliation of persisted departure outcome with ISS state before live switch",
+    "Matched live ISS throughput and evidence-lag comparison"
+  ],
+  "schema": "skatai.v2.staged-engineering-evidence.v1",
+  "task_id": "ISS_MIRROR_DEPARTURE_UNKNOWN_GUARD",
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q --disable-warnings --maxfail=1",
+    "diff_check": "pass",
+    "passed": 432,
+    "specific_cases": [
+      "marker written before LEAVE",
+      "marker cleared on matching DESTROY",
+      "restart with marker fails closed",
+      "transport loss before confirmation does not reconnect"
+    ]
+  }
+}

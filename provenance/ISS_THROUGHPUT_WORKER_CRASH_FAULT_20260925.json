@@ -1,0 +1,10 @@
+{
+  "baseline_action": "DJ",
+  "configured_workers": 1,
+  "pool_available_workers": 1,
+  "recovered_action": "DJ",
+  "recovery_request_seconds": 1.514,
+  "same_action": true,
+  "schema": "skatai.v2.skatzero-worker-crash-fault.v1",
+  "worker_pid_changed": true
+}

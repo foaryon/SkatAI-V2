@@ -1,0 +1,98 @@
+{
+  "captured_on_host": "u8fjrd0g30c3wg",
+  "conclusion": {
+    "cardplay_semantic_probe": "all tested configurations returned DJ",
+    "highest_observed_batch8_requests_per_s": 87.969,
+    "preferred_candidate_workers_for_4_tables": 4,
+    "torch_threads_per_worker_default": 1
+  },
+  "host_memory_gb": 16,
+  "host_vcpu": 8,
+  "live_r9_modified": false,
+  "results": [
+    {
+      "batch_requests": 8,
+      "final_actions": [
+        "DJ"
+      ],
+      "latency_max_s": 0.223,
+      "latency_median_s": 0.116,
+      "requests_per_s": 33.116,
+      "startup_s": 1.278,
+      "threads_per_worker": 1,
+      "wall_s": 0.242,
+      "workers": 1
+    },
+    {
+      "batch_requests": 8,
+      "final_actions": [
+        "DJ"
+      ],
+      "latency_max_s": 0.16,
+      "latency_median_s": 0.098,
+      "requests_per_s": 48.156,
+      "startup_s": 2.458,
+      "threads_per_worker": 1,
+      "wall_s": 0.166,
+      "workers": 2
+    },
+    {
+      "batch_requests": 8,
+      "final_actions": [
+        "DJ"
+      ],
+      "latency_max_s": 0.301,
+      "latency_median_s": 0.198,
+      "requests_per_s": 26.404,
+      "startup_s": 2.526,
+      "threads_per_worker": 2,
+      "wall_s": 0.303,
+      "workers": 2
+    },
+    {
+      "batch_requests": 8,
+      "final_actions": [
+        "DJ"
+      ],
+      "latency_max_s": 0.132,
+      "latency_median_s": 0.089,
+      "requests_per_s": 57.762,
+      "startup_s": 5.126,
+      "threads_per_worker": 1,
+      "wall_s": 0.138,
+      "workers": 4
+    },
+    {
+      "batch_requests": 8,
+      "final_actions": [
+        "DJ"
+      ],
+      "latency_max_s": 0.23,
+      "latency_median_s": 0.16,
+      "requests_per_s": 34.584,
+      "startup_s": 5.156,
+      "threads_per_worker": 2,
+      "wall_s": 0.231,
+      "workers": 4
+    },
+    {
+      "batch_requests": 8,
+      "final_actions": [
+        "DJ"
+      ],
+      "latency_max_s": 0.088,
+      "latency_median_s": 0.051,
+      "requests_per_s": 87.969,
+      "startup_s": 10.198,
+      "threads_per_worker": 1,
+      "wall_s": 0.091,
+      "workers": 8
+    }
+  ],
+  "schema": "skatai.v2.iss-cardplay-pool-bench.v1",
+  "scientific_note": "No heavy B0 BID matrix benchmark was run concurrently with frozen live R9; doing so could alter R9 wall-clock/latency treatment through CPU contention.",
+  "verification": {
+    "bid_inflight_dedup_tests": "PASS",
+    "full_pytest": "488 passed"
+  }
+}
