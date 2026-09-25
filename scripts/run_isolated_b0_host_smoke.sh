@@ -3,10 +3,12 @@ set -euo pipefail
 umask 027
 
 ROOT=/workspace/skatai-v2-wt-host-smoke
-RUNTIME=/workspace/skatai-v2-runtime/isolated-science/b0-host-smoke-20260925-v1
+JOB_ID="${SKATAI_HOST_SMOKE_JOB_ID:-b0-host-smoke-20260925-v1}"
+RUNTIME=/workspace/skatai-v2-runtime/isolated-science/$JOB_ID
 OUTPUT=$RUNTIME/result.json
 S3_ARGS=(--s3-provider Other --s3-env-auth --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1)
 mkdir -p "$RUNTIME"
+[[ "$JOB_ID" =~ ^[a-zA-Z0-9._-]+$ ]] || exit 1
 
 status() {
   local state="$1" detail="${2:-}"
@@ -56,7 +58,7 @@ timeout 1200 env PYTHONPATH="$ROOT/src" GIT_CONFIG_COUNT=1 \
 mv "$OUTPUT.tmp" "$OUTPUT"
 result_sha="$(sha256sum "$OUTPUT" | cut -d' ' -f1)"
 status UPLOADING "$result_sha"
-remote=":s3:skatai-v2/evidence/product-host-smoke/b0-host-smoke-20260925-v1/$result_sha.json"
+remote=":s3:skatai-v2/evidence/product-host-smoke/$JOB_ID/$result_sha.json"
 rclone copyto "$OUTPUT" "$remote" "${S3_ARGS[@]}" >"$RUNTIME/upload.log" 2>&1
 rclone cat "$remote" "${S3_ARGS[@]}" >"$RUNTIME/remote-readback.json.tmp"
 [ "$(sha256sum "$RUNTIME/remote-readback.json.tmp" | cut -d' ' -f1)" = "$result_sha" ] || fail REMOTE_HASH_MISMATCH

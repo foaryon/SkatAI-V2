@@ -1,0 +1,18 @@
+{
+  "attempt": 1,
+  "captured_at": "2026-09-25T11:51:19.170070+00:00",
+  "cause": "Opening cardplay smoke observation omitted public points_self and points_other required by frozen B0 adapter",
+  "correction": "Set both public point counters to zero at opening cardplay and rerun on a separately identified pod/source commit",
+  "failure": "HOST_SMOKE_RESPONSE_INVALID:3:SkatAIInterfaceError",
+  "pod_deletion_verified": true,
+  "pod_id": "vct3prorv5r7ha",
+  "schema": "skatai.v2.b0-host-smoke-attempt.v1",
+  "source_commit": "a0bfd7ea9aa04bf7517c2f23589c89589c66436e",
+  "status": "FAILED",
+  "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE",
+  "valid_evidence": [
+    "B0 bootstrap source and model hashes verified",
+    "Release package built and host process returned three prior phase responses",
+    "No accepted-release or actual-host-integration claim"
+  ]
+}

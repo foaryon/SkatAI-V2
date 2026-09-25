@@ -41,6 +41,7 @@ def run_smoke(repo: Path, upstream_source: Path, python: Path, scratch: Path) ->
             "hand": hand, "seat": 0, "declarer": 0, "contract": "GH",
             "winning_bid": 18, "current_trick": [], "played_cards": [],
             "legal_cards": hand, "blind_hand": True,
+            "points_self": 0, "points_other": 0,
             "max_accepted_bids_by_seat": [18, 0, 0],
         }},
     ]
