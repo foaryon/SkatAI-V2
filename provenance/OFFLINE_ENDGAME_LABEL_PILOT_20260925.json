@@ -1,0 +1,53 @@
+{
+  "schema": "skatai.v2.offline-endgame-label-pilot-stage.v1",
+  "captured_at": "2026-09-25T11:08:39Z",
+  "task_id": "OFFLINE_ENDGAME_LEARNER_LABELS",
+  "classification": "CONCLUDE",
+  "parent_source_commit": "40f6439d217ff19b69adb4687f4f68565082930d",
+  "nearest_gate": "Split-safe offline search teacher examples for a causal cardplay treatment",
+  "implementation": {
+    "src/skatai/evaluation/endgame_labels.py": "4062b88d73638d46295963e4f27e401ec6caa7e4504eb44f2123e6b1d6bfa8e9",
+    "scripts/pilot_endgame_labels.py": "a676c9de4e44d052afeb54097b03901a64ecc72df48f55b72473f73806863eba",
+    "tests/test_endgame_labels.py": "343a244ec1b8ce3ea088ac96fd59b3bf3e94adaf6707d8fdae1779cfbbe3c119"
+  },
+  "method": "Replay all prior cards against complete post-declaration hands, validate current legal observation and point state, solve bounded endgame, emit legal observation plus teacher targets. Full hands and hidden-state hash stay out of learner rows.",
+  "pilot": {
+    "schema": "skatai.v2.synthetic-endgame-label-pilot.v1",
+    "seed_range": [
+      20260925,
+      20260960
+    ],
+    "policy": "first legal card for all seats",
+    "source_scope": "synthetic deterministic D1 integration pilot only",
+    "counts": {
+      "choice_labels": 169,
+      "contract:C": 54,
+      "contract:D": 54,
+      "contract:G": 54,
+      "contract:H": 54,
+      "contract:N": 54,
+      "contract:S": 54,
+      "games": 36,
+      "labels": 324,
+      "mode:hand": 162,
+      "mode:pickup": 162,
+      "teacher_first_legal_disagreements": 96
+    },
+    "learner_rows_sha256": "c522e46a0404cf7a4803c640f9912ee2fab4b5746d0c45251eb0905e118bba23",
+    "training_approved": false,
+    "strength_claim_authorized": false
+  },
+  "verification": {
+    "two_pilot_output_sha256": "cd34fa439bc330364826ec9e3c1fecc518d68a87c4792e8cfd4238748844ac6b",
+    "repeat_output_equal": true,
+    "focused_tests": "66 passed in 0.62s",
+    "git_diff_check": "pass"
+  },
+  "limits": [
+    "Synthetic first-legal trajectories are not a representative playing-strength distribution",
+    "No verified external/source dataset lineage or frozen split in this pilot",
+    "No training approval, D4 usefulness, candidate acceptance, or release claim",
+    "Teacher targets depend on hidden cards; only observation fields may become decision-time inputs"
+  ],
+  "next_gate": "Bind exact qualified train-only cardplay source identities and frozen split, then run a bounded search-teacher treatment and paired B0 gameplay on isolated compute."
+}

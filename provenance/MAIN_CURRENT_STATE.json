@@ -1,11 +1,11 @@
 {
   "schema": "skatai.v2.main-current-state.v1",
-  "captured_at": "2026-09-25T11:06:44Z",
+  "captured_at": "2026-09-25T11:08:39Z",
   "git": {
     "repository": "foaryon/SkatAI-V2",
     "branch": "main",
-    "verified_head_before_this_manifest": "61a7e0b2a41055f675fbf8367cc7ee87076c2d72",
-    "remote_state": "pushed through 61a7e0b; this capability commit pending",
+    "verified_head_before_this_manifest": "40f6439d217ff19b69adb4687f4f68565082930d",
+    "remote_state": "pushed through 40f6439; this label-pilot commit pending",
     "worktree_state": "clean"
   },
   "active_work": [
@@ -18,12 +18,12 @@
     }
   ],
   "completed_independent_gate": {
-    "task_id": "OFFLINE_EXACT_ENDGAME_TEACHER",
+    "task_id": "OFFLINE_ENDGAME_LEARNER_LABELS",
     "classification": "CONCLUDE",
-    "evidence": "provenance/OFFLINE_ENDGAME_TEACHER_STAGE_20260925.json",
-    "source_parent_commit": "61a7e0b2a41055f675fbf8367cc7ee87076c2d72",
-    "verification": "66 focused tests passed",
-    "scientific_status": "offline full-information tactical teacher only; no strength estimate"
+    "evidence": "provenance/OFFLINE_ENDGAME_LABEL_PILOT_20260925.json",
+    "source_parent_commit": "40f6439d217ff19b69adb4687f4f68565082930d",
+    "verification": "66 focused tests; 324 deterministic synthetic labels with repeat hash",
+    "scientific_status": "D1 synthetic integration only; no training or strength authority"
   },
   "nearest_gates": [
     {
@@ -52,5 +52,5 @@
     }
   ],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
-  "next_action": "Preserve R9 under independent supervisor until preregistered boundary. Independently obtain qualified train-only inputs and isolated compute for cardplay weakness, endgame teacher ablation, and current-source host acceptance. At clean R9 boundary execute separate measured 1->2->4 throughput epochs."
+  "next_action": "Preserve supervised frozen R9 until its preregistered gate. On independent science, stage exact qualified train-only cardplay data or V5 objects and isolated compute for a bounded causal treatment; endgame labels are pilot-only. At clean R9 boundary run separate measured 1->2->4 ISS throughput epochs."
 }
