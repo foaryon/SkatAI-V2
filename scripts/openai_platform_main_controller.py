@@ -381,11 +381,16 @@ def send_next_input(session_id, state):
     if not state.get("initial_sent"):
         text = (
             "RESUME NOW from the durable SkatAI V2 project state on the attached RunPod. The saved MAIN instructions "
-            "and full Big Prompt remain binding. Read only the minimum fresh state needed, starting with the durable "
-            "continuation/evidence state; do not restart completed work or reconstruct old chat history. The user's PC "
-            "and phone are optional input terminals only. Use a work-conserving long turn: do not yield after a single "
-            "diagnosis, fix, test, or milestone while additional safe executable work remains; continue through coherent "
-            "inspect-act-verify-persist chains."
+            "and full Big Prompt remain binding and define the crystal-clear project/final goal. Read "
+            "configs/control/MAIN_CURRENT_EXECUTION_BRIEF.md once as recovery context, then verify only the minimum "
+            "state that can have changed. Treat the merged multi-table/warm-inference/write-behind/supervisor work as "
+            "an already-validated architecture milestone, not a reason to redo it or narrow the project to ISS. Protect "
+            "the frozen R9 treatment and let its independent fail-closed supervisor own worker lifetime; do not live-poll "
+            "healthy ISS games with model tokens. While R9 runs, continue the next highest-value independent Big-Prompt "
+            "science/product work. At its clean gate boundary, use the staged measured 1->2->4 throughput epochs. Do not "
+            "restart completed work or reconstruct old chat history. The user's PC and phone are optional input terminals "
+            "only. Use a work-conserving long turn: do not yield after a single diagnosis, fix, test, or milestone while "
+            "additional safe executable work remains; continue through coherent inspect-act-verify-persist chains."
         )
         state["initial_sent"] = True
     else:
