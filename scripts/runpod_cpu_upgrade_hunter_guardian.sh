@@ -39,8 +39,14 @@ while true; do
   fi
 
   started="$(date +%s)"
-  log_event "hunter-start mode=watch-only targets=$TARGETS poll_s=$POLL_SECONDS"
-  python3 "$HUNTER" --targets "$TARGETS" --poll-seconds "$POLL_SECONDS" &
+  claim_args=()
+  mode=watch-only
+  if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ]; then
+    claim_args=(--claim)
+    mode=claim-authorized
+  fi
+  log_event "hunter-start mode=$mode targets=$TARGETS poll_s=$POLL_SECONDS"
+  python3 "$HUNTER" "${claim_args[@]}" --targets "$TARGETS" --poll-seconds "$POLL_SECONDS" &
   child=$!
   wait "$child"
   rc=$?

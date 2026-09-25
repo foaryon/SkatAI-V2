@@ -185,6 +185,8 @@ def _read_pid1_environment() -> dict[str, str]:
     return values
 
 
+DEPLOY_KEY_FILE = Path("/run/skatai-v2-secrets/runpod_deploy_api_key")
+
 def runtime_environment() -> dict[str, str]:
     values = {key: os.environ[key] for key in PID1_KEYS if os.environ.get(key)}
     if PID1_KEYS - values.keys():
@@ -192,6 +194,17 @@ def runtime_environment() -> dict[str, str]:
         for key in PID1_KEYS:
             if key not in values and pid1.get(key):
                 values[key] = pid1[key]
+
+    # A running Pod normally receives only a pod-scoped RUNPOD_API_KEY,
+    # which is intentionally insufficient for creating a replacement Pod.
+    # Prefer an explicitly provisioned account/deploy key from a root-only
+    # runtime file when present. Never log or persist the key value.
+    try:
+        deploy_key = DEPLOY_KEY_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        deploy_key = ""
+    if deploy_key:
+        values["RUNPOD_API_KEY"] = deploy_key
     return values
 
 
