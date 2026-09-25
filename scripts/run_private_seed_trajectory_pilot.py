@@ -71,16 +71,23 @@ def _rows(games: list[dict], commit: str, script_hash: str):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-prefix", type=Path, required=True)
+    parser.add_argument("--private-dir", type=Path, required=True)
     parser.add_argument("--count", type=int, default=96)
     args = parser.parse_args()
     if not 1 <= args.count <= 256:
         raise ValueError("COUNT_OUT_OF_BOUNDS")
     args.output_prefix.parent.mkdir(parents=True, exist_ok=True)
+    args.private_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(args.private_dir, 0o700)
+    if args.private_dir.stat().st_mode & 0o077:
+        raise ValueError("PRIVATE_DIR_PERMISSIONS_NOT_ENFORCED")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     script_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
-    private_path = args.output_prefix.with_suffix(".private-seeds.json")
+    private_path = args.private_dir / (args.output_prefix.name + ".private-seeds.json")
     inputs = _private_inputs(private_path, count=args.count, commit=commit, script_hash=script_hash)
-    output_paths = (args.output_prefix.with_suffix(".raw.jsonl"),
+    if private_path.stat().st_mode & 0o077:
+        raise ValueError("PRIVATE_SEED_FILE_PERMISSIONS_NOT_ENFORCED")
+    output_paths = (args.private_dir / (args.output_prefix.name + ".raw.jsonl"),
                     args.output_prefix.with_suffix(".learner.jsonl"))
     fds_and_tmps = [tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
                     for path in output_paths]
@@ -105,6 +112,8 @@ def main() -> None:
         raise RuntimeError("NONDETERMINISTIC_PRIVATE_SEED_PILOT")
     for (_, tmp), path in zip(fds_and_tmps, output_paths):
         os.replace(tmp, path)
+    if output_paths[0].stat().st_mode & 0o077:
+        raise ValueError("PRIVATE_REPLAY_PERMISSIONS_NOT_ENFORCED")
     manifest = {
         "schema": "skatai.v2.selfplay.private-seed-pilot-manifest.v1",
         "source_commit": commit, "script_sha256": script_hash,
