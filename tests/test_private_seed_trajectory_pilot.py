@@ -50,6 +50,14 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     ).encode()).hexdigest()
     with pytest.raises(ValueError, match="REPLAY_DECISION_OR_VIEW_MISMATCH"):
         audit_captured_record(corrupted, seed=private["games"][0]["deal_seed"])
+    corrupted_points = json.loads(json.dumps(raw_rows[0]))
+    raw_cardplay = next(d for d in corrupted_points["decisions"] if d["phase"] == "CARDPLAY")
+    raw_cardplay["observation"]["points_self"] += 1
+    corrupted_points["decision_trace_sha256"] = hashlib.sha256(json.dumps(
+        corrupted_points["decisions"], sort_keys=True, separators=(",", ":"),
+    ).encode()).hexdigest()
+    with pytest.raises(ValueError, match="LEARNER_CARDPLAY_POINT_STATE_MISMATCH"):
+        audit_captured_record(corrupted_points, seed=private["games"][0]["deal_seed"])
     assert len(load_bounded_learner_pilot(
         prefix.with_suffix(".learner-manifest.json"), learner_path,
     )) == 2

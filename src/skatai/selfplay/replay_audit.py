@@ -10,6 +10,7 @@ from dataclasses import asdict
 import hashlib
 import json
 
+from skatai.selfplay.learner_dataset import _validate_decision
 from skatai.selfplay.game import run_game
 from skatai.selfplay.scoring import score_basic_episode
 from skatai.selfplay.trajectory import SCHEMA
@@ -28,6 +29,13 @@ def audit_captured_record(record: dict, *, seed: int) -> dict:
     ).encode()).hexdigest()
     if trace != record["decision_trace_sha256"]:
         raise ValueError("REPLAY_DECISION_TRACE_HASH_MISMATCH")
+    # Replay against the producer alone can reproduce the producer's semantic
+    # mistake. Check all-seat public point views independently first.
+    for item in decisions:
+        if item["phase"] == "CARDPLAY":
+            _validate_decision(
+                item, item["seat"], record["contract"], record["threshold"],
+            )
 
     class Cursor:
         def __init__(self) -> None:
