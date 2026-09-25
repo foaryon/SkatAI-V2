@@ -1,0 +1,160 @@
+{
+  "captured_at": "2026-09-25T11:12:56.072769Z",
+  "chunks": [
+    {
+      "count": 262144,
+      "offset": 0,
+      "sha256": "6548aeb1c47d1e692e53002c922fa66ffff8eeb380e9a900d1b06e3fff5d88ac",
+      "split_counts": {
+        "split:train": 217
+      },
+      "whole_lines": 217
+    },
+    {
+      "count": 262144,
+      "offset": 1634645793,
+      "sha256": "43b0b266b5eddfd6b4cd0f3c389cce002baa2154a688efab735affe533d8c3d9",
+      "split_counts": {
+        "split:external_bot_holdout": 154,
+        "split:train": 61
+      },
+      "whole_lines": 215
+    },
+    {
+      "count": 262144,
+      "offset": 3269291587,
+      "sha256": "fbd006aea713f381399c59102a1f3ceb3ef9810487d4598eca7213febb135c8a",
+      "split_counts": {
+        "split:external_bot_holdout": 96,
+        "split:train": 122
+      },
+      "whole_lines": 218
+    },
+    {
+      "count": 262144,
+      "offset": 4903937380,
+      "sha256": "f348cafbf962b7b9145e4471f0ef39994b27cf1dbb25e675747865f2ed96e884",
+      "split_counts": {
+        "split:external_bot_holdout": 105,
+        "split:train": 111
+      },
+      "whole_lines": 216
+    },
+    {
+      "count": 262144,
+      "offset": 6538583174,
+      "sha256": "66f70ae231a69b3ecd10c5d2ce41296cb5004e8479a3fe69d1bc3580fb5f0f14",
+      "split_counts": {
+        "split:external_bot_holdout": 36,
+        "split:train": 185
+      },
+      "whole_lines": 221
+    },
+    {
+      "count": 262144,
+      "offset": 8173228967,
+      "sha256": "65f026c6c1e1f7d99c0f7c84678670cfbcff1a6301932c4939dac06a52c72dce",
+      "split_counts": {
+        "split:external_bot_holdout": 98,
+        "split:train": 119
+      },
+      "whole_lines": 217
+    },
+    {
+      "count": 262144,
+      "offset": 9807874761,
+      "sha256": "0119b9b1b298ffd8d6ae6fcabec18ce237a72d22ba791f65e7db255d146b5482",
+      "split_counts": {
+        "split:external_bot_holdout": 82,
+        "split:validation": 135
+      },
+      "whole_lines": 217
+    },
+    {
+      "count": 262144,
+      "offset": 11442520554,
+      "sha256": "6f68ac3969b507c033ddb986bc4dd3a7e5b86447e93e020c398ad41903e25a20",
+      "split_counts": {
+        "split:external_bot_holdout": 148,
+        "split:train": 67
+      },
+      "whole_lines": 215
+    }
+  ],
+  "classification": "CONCLUDE",
+  "counts": {
+    "selected_train_cardplay_usable": 882,
+    "split:external_bot_holdout": 719,
+    "split:train": 882,
+    "split:validation": 135,
+    "valid_json": 1736
+  },
+  "diagnostic_selection": {
+    "B0_inference_run": false,
+    "count": 72,
+    "identity_sha256": "2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a",
+    "per_stratum": 4,
+    "seed": 20260925,
+    "stratum_counts": {
+      "GRAND|DECLARER|EARLY": 4,
+      "GRAND|DECLARER|END": 4,
+      "GRAND|DECLARER|MIDDLE": 4,
+      "GRAND|DEFENDER|EARLY": 4,
+      "GRAND|DEFENDER|END": 4,
+      "GRAND|DEFENDER|MIDDLE": 4,
+      "NULL|DECLARER|EARLY": 4,
+      "NULL|DECLARER|END": 4,
+      "NULL|DECLARER|MIDDLE": 4,
+      "NULL|DEFENDER|EARLY": 4,
+      "NULL|DEFENDER|END": 4,
+      "NULL|DEFENDER|MIDDLE": 4,
+      "SUIT|DECLARER|EARLY": 4,
+      "SUIT|DECLARER|END": 4,
+      "SUIT|DECLARER|MIDDLE": 4,
+      "SUIT|DEFENDER|EARLY": 4,
+      "SUIT|DEFENDER|END": 4,
+      "SUIT|DEFENDER|MIDDLE": 4
+    }
+  },
+  "durable_sample_object": "s3://skatai-v2/datasets/research/cardplay-train-range-sample/c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805.jsonl",
+  "limits": [
+    "Byte-range coverage is systematic, not a population sample",
+    "Registered full-source hash was not recomputed from the 13 GB object during this step",
+    "One train row failed bidding replay and remains excluded from cardplay diagnostic",
+    "No model inference or training occurred"
+  ],
+  "local_path": "/tmp/skatai-v2-canonical-train-range-sample-20260925.jsonl",
+  "next_gate": "Run the pinned 72-decision B0 historical-action diagnostic on isolated compute; use agreement as weakness signal only",
+  "range_rule": "eight evenly spaced 262144-byte ranges; skip partial boundary lines; retain only frozen train and cardplay_usable rows",
+  "reconstruction": {
+    "counts": {
+      "candidate_games": 882,
+      "reconstruction_failed": 1,
+      "reconstruction_ok": 881,
+      "rows_seen": 882
+    },
+    "errors": {
+      "BIDDING_REPLAY_FAILED": 1
+    },
+    "event_count": 22751
+  },
+  "remote_readback_sha256": "c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805",
+  "representative_population_claim": false,
+  "retention": "bounded research sample; retain while diagnostic/treatment selection references it",
+  "sample_bytes": 1052546,
+  "sample_sha256": "c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805",
+  "schema": "skatai.v2.canonical-train-range-sample.v1",
+  "source_asset_id": "legacy-v1-canonical-corpus",
+  "source_identity_rule": "Registry source SHA-256 plus observed size/modtime and eight per-range hashes; full remote source not rehashed during staging",
+  "source_object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+  "source_remote_metadata": {
+    "MimeType": "application/octet-stream",
+    "ModTime": "2026-09-07T07:18:30.000000000Z",
+    "Size": 13077428492
+  },
+  "source_sha256_registered": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+  "source_size_bytes_observed": 13077428492,
+  "strength_claim_authorized": false,
+  "task_id": "CARDPLAY_TRAIN_RANGE_DIAGNOSTIC_INPUT",
+  "training_approved": false
+}
