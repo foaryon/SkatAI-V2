@@ -1,0 +1,209 @@
+{
+  "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
+  "candidate_audits": [
+    {
+      "commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+      "decision_api_mapping": {
+        "bidMore/holdBid": "BID",
+        "discardSkat": "DISCARD",
+        "pickUpSkat/announceGame": "DECLARATION",
+        "playCard": "PLAY_CARD",
+        "playGrandHand/callContra/callRe": "outside present V2 four-phase interface; mode policy or extension required"
+      },
+      "evidence": [
+        {
+          "path": "README.md",
+          "sha256": "7e0d43e014fa9259e23042017e34c34a4b90e4d97eb50424095851591c05ea5e"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "path": "jskat-base/src/main/java/org/jskat/player/JSkatPlayer.java",
+          "sha256": "ce0f97ee86b1b121f0db4f1b1ae8272ae08ff52435a7b1b8abbf7900a9722135"
+        },
+        {
+          "path": "jskat-base/src/main/java/org/jskat/player/JSkatPlayerResolver.java",
+          "sha256": "8977f391404c7cfef2887193262cb7abe7ece502afc11687e3579ef1ff4fbcad"
+        },
+        {
+          "path": "jskat-gui/src/main/resources/org/jskat/gui/img/gui/AUTHORS",
+          "sha256": "3a13606e4ef7b1bf93dc7dbc36ddf78b523e0a1dbb6dca26430449b4847fb3d0"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "sha256": "91a1698ff0f70ce4a389bc0fa1b6cd9e7b748f09b863c6426e4661cbafae3374"
+        }
+      ],
+      "integration_risks": [
+        "Synchronous callback threading and timeout behavior must be measured",
+        "Construct observations only from lawful PlayerKnowledge fields; never pass full game state/private opponent cards",
+        "Static AI registration needs a small reviewed adapter hook",
+        "Replace or individually clear bundled images and icons before distributing a derivative",
+        "Independent rule parity on announced, ouvert, null, scoring and edge cases remains required",
+        "Windows 11 native package and current UX remain unverified"
+      ],
+      "license": "Apache-2.0 for code; bundled image rights require separate audit",
+      "repo": "b0n541/jskat",
+      "technical_facts": [
+        "JDK 21 Java/Kotlin modules separate jskat-base, jskat-gui and app",
+        "JSkatPlayer has bidMore, holdBid, pickUpSkat, discardSkat, announceGame and playCard callbacks",
+        "JSkatPlayerResolver registers AI classes in a hard-coded set",
+        "GameType covers Suit, Grand, Null, Ramsch and passed-in; GameContract models hand, Schneider, Schwarz and ouvert",
+        "base tree has 52 test files, GUI tree 18; dedicated rule and replay tests exist",
+        "CI workflow for pinned head concluded success with Windows/Linux/macOS matrix",
+        "latest published Windows asset is a platform-classified JAR from v0.23.0 (2024); source tree has no jpackage/MSI definition",
+        "SkatGameReplay and ISS controller/commands exist",
+        "GUI migration from Swing to JavaFX is explicitly ongoing; JSkatMaster labels itself a god class",
+        "362 card images plus GUI icons ship in repository; GUI AUTHORS identifies GPL, CC, public-domain and freeware assets; per-card rights unresolved",
+        "No ONNX weights found in pinned source tree; Java ONNX wrappers and ML players are present"
+      ]
+    },
+    {
+      "commits": {
+        "client": "67e638dfb698f9dc15391c9cefe0cb4692702737",
+        "server": "07dcc37f07c6f198714b5ff1f6d39fc536fe4be2"
+      },
+      "evidence": [
+        {
+          "path": "README.md",
+          "repo": "Dichloromethane/skat",
+          "sha256": "c033fcf817c6fa5fbe5a42e3d02ed625c121ad0527da10cecb2e06a30febc98b"
+        },
+        {
+          "path": "build.gradle",
+          "repo": "iTitus/skat-java",
+          "sha256": "59554248a93b8ed704b82918c189c20acefefe420633b4c76464e7ddb9c5d869"
+        },
+        {
+          "path": "src/main/java/io/github/ititus/skat/game/gamestate/GameRules.java",
+          "repo": "iTitus/skat-java",
+          "sha256": "e5f3787cff5fe093b7ffa1b9df5a592f5979441335726efc3e7857e0771ca7e0"
+        }
+      ],
+      "license": "BSD-3-Clause code in both; server fonts include GNU FreeFont GPLv3+ with documented embedding exception and require separate distribution review",
+      "reason_not_preferred": "Requires a server for local Windows product, bot integration is unproven, rule completion and current CI execution need work.",
+      "repo": "Dichloromethane/skat + iTitus/skat-java",
+      "technical_facts": [
+        "C server README states Linux-only; Windows instructions use WSL/XServer for its graphical client",
+        "Server README still lists ouvert as future work even though protocol structs carry an ouvert flag",
+        "JavaFX/Netty client has action and game-state classes but no AI/bot implementation path found in pinned tree",
+        "Java client Gradle jlinkZip runs on Windows/Linux/macOS in CI definition",
+        "Pinned Java client CI run failed at Setup Java for adopt distribution before build/test; server latest build workflow was cancelled",
+        "Java client tree has one test file; server tree has one unittest source",
+        "No published latest releases for either repository"
+      ]
+    },
+    {
+      "commits": {
+        "app": "f0bbe3714b3b811b8658856e2abfdfe9557f253e",
+        "engine": "7713011494f312c379d2c96f91bfbc23b0a63b8b"
+      },
+      "decision": "REFERENCE_IDEAS_ONLY_NO_COPY_OR_REUSE_UNTIL_LICENSE_RESOLVED",
+      "license": "No license file or package.json license field in either pinned repository; npm skaat 0.3.1 metadata also has no license",
+      "repo": "nikku/skaat + nikku/skaat-app",
+      "technical_facts": [
+        "Event-driven JS game loop and Svelte app have clean embedding shape",
+        "README demonstrates bots; last code pushes in 2023",
+        "No Windows desktop package; full rules not independently qualified"
+      ]
+    },
+    {
+      "commit": "4b0aa38e34393260b3588a638a2160fee17032f6",
+      "decision": "ENGINE_REFERENCE_ONLY",
+      "license": "MIT",
+      "repo": "dranidis/go-skat",
+      "technical_facts": [
+        "Go engine has seven _test.go files, AI players and ISS client source",
+        "Last push 2022; HTTP UI/asset provenance and Windows product packaging not qualified"
+      ]
+    },
+    {
+      "commit": "72bda242af928a38273eed667f1e86a24d794503",
+      "decision": "POSSIBLE_REPLACEMENT_ASSET_CANDIDATE_ONLY",
+      "license": "README and npm metadata say MIT; no standalone LICENSE file in pinned tree",
+      "repo": "nikku/skaat-deck",
+      "technical_facts": [
+        "SVG card deck README credits Wikimedia vector cards as public domain",
+        "Upstream artwork rights and package content require verification before redistribution"
+      ]
+    },
+    {
+      "commits": {
+        "android": "2fc4f3d6fa185e6b7f83dc3eeae74188bc4bcaf8",
+        "x11": "a42b93d704d95239a612a162621ed8061b29dc6f"
+      },
+      "decision": "LEGACY_RULE_UI_REFERENCE_NOT_MODERN_WINDOWS_BASE",
+      "license": "Custom XSkat notice requires preservation and change attribution/renaming conditions",
+      "repo": "rnauber/xskat-android + mfrasca/xskat"
+    },
+    {
+      "commit": "b589eddb74cd6df3b68dbc5f13c4f38bb6c42b92",
+      "decision": "OLD_GTK2_REFERENCE_ONLY_LAST_PUSH_2011",
+      "license": "GPL-3.0",
+      "repo": "kongo2002/gskat"
+    },
+    {
+      "commit": "9df7c0345e6db176ef99063a69c3a28d653a5ddf",
+      "decision": "ACTIVE_ENGINE_AGENT_REFERENCE_NO_PRODUCT_GUI",
+      "license": "GPL-3.0",
+      "repo": "gsilvan/Skat"
+    },
+    {
+      "commit": "97a429709eb4f689cecfa529a285796155fc24ad",
+      "decision": "ANALYSIS_REFERENCE_ONLY_README_SAYS_NO_HIDDEN_CARD_PLAY_AND_NULL_SOLVER_INCOMPLETE",
+      "license": "Apache-2.0 code; separate UI assets exist",
+      "repo": "ThomasR/Skatalysator"
+    },
+    {
+      "commit": "d66bd670d26ddbc6e8651cbf0a46fbab43859ef5",
+      "decision": "INCOMPLETE_QT_GUI_REFERENCE_ONLY",
+      "license": "Custom permissive-like notice in README with modified-version attribution conditions; no LICENSE file",
+      "repo": "squawk7x/QuteSkatGame"
+    },
+    {
+      "commit": "96e0523988654d815faf4c393c25047e56f7acfe",
+      "decision": "EARLY_ENGINE_REFERENCE_NO_COPY",
+      "license": "No license file or declared SPDX",
+      "repo": "bcheidemann/skat_engine_rs"
+    }
+  ],
+  "captured_at": "2026-09-25T12:04:34.035678+00:00",
+  "classification": "CONCLUDE_BOUNDED_AUDIT",
+  "external_source_search": {
+    "conclusion": "No verified stronger current Windows product base found in these bounded searches; search is not exhaustive.",
+    "debian": "xskat package source endpoint returned challenge page, not auditable metadata in this pass",
+    "fdroid": "search page was dynamically rendered; no package conclusion from static HTML",
+    "gitlab_codeberg": "Skatspiel queries returned no relevant repository; generic skat query was dominated by unrelated skate/SKA telescope results, so coverage is limited",
+    "sourceforge": "Existing survey has PikSkat/SecureSkat historical candidates; directory query later returned HTTP 403, no stronger current candidate verified"
+  },
+  "next_gates": [
+    "Resolve JSkat pickup/hand/announce/discard callback order against V2 observations, per bridge contract",
+    "Run independent JSkat rule/score parity cases before trusting its engine, especially announced Schneider/Schwarz, ouvert, Null and hand variants",
+    "Build current pinned JSkat on isolated scratch or use equivalent current CI; run a headless adapter smoke without vendoring",
+    "Audit or replace every distributable card image, icon, font and audio asset",
+    "Measure JavaFX/Swing modernization cost and create a Windows 11 package with bundled runtime before selecting final product base"
+  ],
+  "parent_survey": "/workspace/skatai-v2-runtime/continuation/OPEN_SOURCE_SKAT_SOFTWARE_RESEARCH_20260925.json",
+  "recommendation": {
+    "do_not_vendor_or_fork_yet": true,
+    "fallbacks": [
+      "Dichloromethane/skat + iTitus/skat-java as client/server architecture reference after server/CI/rules gaps are resolved",
+      "dranidis/go-skat as engine/ISS test reference, not current GUI base"
+    ],
+    "preferred_base": "b0n541/jskat game core and JSkatPlayer extension surface; reuse GUI selectively after UX and asset review",
+    "status": "CONDITIONAL_PREFERENCE_NOT_ADOPTION_BRIDGE_GAPS_IDENTIFIED",
+    "why": "Current cross-platform CI, permissive code license, tested Skat rule families, replay/ISS path and direct AI-player callbacks provide the shortest evidenced route to a local Windows product host."
+  },
+  "schema": "skatai.v2.open-source-skat-product-audit.v1",
+  "scientific_invariants": [
+    "R9 treatment and supervisor remain frozen and independent",
+    "V2 Decision API remains host boundary",
+    "No open-source rules or AI code becomes V2 scientific authority without V2 validation"
+  ],
+  "scope": "Modern Windows 11 game host whose accepted AI releases use the existing V2 Decision API",
+  "task_id": "OPEN_SOURCE_SKAT_PRODUCT_BASE_RESEARCH_20260925",
+  "third_party_assets_imported": false,
+  "third_party_code_imported": false
+}

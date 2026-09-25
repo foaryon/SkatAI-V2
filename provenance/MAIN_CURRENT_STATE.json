@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T11:54:42.158566+00:00",
+  "captured_at": "2026-09-25T12:05:48.342692+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -18,10 +18,10 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through d4c4748; host-source blocker pending commit",
+    "remote_state": "verify with Git at resume; product audit/bridge commit planned",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "d4c4748ade55df137315e3ad4c313772ecbb2b42",
-    "worktree_state": "host-source blocker pending commit"
+    "verified_head_before_this_manifest": "1ac9700ce62cd0a97d7f1db347428c3f90ef1ca7",
+    "worktree_state": "verify with Git at resume"
   },
   "nearest_gates": [
     {
@@ -47,9 +47,13 @@
     {
       "dependency": "Identified train-only cases, bounded treatment, isolated compute, paired B0 gameplay; teacher output is not deployable observation",
       "gate": "Endgame teacher empirical usefulness"
+    },
+    {
+      "dependency": "JSkat conditional preference; pickup/hand lifecycle, rules parity, asset rights, native package and GUI validation before adoption; see product audit and bridge contract",
+      "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "R9 remains under independent fail-closed supervisor until its clean 300-scored-games-per-arm gate; then use staged measured 1->2->4 throughput epochs. Actual host integration awaits authoritative software source. The bounded PIMC treatment is inconclusive and closed.",
+  "next_action": "R9 under independent fail-closed supervisor until clean gate; stage measured 1->2->4 epochs at boundary. Advance independent JSkat bridge/rules/asset validation for Windows host; actual user-host integration still awaits source.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -60,6 +64,14 @@
       "status": "AWAITING_SOURCE_REFERENCE"
     }
   ],
+  "product_software_research": {
+    "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
+    "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
+    "classification": "CONCLUDE_BOUNDED_AUDIT",
+    "next_gate": "JSkat lifecycle/rule validation, then licensed assets and Windows build",
+    "no_vendor_or_fork": true,
+    "status": "CONDITIONAL_JSKAT_PREFERENCE_NO_ADOPTION"
+  },
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {
     "estimated_unit_price_usd_per_hour": 0.06,

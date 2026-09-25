@@ -1,0 +1,90 @@
+{
+  "captured_at": "2026-09-25T12:05:48.342692+00:00",
+  "identity": {
+    "cards": "JSkat Card enum names are suit C/S/H/D plus rank A/T/K/Q/J/9/8/7, matching V2 two-character tokens; require 32-card bijection test",
+    "game_id": "Stable host table plus local game identity, never card or wall-clock-derived only",
+    "seats": "JSkat Player FOREHAND/MIDDLEHAND/REARHAND getOrder() 0/1/2 equals V2 seat integer; verify turn rotation at integration",
+    "sequence_no": "Monotone per game at each requested decision; validate response request_id and position_hash before acting",
+    "source_context": "Only provenance and public host metadata; never hidden game state"
+  },
+  "implementation_authorized": false,
+  "phase_mapping": [
+    {
+      "gap": "nextBidValue must map exactly to V2 bid_index from same auction schedule",
+      "jskat_callback": "bidMore(nextBidValue)",
+      "mapping": "BIDDER CONTINUE returns exactly nextBidValue; PASS returns 0; do not invent or skip bid values",
+      "required_inputs": "10 own cards, actor, bidder, answerer, bid_index; host must track bidding sequence",
+      "v2_phase": "BID"
+    },
+    {
+      "jskat_callback": "holdBid(currBidValue)",
+      "mapping": "ANSWERER CONTINUE returns true; PASS returns false",
+      "required_inputs": "10 own cards, actor, bidder, answerer, bid_index",
+      "v2_phase": "BID"
+    },
+    {
+      "gap": "V2 declaration action is a contract, not a pickup decision; post-pickup observation expects 12 cards. Do not infer choice from hidden skat or hard-code it as complete integration.",
+      "jskat_callback": "pickUpSkat()",
+      "mapping": "Requires a declared phase protocol for hand-versus-pickup choice",
+      "required_inputs": "10 own cards and bid context",
+      "v2_phase": "NO_DIRECT_ACTION"
+    },
+    {
+      "gap": "Verify JSkat callback ordering and whether the player internal knowledge still has all 12 cards",
+      "jskat_callback": "discardSkat()",
+      "mapping": "V2 unordered pair action in observation hand12 order -> JSkat two Card values",
+      "required_inputs": "12 own cards after pickup, seat, winning bid",
+      "v2_phase": "DISCARD"
+    },
+    {
+      "gap": "Confirm engine order. If announceGame follows discard, original 12-card decision observation must be retained immutably with exact game identity; no post-hoc restoration using host hidden state.",
+      "jskat_callback": "announceGame()",
+      "mapping": "Map reviewed legal contract set and V2 action to JSkat GameContract",
+      "required_inputs": "10 cards for hand or 12 cards for pickup per V2 observation; JSkat may already have discarded to 10",
+      "v2_phase": "DECLARATION"
+    },
+    {
+      "gap": "Replay full public sequence; track own discarded skat privately only for declarer and public ouvert cards only when actually shown.",
+      "jskat_callback": "playCard()",
+      "mapping": "JSkat own hand, seat, declarer, contract, public trick/history, validated legal cards -> V2; selected card must remain JSkat legal",
+      "required_inputs": "own cards and lawfully disclosed game history only",
+      "v2_phase": "PLAY_CARD"
+    },
+    {
+      "gap": "Never silently claim full JSkat variant support from four V2 phases.",
+      "jskat_callback": "playGrandHand()/callContra()/callRe()",
+      "mapping": "Explicit mode limitation or versioned stable API extension required",
+      "v2_phase": "UNSUPPORTED"
+    }
+  ],
+  "public_information_policy": {
+    "allowed": "Own hand, public auction, announced contract/declarer, public cards/tricks, legally disclosed ouvert hand, own picked-up/discarded skat when actor is declarer",
+    "prohibited": "Whole JSkat game state, opponent private hands, unopened skat for defenders, uncertain possible-card estimates as if observations, future tricks, private host test labels",
+    "special": "JSkat ImmutablePlayerKnowledge.getSkat and getDeclarerPlayerCards are conditional; permit only after lawful revelation to this seat. Recompute and compare legal card set against independent V2 rules before requesting play."
+  },
+  "required_validation": [
+    "Exact JSkat callback order and information timing across pickup/hand/announce/discard, with an independently reproduced local game",
+    "Bid schedule and bid_index parity",
+    "32-card and contract bijection, with flags hand/Schneider/Schwarz/ouvert/Null",
+    "Legal action and scoring parity on independently generated edge cases",
+    "No hidden-state leakage from JSkat knowledge/game objects",
+    "Headless four-phase end-to-end adapter smoke, late/duplicate/stale response rejection and release swap",
+    "Windows 11 packaged app runtime/GUI responsiveness and distributable asset rights"
+  ],
+  "runtime_policy": {
+    "boundary": "One persistent V2 host service loaded from an accepted release package; adapter is a game host, not AI implementation",
+    "effect_rule": "Validate response schema, request_id, position_hash, sequence_no, release_id and exact legal action before JSkat callback returns",
+    "thread_rule": "Java UI thread must not synchronously wait on Python inference; no mutable per-game state shared across simultaneous games",
+    "timeout_rule": "Deadline measured per callback; errors/late responses fail closed at the host integration gate; fallback behavior must be explicitly decided and measured before release"
+  },
+  "schema": "skatai.v2.jskat-decision-bridge-contract.v1",
+  "source": {
+    "jskat_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+    "jskat_repo": "b0n541/jskat",
+    "v2_commit": "1ac9700ce62cd0a97d7f1db347428c3f90ef1ca7",
+    "v2_host_request": "skatai.v2.host-request.v1",
+    "v2_interface": "skatai.v2.product-interface.v1"
+  },
+  "status": "DESIGN_ONLY_BLOCKED_ON_LIFECYCLE_AND_RULE_VALIDATION",
+  "third_party_code_imported": false
+}
