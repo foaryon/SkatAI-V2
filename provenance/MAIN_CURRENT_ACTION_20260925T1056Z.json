@@ -1,0 +1,46 @@
+{
+  "schema": "skatai.v2.main-current-action.v1",
+  "captured_at": "2026-09-25T10:56:27Z",
+  "git": {
+    "repository": "foaryon/SkatAI-V2",
+    "branch": "main",
+    "head_at_capture": "0bd5532",
+    "remote_at_capture": "pushed",
+    "worktree_at_capture": "clean"
+  },
+  "active_external_work": {
+    "task_id": "B1_EXTERNAL_ISS_R9",
+    "classification": "CONTINUE",
+    "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+    "supervisor_authority": "independent fail-closed supervisor",
+    "main_action": "No live polling of healthy games; wait for watchdog or clean gate transition",
+    "first_strength_look": "closed until 300 scored games per arm"
+  },
+  "latest_independent_gate": {
+    "task_id": "SELFPLAY_D1_TRAIN_PARTITION_READER",
+    "classification": "CONCLUDE",
+    "evidence": "provenance/SELFPLAY_EXPLORATORY_TRAIN_PARTITION_20260925.json",
+    "verified_old_v4_local_pilot": "REJECTED:LEARNER_CARDPLAY_POINT_STATE_MISMATCH",
+    "v5_exact_artifact_validation": "PENDING_EXACT_OBJECTS",
+    "training_approval": false
+  },
+  "blockers": [
+    {
+      "gate": "Exercise reader on exact V5 learner plus split objects",
+      "condition": "Stage exact Hetzner objects and verify registry hashes",
+      "observed": "Objects not staged locally; AWS credentials absent from this process; PID 1 environment inaccessible",
+      "retry": "Recheck only after a credential or staged-object change"
+    },
+    {
+      "gate": "B0 cardplay weakness inference and current-source package build",
+      "condition": "Isolated compute and measured storage headroom",
+      "observed": "R9 remains CPU-sensitive and network-volume UI was approximately 119/120 GB; no new heavy job launched"
+    },
+    {
+      "gate": "Actual Skat host integration",
+      "condition": "User host software becomes available in the V2 workspace or an authorized source repository",
+      "observed": "No user host source tree found on attached pod"
+    }
+  ],
+  "next_highest_value_action": "When exact V5 objects and object-store access are available, verify and open the frozen D1 train partition, then design one bounded causal treatment. Continue R9 separately to its preregistered gate."
+}
