@@ -48,8 +48,9 @@ class CardplayEvent:
 
 def _game_id(record: Mapping[str, Any]) -> str:
     # The migrated Legacy corpus carries a different semantic hash scheme.
-    # Recompute with the clean V2 projection so cross-source split membership
-    # and deterministic sampling use one transcript identity.
+    # Recompute with the clean V2 projection so identical transcripts use one
+    # identity for deterministic sampling. Partial and complete transcripts
+    # can differ; split membership needs a separately verified crosswalk.
     try:
         return semantic_identity(dict(record))
     except (KeyError, TypeError, ValueError) as exc:

@@ -117,3 +117,17 @@ def test_reconstructed_game_id_uses_v2_identity_and_preserves_source_identity():
     assert event.raw_sha256 == game["raw_sha256"]
     assert event.to_mapping()["source_semantic_sha256"] == game["semantic_sha256"]
     assert "source_semantic_sha256" not in event.to_mapping()["observation"]
+
+
+def test_partial_transcript_identity_cannot_join_completed_game_without_crosswalk():
+    complete = parse_sgf_line("fixture", LIVE_SPLIT_PICKUP)
+    partial = deepcopy(complete)
+    partial["plays"] = partial["plays"][:2]
+    partial["play_count"] = 2
+    partial["play_complete"] = False
+
+    full_event = reconstruct_cardplay_events(complete)[0]
+    partial_event = reconstruct_cardplay_events(partial)[0]
+    assert partial_event.observation == full_event.observation
+    assert partial_event.game_id != full_event.game_id
+    assert partial_event.source_semantic_sha256 == full_event.source_semantic_sha256
