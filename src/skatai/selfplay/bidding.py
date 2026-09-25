@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
-from skatai.gameplay.bidding import simulate_auction
+from skatai.gameplay.auction import simulate_auction
 from skatai.gameplay.skatzero_bidding import max_accepted_bids_by_seat
 from skatai.runtime.interface import BiddingObservation
 from skatai.selfplay.cardplay import Deal, make_deal

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
-from skatai.gameplay.bidding import AuctionResult, NeuralBiddingPolicy
+from skatai.gameplay.auction import AuctionResult
+
+if TYPE_CHECKING:
+    from skatai.gameplay.bidding import NeuralBiddingPolicy
 
 
 @dataclass(frozen=True)
