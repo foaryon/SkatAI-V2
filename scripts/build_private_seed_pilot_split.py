@@ -106,6 +106,8 @@ def main() -> None:
                          "Private seeds, RNG seeds, deal hashes and ranking digests stay outside learner artifacts"],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    if args.output.exists():
+        raise ValueError("SPLIT_OUTPUT_EXISTS")
     fd, tmp = tempfile.mkstemp(prefix=args.output.name + ".", dir=args.output.parent)
     try:
         os.fchmod(fd, 0o644)
@@ -114,8 +116,11 @@ def main() -> None:
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(tmp, args.output)
+        if os.stat(tmp).st_mode & 0o022:
+            raise ValueError("SPLIT_OUTPUT_PERMISSIONS_UNSAFE")
+        os.link(tmp, args.output)
         if args.output.stat().st_mode & 0o022:
+            args.output.unlink()
             raise ValueError("SPLIT_OUTPUT_PERMISSIONS_UNSAFE")
     finally:
         if os.path.exists(tmp):
