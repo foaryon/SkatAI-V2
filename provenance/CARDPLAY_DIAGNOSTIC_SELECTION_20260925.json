@@ -1,0 +1,825 @@
+{
+  "B0_inference_run": false,
+  "captured_at": "2026-09-25T11:15:50.989396Z",
+  "diagnostic_code_sha256": "25eb100d7cd89aa1837351833adf170750a13fcfedb32825c5a5ba64b7a8eb73",
+  "inference_rule": "B0 must verify sample and selection hashes before policy initialization; historical action agreement is diagnostic only",
+  "quarantine": [
+    {
+      "game_id": "5658827",
+      "raw_sha256": "1f37ed125ddd0aa9b79bee3f2d10ba5ac1eceee0ff60008bd7eb90e59b39507f",
+      "reason": "BIDDING_REPLAY_FAILED"
+    }
+  ],
+  "reconstructed_events": 22751,
+  "reconstructed_games": 881,
+  "sample_object": "s3://skatai-v2/datasets/research/cardplay-train-range-sample/c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805.jsonl",
+  "sample_rows": 882,
+  "sample_sha256": "c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805",
+  "schema": "skatai.v2.cardplay-diagnostic-preregistered-selection.v1",
+  "selected_identities": [
+    {
+      "game_id": "fe2fc02121f138e88afe2ccfd361c2cac99c5e209ed9692e243d4c5790a1f017",
+      "play_ordinal": 9,
+      "raw_sha256": "67b0ac9cad58d729fdf8a6e9771dfc0d7fc8d76d82962963bcb834329635ff18",
+      "source_semantic_sha256": "78691af60ebe045365f087f9ab1f435afde58f5ec6dab510bec5a9db406c8206",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "a1fa3c0fe6bc25523a4861ee292186463560934b49312cca604875a737689149",
+      "play_ordinal": 7,
+      "raw_sha256": "1b07f200588dd8f0368f9fad417735ffc39c49c25736b523ce53b18855bfc0c7",
+      "source_semantic_sha256": "1bf5117b65ca29f197f2ce0808e2d8ec327b6f0d4e55fc903cb5685efef1b8f6",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "cddb49b4d7389365875a2d9437124bc9e05222a45164bc2ba8f609b7151b6ed0",
+      "play_ordinal": 9,
+      "raw_sha256": "e329aaef94f49c1c633c045436f812bbb9f51bf870b1b721360b82a984eeaee6",
+      "source_semantic_sha256": "15b197013d40ab4ca791c0da2041b7c0120a465e9cc16d6e6c0e1d221eb9a5ad",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "f45e5a787c55505f889b7f6aa86084855c4c1485d1a4ccd9a4fc81d6b00e996b",
+      "play_ordinal": 8,
+      "raw_sha256": "bba1c5d1bcc29074cf35ade8e594446e18a8736bc59c39bfca5a7c59a1f8a055",
+      "source_semantic_sha256": "2ab28204ae815c4731fcd17c7ddee690d3a3d3044a18e864644451606b8dee8d",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "b5d7dd4583f17a98f5e1666500b75374bece195defaf568ac1bcaba004535c25",
+      "play_ordinal": 29,
+      "raw_sha256": "cb3b92ec8440250f970ca3e87afcc31c021514a2baf5405a4129a9d957496199",
+      "source_semantic_sha256": "9392531703ada876aebe6e675d5dbcd25970bfcad884d110311cc6633db47f80",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "0b502672e08050a18803e6040cc459d382aac42fb254a4823b7acc48f10c885a",
+      "play_ordinal": 23,
+      "raw_sha256": "67ff76beb1ece525efc4ba3c88553df0c40f06a3bd942bb7dd36f0e6b3812f96",
+      "source_semantic_sha256": "fb9b84f01c2d7c66ab31f1fdd7805f6176fd0e2de13fca9203e93e5a115d5aeb",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "91305b67be41b774fb6e377281ec70827d507c0a7b4b982bd15007fa7585d266",
+      "play_ordinal": 21,
+      "raw_sha256": "0705e3061665bb53d00736c5bf68f84500204208c91f22464af75ad241cd2f25",
+      "source_semantic_sha256": "24680a43ef70419669cc63d1ab2e3e3588fee3b9c3091475a977ee6674315115",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "35c852390c326261dabcb8ec97898d3ed55fc4fd46337e324d067499fc9f17c0",
+      "play_ordinal": 24,
+      "raw_sha256": "0a3864b0b19b60dc74238437ad6668aaf0b5c297c19e8886587512d7dc6f69a4",
+      "source_semantic_sha256": "b1a451bfa573aa0bb67e6e17e9ae6156da77120df448a676bd6a21c0390852ab",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "dd54cc607a8318a63e7c163a8ea10fefd333e3e76b97503e7dba307306a87454",
+      "play_ordinal": 12,
+      "raw_sha256": "30f06cb9f8a505a21214ffbb6f27dbbcd56f8db1f3c1c6e596f9b8c2fede0c1a",
+      "source_semantic_sha256": "e55fea6a0cadc244be729c33e343e4f2794ea6994be72bba2ce2c8f08e6eb7a1",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "7db3cabceed41976f3434214a92ede92eed7d1576326d997fa9f7f064d66eed4",
+      "play_ordinal": 15,
+      "raw_sha256": "61f8b9a844f383b975365adbbc91848f1066f9ea40489c5f6f47923d000de0e5",
+      "source_semantic_sha256": "180e0c3fd312e1202c5f5cc3e6b52da80ae5ffb5e01565d41b97ee6c8607a4cb",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "7ce129a2fe85c7cb7286bc7b888650810cef1a0f825008d21313c73be36e0518",
+      "play_ordinal": 12,
+      "raw_sha256": "0e3bc3994ab860ac8b4509873d5e38d3681fa85045befd0f6dc27396093554d8",
+      "source_semantic_sha256": "8704b0556d48e04060274af467c906537ae8c0765236e7c28efa95a0ef12fa7a",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "e064b235a0d3b7a34a3ee57cfae90219b53c3d8e0b33b6edc0db8190deac207c",
+      "play_ordinal": 12,
+      "raw_sha256": "dff2c6e419291e23cc74031e5eb95b86d33db6b1fa318967160bfabfc1c9e30c",
+      "source_semantic_sha256": "b7bfb32ef70d5ef8ffe5783d9e02e80ded9dc099875dea5edca41cbffe72b1b1",
+      "stratum": [
+        "GRAND",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "16b1739e43064207c06fb11f2dbf06c33f9cb0b1465a96f9106dbe4374414185",
+      "play_ordinal": 4,
+      "raw_sha256": "6021c4061632285e3be379639bbe854a916dd03d454e941d1c2b39cbc53894f9",
+      "source_semantic_sha256": "e045e50e550683ad640b57f250a658633dd4ff457a96e2f8b038684076a3c28c",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "877f7f97e1ce07df8eb4509e7e04a5238ca96e5b4cb4660a678d489774e0b340",
+      "play_ordinal": 4,
+      "raw_sha256": "24d89e0a1b6ce2a183e37d39726b7aa1bb4db342880fd79beed60a33d5de508b",
+      "source_semantic_sha256": "4f36124fd175802a015219b17154df7154d432c48a8479aa845209db6716716d",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "7ce129a2fe85c7cb7286bc7b888650810cef1a0f825008d21313c73be36e0518",
+      "play_ordinal": 5,
+      "raw_sha256": "0e3bc3994ab860ac8b4509873d5e38d3681fa85045befd0f6dc27396093554d8",
+      "source_semantic_sha256": "8704b0556d48e04060274af467c906537ae8c0765236e7c28efa95a0ef12fa7a",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "1f352b140f02733a8f44c8ad6eea2cd64c75a86f75ddb2021c9a0a1f39359662",
+      "play_ordinal": 8,
+      "raw_sha256": "d174789a1f3a49c208594f81e7eb4bbe39c9be656ce6198d66ea61ef1814047e",
+      "source_semantic_sha256": "aee0f3ce6b2712583b9b920bd44b7dd2df6039975d6592d9567b80990841fe2f",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "311b3313d01cf0256dcaa68ff88af4c7583d8226c231e91e0a5ab9b9e7eb5204",
+      "play_ordinal": 20,
+      "raw_sha256": "c9d299cfbc83efdb99802057c431faf3827c28bb4b4cf0699d7b5ee19828dfe4",
+      "source_semantic_sha256": "3d30e724f17f2a1400a37da2ed4fa97600651688de5d20355923df7011eabaa4",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "b63059fddbfc000001d33b26196e44e4ddc2ba5ddf954ea4d56b1a03398455e9",
+      "play_ordinal": 25,
+      "raw_sha256": "08d335852fffab905cc96813f5110e4978d1f7a1facf4d234c94e504fcb8800a",
+      "source_semantic_sha256": "bb363741e5ed308b1978e5dba57dcb9be1e9e60a300ae550d77a6ec98f865359",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "e064b235a0d3b7a34a3ee57cfae90219b53c3d8e0b33b6edc0db8190deac207c",
+      "play_ordinal": 23,
+      "raw_sha256": "dff2c6e419291e23cc74031e5eb95b86d33db6b1fa318967160bfabfc1c9e30c",
+      "source_semantic_sha256": "b7bfb32ef70d5ef8ffe5783d9e02e80ded9dc099875dea5edca41cbffe72b1b1",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "bc62ccf88302c8e04c5f2175fc5dcd2041c644b04636d7a1f62059ee9447b73c",
+      "play_ordinal": 25,
+      "raw_sha256": "1ad7e58dc879cb12e03868b2c3dbb3a3478598b88e9a060a74afa0aeb18e3d46",
+      "source_semantic_sha256": "ea30bace3157becfacf954bd0f8f43af04f881ba290c5bb627e515c1db76a439",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "2f5433a45d3aafbc3fc1888812f8bffa3eef05aa3a183a968bbb2254ab1aa372",
+      "play_ordinal": 14,
+      "raw_sha256": "19a91fa8b185cb0bb6a0731f379c3acfa61b459fd0ae2bf996fd251074b70088",
+      "source_semantic_sha256": "44f734ec89783a557597125cad2743ca378578065eb874a785af95b3b44d4422",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "6ae79ebdd8c734e7d3cf9692303887f9ac0b84da7f67ce827d1764f146f89a2d",
+      "play_ordinal": 16,
+      "raw_sha256": "45c201d98d75cf23581bd76df2011f68506c55b1b8d772758b14c105790cfb0e",
+      "source_semantic_sha256": "088fe4221a2ae6860610e31acd5ac3cb111f757743dfd6cf745093b9b211fb48",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "880f0518eed9cbc6f38fed2da3c416389ed57838311fd9a271380413afbe063e",
+      "play_ordinal": 19,
+      "raw_sha256": "b266a67e45fb2a1b1ec0222b3027cca096842f902bbddc08785b3eb2354e589b",
+      "source_semantic_sha256": "acf7dfbc266f9281182b9841a8e400d8fa3beb693e514940b7dba4129959c0bc",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "a9636f7358af4cb4d80a2f2d76d699193b30f8771781678682568b155e20b182",
+      "play_ordinal": 11,
+      "raw_sha256": "bbb2e8da1837bab814031f62bda0f2bcf68a7a8efb2dfb1824130e21a2b74939",
+      "source_semantic_sha256": "eae688661fb11725627f79e1bc0d82c8bb28cbf15b9356400e0ed33321481ae1",
+      "stratum": [
+        "GRAND",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "e41b05cd020142670741f7608c4ebb25001571e077b67ab46c072fcf8d6050ad",
+      "play_ordinal": 0,
+      "raw_sha256": "e551b1deba2cd1013586919dc1722d51206daf705b9b9b52cf79313dbc6be84c",
+      "source_semantic_sha256": "54025df28b3c86322d88c43ccedff2cda3b6ba9cc5e9c473c543b7237b49c0a9",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "cb69a0529c03aae379cdc28cade759e840c395162660715a2bd57ee2c302dd9d",
+      "play_ordinal": 8,
+      "raw_sha256": "94e06d55d974814504512538495e78f0fe75802912329f267afc5f35fad3e1ea",
+      "source_semantic_sha256": "1bc64ec7fb8c40ebcc5451e3879b0afaa1d0e155ffa5961578308cf82f921e7f",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "1d5b856c509dd0e5ac2fcb7b1d67c543b19e04df3d7301e5ff302ef9a6c3f7bb",
+      "play_ordinal": 1,
+      "raw_sha256": "2ced9d1bcfd50ed9f3d39eaeb93338092c05df54d0578b5de14a09525ab9a157",
+      "source_semantic_sha256": "257edaf24783866e6187ca33daf68b3de4292fe578fa011062005cf322c390c5",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "b535ba335556be9b3d6cbe345058b339b98952b40839ecb9b369a64bf760662c",
+      "play_ordinal": 1,
+      "raw_sha256": "fb17de3853d2c5544b57434f8e931a45e45638ea33af470863537c3231f4a1f9",
+      "source_semantic_sha256": "ca1627a5a1c1408111c774f9af0170069258d2e57b841fc2e2e6dafd16014fc2",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "d2e53cc1d62e5e29190058de6aa3222156ba03e556e587f08af4f2d806a30eec",
+      "play_ordinal": 29,
+      "raw_sha256": "2695dc037c91e1f3d43d4d43275abe0716144d324759369042cde6e7e643d0b7",
+      "source_semantic_sha256": "2b97d42468d827a5136013e9f20bc10866538a9e530fa9db1aaadae07498f361",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "5a8ad9f8665eb3865dd51a39cc20f791ef95255a01b168b776ea5cd7e90a16a1",
+      "play_ordinal": 22,
+      "raw_sha256": "95ca8305b875dd5f6cc25a750e1ca0047aac5948e8ab5cc33348eba568fbfec2",
+      "source_semantic_sha256": "b861307a4fd9eaeb7b571440fe2a23426871830b58006162e8bf141b69315ee8",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "5494df28f1962da50a3065defc0e2aa92102b8ec5ed37034971026a653849387",
+      "play_ordinal": 26,
+      "raw_sha256": "8b20f0ec46121a8b2922eb4e3348445ff0f67c2f27296a1f3627e95572a28342",
+      "source_semantic_sha256": "2f3a5807aa9e3b51b12362696a59a2e12f1ede106a4ea40f12e9f7d48705c3dc",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "643b9d3fa3a12df677bad6dfd7f730512fc653aa9bb1d9dd18e69be62df3f9b4",
+      "play_ordinal": 25,
+      "raw_sha256": "d8056fd6277567b9766a3ea37cd74328f0f19a6f1ffeacf3b2096d4c1be0328a",
+      "source_semantic_sha256": "e53ddbab2138b1a0a93b2642554fdd95b0843f0da3ca2c7cfd2e33a370656a2d",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "152d79e74781e40e87c3728e3d66f4cc0ef7685b41539e9f216e5a2ce8ade7cb",
+      "play_ordinal": 11,
+      "raw_sha256": "302379a9a2a0249e37aab401850683c6f8800fdd7d9064c3e2f483ee211df86d",
+      "source_semantic_sha256": "eef5375cd84226ba8e8d17ee19a762e52a0135a08fe33fb2c1c5e77caa14e687",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "643b9d3fa3a12df677bad6dfd7f730512fc653aa9bb1d9dd18e69be62df3f9b4",
+      "play_ordinal": 17,
+      "raw_sha256": "d8056fd6277567b9766a3ea37cd74328f0f19a6f1ffeacf3b2096d4c1be0328a",
+      "source_semantic_sha256": "e53ddbab2138b1a0a93b2642554fdd95b0843f0da3ca2c7cfd2e33a370656a2d",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "5a8ad9f8665eb3865dd51a39cc20f791ef95255a01b168b776ea5cd7e90a16a1",
+      "play_ordinal": 19,
+      "raw_sha256": "95ca8305b875dd5f6cc25a750e1ca0047aac5948e8ab5cc33348eba568fbfec2",
+      "source_semantic_sha256": "b861307a4fd9eaeb7b571440fe2a23426871830b58006162e8bf141b69315ee8",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "b535ba335556be9b3d6cbe345058b339b98952b40839ecb9b369a64bf760662c",
+      "play_ordinal": 11,
+      "raw_sha256": "fb17de3853d2c5544b57434f8e931a45e45638ea33af470863537c3231f4a1f9",
+      "source_semantic_sha256": "ca1627a5a1c1408111c774f9af0170069258d2e57b841fc2e2e6dafd16014fc2",
+      "stratum": [
+        "NULL",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "db864e78841ad3fa0f6770c553a7ea726548f44ab432a5502d3b656428124f4d",
+      "play_ordinal": 2,
+      "raw_sha256": "063f3050a9395206bb6d165f631cdef3b9638e312a7e7d694183d21ea10d98ff",
+      "source_semantic_sha256": "2b0959dc9e9ca165f647280c50ef2810dc99471e3aed53727971f23f775e9849",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "f71afb40c56f5ee1429f0602dc05d3678bfee958f7ac4109dc0b808f6f9f7208",
+      "play_ordinal": 1,
+      "raw_sha256": "4751e1a5de265006e596b5e56d7ea0b2f28ebab6972c7447d9a125e3bfe86384",
+      "source_semantic_sha256": "f5ef95420721694d8fa0414c951c44548626c8a065050e5f7d4f77ee6237eef1",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "cacc999e67626c3950fa031e8b6f7c313bda10f79cb7d3dc3c61ecd02ce690b8",
+      "play_ordinal": 7,
+      "raw_sha256": "cb3058668078a415f1e5de9b69f5fe7f1021c738cc7cc3118018156ad86c8cf7",
+      "source_semantic_sha256": "7a51c22aad1609413cda8b457ca26adf521461a12c8f3e47e3a31131d67fab4f",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "e177d202e3363fb9f466148b9baaf1fbf5998a7e59b0b78e805c79238f05b9bb",
+      "play_ordinal": 2,
+      "raw_sha256": "03afd439fce0f6b5b3a60a025e72dc056719fd7b7d0161a2546a8a3d8585f439",
+      "source_semantic_sha256": "bbdd0830e08e9db30eadd970820f424233a4fc8b2eb3371d08b0cda41c54af0b",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "5a8ad9f8665eb3865dd51a39cc20f791ef95255a01b168b776ea5cd7e90a16a1",
+      "play_ordinal": 26,
+      "raw_sha256": "95ca8305b875dd5f6cc25a750e1ca0047aac5948e8ab5cc33348eba568fbfec2",
+      "source_semantic_sha256": "b861307a4fd9eaeb7b571440fe2a23426871830b58006162e8bf141b69315ee8",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "cacc999e67626c3950fa031e8b6f7c313bda10f79cb7d3dc3c61ecd02ce690b8",
+      "play_ordinal": 21,
+      "raw_sha256": "cb3058668078a415f1e5de9b69f5fe7f1021c738cc7cc3118018156ad86c8cf7",
+      "source_semantic_sha256": "7a51c22aad1609413cda8b457ca26adf521461a12c8f3e47e3a31131d67fab4f",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "0fac71a8728388ef236e3da49ee0488e23cd8f8eb9be72befc450ef03d3b1774",
+      "play_ordinal": 20,
+      "raw_sha256": "1be9742647d34184ff9efb1b7a445858750214b184d4e801e3f8d135b4a24a3a",
+      "source_semantic_sha256": "7647b12ccb28a3dfb1852123505f2c698f1f1befcfa4dd0c94ff48b46af6d300",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "5494df28f1962da50a3065defc0e2aa92102b8ec5ed37034971026a653849387",
+      "play_ordinal": 24,
+      "raw_sha256": "8b20f0ec46121a8b2922eb4e3348445ff0f67c2f27296a1f3627e95572a28342",
+      "source_semantic_sha256": "2f3a5807aa9e3b51b12362696a59a2e12f1ede106a4ea40f12e9f7d48705c3dc",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "cb69a0529c03aae379cdc28cade759e840c395162660715a2bd57ee2c302dd9d",
+      "play_ordinal": 12,
+      "raw_sha256": "94e06d55d974814504512538495e78f0fe75802912329f267afc5f35fad3e1ea",
+      "source_semantic_sha256": "1bc64ec7fb8c40ebcc5451e3879b0afaa1d0e155ffa5961578308cf82f921e7f",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "5a8ad9f8665eb3865dd51a39cc20f791ef95255a01b168b776ea5cd7e90a16a1",
+      "play_ordinal": 16,
+      "raw_sha256": "95ca8305b875dd5f6cc25a750e1ca0047aac5948e8ab5cc33348eba568fbfec2",
+      "source_semantic_sha256": "b861307a4fd9eaeb7b571440fe2a23426871830b58006162e8bf141b69315ee8",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "cacc999e67626c3950fa031e8b6f7c313bda10f79cb7d3dc3c61ecd02ce690b8",
+      "play_ordinal": 12,
+      "raw_sha256": "cb3058668078a415f1e5de9b69f5fe7f1021c738cc7cc3118018156ad86c8cf7",
+      "source_semantic_sha256": "7a51c22aad1609413cda8b457ca26adf521461a12c8f3e47e3a31131d67fab4f",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "c423aa52de98597b034f5eb415d460e5c457ec110503562612e982fbf16977bb",
+      "play_ordinal": 10,
+      "raw_sha256": "d313a4796ae753de3cad039eafe464ee8de9c1cf23753f5cbcc4bbe7fede4fa7",
+      "source_semantic_sha256": "5727a38dd1ee892f0491a530c75344bd513364d0f4932f0c86d8161251358943",
+      "stratum": [
+        "NULL",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "dd067a15ba6d43e48a5776e9607f6306a2ebc3d973e51161eeb0add28d5eda62",
+      "play_ordinal": 3,
+      "raw_sha256": "548ae6212d68a14ad55631599384c24fcb6e730ec4a7b4b96620b83ab4c3e1b0",
+      "source_semantic_sha256": "509f6a87f978503463fa8a50dd80f0121b5ba9f56ae91c86e68f74b95705372f",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "a79b93dac3c1c530f0fdd2c2632fb6e0f9a212ff0b1be25057602f78427841c0",
+      "play_ordinal": 3,
+      "raw_sha256": "72c027e8379799cb372eee3a692e2eeb7b3ba6df5be47e88797e783be5411a6a",
+      "source_semantic_sha256": "6cf77be4f1e5c10de119006a85f3e7dba793eb5483041550d60a2f744d86c123",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "b1531608e6e8aaa4e5cad7b0714376abdf4a672b8a1d6c36acf43cefaf1f4d8c",
+      "play_ordinal": 6,
+      "raw_sha256": "24bebc57625b70a3d664814fb8e26e91a64ff27215a83e14a5cb04e504ef0a23",
+      "source_semantic_sha256": "d89bd0acf489a23c1d465ad51cfd13464018e09414d3c4aa9367f30229670930",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "24d1777049f6e1bd3b2a8dfd516dace2f9eff882239da4cbd0de168c012bf00e",
+      "play_ordinal": 4,
+      "raw_sha256": "cc4eee62cb95dd3b602dd99663fd279ae4210918da4ba1eae63b5066f13e6795",
+      "source_semantic_sha256": "d697518b2dce60ee2faa067170632150478226a6c2a976dd1d97a34ea21f7beb",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "98f1f1c14b391945a96f06f9d7b908b229126ebe0eb0e1f38bf6097ae58a3ffb",
+      "play_ordinal": 22,
+      "raw_sha256": "9a1970d0ca916000bc450dc892207628445a429a4c60d1f7ef150d8cfc143d9c",
+      "source_semantic_sha256": "93e5fc52ebdeccc0c28e0d08399a9fc1a4b4e59c337142a87080be7c529aff9d",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "7da5a04926226d88943aefc4df734eeadb719025475952b5cd940f277b2cafa5",
+      "play_ordinal": 27,
+      "raw_sha256": "f34974f17553fd941ffb20555e6b750fb13cb6b53b3bcf0dbef79b4f401007de",
+      "source_semantic_sha256": "f41a400a7c50e223375b8a6e859b36b15ae1b9d0c7bbd79d1edb781c7e94c221",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "e61e896d7852f1443b69aceec1f3133455a89d6261603285ab5c182d3de6f766",
+      "play_ordinal": 23,
+      "raw_sha256": "694f9c1855b8ce73de4d466870b12a96b4224a3cc2e9ebc09176ec4d2f62dc3d",
+      "source_semantic_sha256": "013f741ae7787af32d03e3e71a690dcad0c3a3d8e31c00fa8ca52970f4965fb0",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "112a22f3dfc6ce896ce55b0ad3a6f3d277d1f4b53e10876efefb1803ba533508",
+      "play_ordinal": 20,
+      "raw_sha256": "a600d732d92b59ab4e540562d47d398b0a36fbeed48348a94f2f46cc195eb7e0",
+      "source_semantic_sha256": "9f12764ecbb0a4b5c210861bb3dd19ed097e339de8751106dd3fa3f9f6517fbd",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "cfa5f6b5f2540ae89f5f50145d776e3e030b4ab0d502705c351fe822245d3081",
+      "play_ordinal": 17,
+      "raw_sha256": "8b00eb683c9e96136e73a8c823a8ffbc67b8c36057af1eff648f75f6266f1e24",
+      "source_semantic_sha256": "c6357a6a50a1cea4d54538ffc497bbc2e6d7c01de725f7f13c02bd6db2c98e92",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "aaa83577c5554fd1754598f5ac9cbe86f938a4d688ceb5f67c296e40aaa11889",
+      "play_ordinal": 14,
+      "raw_sha256": "a0f1fb3cc56b3e7dfd4d40ddf2004b7679ab16beca36d5a8e74d08fbe18d3f66",
+      "source_semantic_sha256": "4207e158c6ced70b5b9df8b2be3aa6713940ff3f32443018fa0dbf392404b5d9",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "6b9b69e7f094ec6dccf1fe9396bdfd49a2a6766929ce0a52b48f302c70b6418c",
+      "play_ordinal": 10,
+      "raw_sha256": "4c256f26492f5a1e11753920a07e4a4143c438ca5bcbf29979e1f9b6160cc519",
+      "source_semantic_sha256": "8d08fe312857b8acbed35afda39b9de29e40ace7c5400613784cb5f22de55021",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "ab650744c5a5318ed4ba7974a0e49de4d4568a777d70fef15cca3cf6316f699b",
+      "play_ordinal": 18,
+      "raw_sha256": "65c53afdc0296c489c283269c1e3019ddee5560e1f5125c634042321bc6be9f6",
+      "source_semantic_sha256": "f54edb0b06b753afe8183d226d1b241b38159531f903f1ae18dea5c53ea786fb",
+      "stratum": [
+        "SUIT",
+        "DECLARER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "72927e756cf23c30654be67ffbd98b0b176a08a7b6a95724ba8b024d13b1b797",
+      "play_ordinal": 1,
+      "raw_sha256": "18d75656266aaa699e73fef2af89c2cee9951f5bf42d65128c31cdacb5d16d36",
+      "source_semantic_sha256": "bb647c04b70891d634663a1b89d9463301ff601609a19995245e5801f19d5ce7",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "d14e4526568d142665239a7073e74651d12cffbe373d38245ad5513fdb485d88",
+      "play_ordinal": 9,
+      "raw_sha256": "7203f30146a833e2bdebab85d1e8160d62360f275a3c831dc719e6d7b45bc90c",
+      "source_semantic_sha256": "db985c90d518262fae2017ba81fe2c363d2a5d4b1fc2fa28d21d8d4c1da67961",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "a0ee7692076c7052d23833707cf71d12a7ba28d5d4380807a041da90accb024a",
+      "play_ordinal": 4,
+      "raw_sha256": "84a67885aabf583ebd4f3770523bc6af8abf61a6030933023622b770b39ca578",
+      "source_semantic_sha256": "dc6a79d5aab50a427cd7b26ec349630ff3dae969e65d5914f5d7d99364e7992e",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "b0e29ea7ee4e16f8771785fc8e98b7286a5a74687badfc35b615cc5b1c5b81c0",
+      "play_ordinal": 2,
+      "raw_sha256": "43e00698b1d46be07da91b874026962c7ad0f1f5b3c4879be5a21bdc1f202824",
+      "source_semantic_sha256": "4aeac9b72db5b9ef08b5b9eb4453432dbfaf5d7f4d4bcc2c47713f29817e2bad",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "EARLY"
+      ]
+    },
+    {
+      "game_id": "bc063a28674b568ec67ba0d1ebee35e413cec44c17fee88ee6d3cc0678424e3e",
+      "play_ordinal": 24,
+      "raw_sha256": "a5642e915f08571e45b751c8a7b1dcd9939928bbdd01d0f3d9078f2bfeb44bfc",
+      "source_semantic_sha256": "be343db9c7c6c236957eaeb53d64e0dc81f911d31f3558255882d95ff5de4be8",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "10af4fb3ef4869e634f3512ab4eec456f4533bf35b9da5b4bcdf56ed145ca6fc",
+      "play_ordinal": 20,
+      "raw_sha256": "ff968e1f411b7447bc80ddb8f6f6e9286a57607e6fc05d7c70c04ca9808ffea8",
+      "source_semantic_sha256": "c149bb9c5380acbb19824322a351b67e2fa53950440900398fa51eec11f66db9",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "396ef7563059c9b7983ff1e29fe97bfebe96be8fb2e9ac726639a56184a0d3eb",
+      "play_ordinal": 22,
+      "raw_sha256": "789fda246d3f4e138f814b87070a889d7be86dd89b929efa7268784ebee9d0c9",
+      "source_semantic_sha256": "b083f1caf19a481468113e3d8f2cf1d6ffe6a03a851e34edd63502209c56f4ef",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "6ed32979bc0386baa344ea60d593f8d828c0b4449fea8d41b364d0d72d0b1b2c",
+      "play_ordinal": 28,
+      "raw_sha256": "a270cc81da4c2da7b0d77230ad1bb702be6274c378612ffa5e58bc4bda1cb567",
+      "source_semantic_sha256": "9676aa117c5afd5db663d1648d2ed650c4fbb83063bf70e843c652611637a79c",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "END"
+      ]
+    },
+    {
+      "game_id": "4b966811ba45c627d8ca0de489d569a074d09e1e228b8f8e1167fd3b6386c153",
+      "play_ordinal": 15,
+      "raw_sha256": "8549b3af7c1815f5bd1a2ecc99950198694412ac803ad57ae1771f885919f11e",
+      "source_semantic_sha256": "fe88b2b9131d9fd61ac26280436f2e735047804c0c7efd9e862e4a385fddf67e",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "8fe7114a793593d1390dff6ec37e5531ba205080e9c528508c81f0fde495647c",
+      "play_ordinal": 17,
+      "raw_sha256": "0511f44a253fdadbb0dd0268363fe5deb16829b9bf175a779e26f44fddc379be",
+      "source_semantic_sha256": "693925b206cf846372d2567d04003803887be06f44891d158809e037ec515f3f",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "360371e23bbef8e6c236dfc7612ccaa61aade4c3e1bdd670bea98b4af6499318",
+      "play_ordinal": 19,
+      "raw_sha256": "03d6cc6065209fd72d0141f6d3ba687582d5ecab76f5c07f4024d36b354b47c2",
+      "source_semantic_sha256": "2dcf598a959d1ea94aa34d2d44f09ee47a316c9aaa192db5dfa47a5393ee44e8",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    },
+    {
+      "game_id": "3df1fd80f9119a268578acd024207d1112fd77740947dd2dad150673785627c9",
+      "play_ordinal": 15,
+      "raw_sha256": "98a040caba440bc18e04f2a7566367ff0bfadc0645ae8258ffe207e3eebf0799",
+      "source_semantic_sha256": "6b4942d0f4186edcfd14917896a0e33ecab7c71cb614593bcd5c5f5059dfd37d",
+      "stratum": [
+        "SUIT",
+        "DEFENDER",
+        "MIDDLE"
+      ]
+    }
+  ],
+  "selection_code_sha256": "dd24f5442130d4de4d12b7f2ade4adad065105637b87f5d811490b154b277979",
+  "selection_identity_sha256": "2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a",
+  "selection_rule": {
+    "one_event_per_game_per_stratum": true,
+    "per_stratum": 4,
+    "seed": 20260925,
+    "source_code": "skatai.evaluation.cardplay_weakness.deterministic_balanced_sample",
+    "split": "train only"
+  },
+  "source_asset_id": "legacy-v1-canonical-corpus",
+  "source_parent_commit": "b6e89eab6a2da1f02f4064213df604044ffef7c0",
+  "strength_claim_authorized": false
+}

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -64,9 +66,33 @@ def test_cardplay_diagnostic_rejects_wrong_input_before_loading(tmp_path, monkey
             input_path=source,
             expected_input_sha256="0" * 64,
             source_asset_id="legacy-v1-canonical-corpus:bounded-sample",
+            expected_selection_sha256="0" * 64,
             max_rows=1,
             per_stratum=1,
             seed=1,
             skatzero_root=tmp_path,
             skatzero_python=tmp_path / "python",
+        )
+
+
+def test_cardplay_diagnostic_rejects_changed_selection_before_b0(tmp_path, monkeypatch):
+    module = load_script()
+    source = tmp_path / "sample.jsonl"
+    source.write_bytes(b"sample\n")
+    observation = SimpleNamespace(seat=0, declarer=0, contract="C", current_trick=())
+    event = SimpleNamespace(
+        game_id="game-1", source_semantic_sha256="semantic", raw_sha256="raw",
+        play_ordinal=0, observation=observation,
+    )
+    monkeypatch.setattr(module, "load_events", lambda *_args, **_kwargs: ([event], {}))
+    monkeypatch.setattr(module, "deterministic_balanced_sample", lambda *_args, **_kwargs: (event,))
+    monkeypatch.setattr(module, "FrozenB0CardplayPolicy", lambda *_args: pytest.fail("B0 started"))
+    with pytest.raises(ValueError, match="SELECTION_SHA256_MISMATCH"):
+        module.run_diagnostic(
+            input_path=source,
+            expected_input_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+            source_asset_id="registered-sample",
+            expected_selection_sha256="0" * 64,
+            max_rows=1, per_stratum=1, seed=1,
+            skatzero_root=tmp_path, skatzero_python=tmp_path / "python",
         )

@@ -8,20 +8,20 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T11:13:32.640016Z",
+  "captured_at": "2026-09-25T11:15:50.989396Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
-    "evidence": "provenance/CARDPLAY_TRAIN_RANGE_SAMPLE_20260925.json",
-    "scientific_status": "Diagnostic input only; no population strength estimate, training approval, or B0 inference",
-    "task_id": "CARDPLAY_TRAIN_RANGE_DIAGNOSTIC_INPUT",
-    "verification": "Eight source ranges; 882 train rows; 881 reconstructed games; 72 balanced decision identities; sample remote readback hash verified"
+    "evidence": "provenance/TRAIN_ENDGAME_TEACHER_PILOT_20260925.json",
+    "scientific_status": "Bounded replay and semantic integration only; no new data trust tier, training approval, or strength claim",
+    "task_id": "REAL_TRAIN_ENDGAME_TEACHER_PILOT",
+    "verification": "60 real train choice labels; repeat hash equal; no hidden hands in learner rows; Hetzner readback hash verified"
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through e661943; bootstrap hardening pending commit",
+    "remote_state": "pushed through b6e89ea; cardplay science evidence pending commit",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "e661943",
-    "worktree_state": "coherent bootstrap hardening pending commit"
+    "verified_head_before_this_manifest": "b6e89eab6a2da1f02f4064213df604044ffef7c0",
+    "worktree_state": "coherent cardplay science evidence pending commit"
   },
   "nearest_gates": [
     {
@@ -49,7 +49,7 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "Keep R9 under independent supervisor. Obtain verified isolated compute access for hash-bound 72-decision diagnostic, or advance other independent product/science work. At clean R9 boundary run separate measured 1->2->4 ISS epochs.",
+  "next_action": "R9 stays under independent supervisor. On isolated compute, run precommitted 72-decision B0 cardplay diagnostic, then one causal cardplay treatment and paired gameplay. Bounded real endgame labels are research-only. At clean R9 boundary run measured 1->2->4 epochs.",
   "open_blockers": [
     {
       "blocker": "Configured RunPod API key received HTTP 403 on read-only pod listing; isolated compute provisioning unavailable from this controller",

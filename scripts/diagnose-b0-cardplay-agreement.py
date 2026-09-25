@@ -93,6 +93,7 @@ def run_diagnostic(
     input_path: Path,
     expected_input_sha256: str,
     source_asset_id: str,
+    expected_selection_sha256: str,
     max_rows: int,
     per_stratum: int,
     seed: int,
@@ -125,6 +126,12 @@ def run_diagnostic(
         }
         for event in selected
     ]
+    selection_sha256 = canonical_sha256(selection_identity)
+    expected_selection = str(expected_selection_sha256).lower()
+    if (len(expected_selection) != 64
+            or any(c not in "0123456789abcdef" for c in expected_selection)
+            or selection_sha256 != expected_selection):
+        raise ValueError("SELECTION_SHA256_MISMATCH")
 
     policy = FrozenB0CardplayPolicy(skatzero_root, skatzero_python)
     rows: list[dict[str, Any]] = []
@@ -200,7 +207,7 @@ def run_diagnostic(
             "seed": seed,
             "per_stratum": per_stratum,
             "selected_events": len(selected),
-            "identity_sha256": canonical_sha256(selection_identity),
+            "identity_sha256": selection_sha256,
             "identities": selection_identity,
         },
         "reconstruction": reconstruction,
@@ -228,6 +235,7 @@ def main() -> None:
     p.add_argument("--input", required=True, type=Path)
     p.add_argument("--expected-input-sha256", required=True)
     p.add_argument("--source-asset-id", required=True)
+    p.add_argument("--expected-selection-sha256", required=True)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--max-rows", type=int, default=5000)
     p.add_argument("--per-stratum", type=int, default=4)
@@ -244,6 +252,7 @@ def main() -> None:
         input_path=args.input,
         expected_input_sha256=args.expected_input_sha256,
         source_asset_id=args.source_asset_id,
+        expected_selection_sha256=args.expected_selection_sha256,
         max_rows=args.max_rows,
         per_stratum=args.per_stratum,
         seed=args.seed,
