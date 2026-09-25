@@ -55,3 +55,32 @@ def test_host_request_routes_all_product_phases(decision_type, observation, expe
 def test_host_request_rejects_unknown_schema():
     with pytest.raises(SkatAIInterfaceError, match="HOST_REQUEST_SCHEMA_MISMATCH"):
         handle_request(_ai(), "release-1", {"schema": "unknown"})
+
+
+def test_host_rejects_caller_actions_outside_observation():
+    payload = {
+        "schema": REQUEST_SCHEMA,
+        "game_id": "game-1",
+        "sequence_no": 1,
+        "decision_type": "PLAY_CARD",
+        "observation": {
+            "hand": HAND10, "seat": 1, "declarer": 1, "contract": "G",
+            "winning_bid": 18, "current_trick": (), "played_cards": (),
+            "legal_cards": ("C7", "C8"),
+        },
+        "legal_actions": ("C7", "H7"),
+    }
+    with pytest.raises(SkatAIInterfaceError, match="LEGAL_ACTION_OUTSIDE_OBSERVATION"):
+        handle_request(_ai(), "release-1", payload)
+
+
+def test_host_accepts_reverse_order_legal_discard():
+    ai = _ai()
+    ai.discard.choose_discard = lambda _observation: ("ST", "S9")
+    response = handle_request(ai, "release-1", {
+        "schema": REQUEST_SCHEMA,
+        "game_id": "game-1", "sequence_no": 1,
+        "decision_type": "DISCARD",
+        "observation": {"hand12": HAND12, "seat": 1, "winning_bid": 18},
+    })
+    assert response["result"]["action"] == "S9.ST"

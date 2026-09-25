@@ -1,0 +1,24 @@
+{
+  "schema": "skatai.v2.host-decision-legality-guard.v1",
+  "captured_at": "2026-09-25T10:50:35Z",
+  "task_id": "HOST_DECISION_LEGALITY_GUARD",
+  "classification": "CONCLUDE",
+  "nearest_gate": "Stable all-phase host decision contract for a staged B0 release",
+  "intervention": [
+    "Require caller-supplied legal actions to be a subset of the observation-derived actions",
+    "Encode a legal two-card discard in observation hand order so policy card order does not alter action legality or identity"
+  ],
+  "implementation": {
+    "path": "src/skatai/runtime/decision.py",
+    "sha256": "b00b15aa054f254fc002abc9fce562636a1976b5e331a51cbe55411bb2589436"
+  },
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_host_service.py tests/test_product_interface.py tests/test_decision_envelope.py",
+    "result": "17 passed in 0.35s",
+    "git_diff_check": "pass"
+  },
+  "limitations": [
+    "B0 release package v3 remains staged; its built artifact predates this source change",
+    "Actual user host software integration and deployment-matched acceptance remain pending"
+  ]
+}

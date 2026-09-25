@@ -125,13 +125,15 @@ class DecisionRequest:
             raise SkatAIInterfaceError("EMPTY_DECISION_SOURCE")
         if seq < 0:
             raise SkatAIInterfaceError("NEGATIVE_SEQUENCE_NO")
+        observation_legal = _default_legal_actions(dtype, observation)
         legal = (
-            _default_legal_actions(dtype, observation)
-            if legal_actions is None
+            observation_legal if legal_actions is None
             else tuple(str(x) for x in legal_actions)
         )
         if not legal or len(set(legal)) != len(legal) or any(not x for x in legal):
             raise SkatAIInterfaceError("BAD_LEGAL_ACTION_SET")
+        if not set(legal).issubset(observation_legal):
+            raise SkatAIInterfaceError("LEGAL_ACTION_OUTSIDE_OBSERVATION")
         context = {} if source_context is None else dict(source_context)
 
         position_body = {
@@ -237,7 +239,9 @@ def decide(
         if not isinstance(obs, DiscardObservation):
             raise SkatAIInterfaceError("DISCARD_REQUIRES_DISCARD_OBSERVATION")
         cards = ai.choose_discard(obs)
-        action = ".".join(cards)
+        # A discard is an unordered pair. Encode it in observation-hand order
+        # so either legal policy ordering has one stable wire action.
+        action = ".".join(sorted(cards, key=obs.hand12.index))
     elif request.decision_type is DecisionType.PLAY_CARD:
         if not isinstance(obs, CardplayObservation):
             raise SkatAIInterfaceError("PLAY_CARD_REQUIRES_CARDPLAY_OBSERVATION")
