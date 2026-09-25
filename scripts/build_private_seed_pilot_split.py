@@ -108,6 +108,7 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=args.output.name + ".", dir=args.output.parent)
     try:
+        os.fchmod(fd, 0o644)
         with os.fdopen(fd, "w") as stream:
             json.dump(result, stream, sort_keys=True, indent=2)
             stream.write("\n")
