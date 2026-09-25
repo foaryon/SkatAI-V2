@@ -1,0 +1,102 @@
+{
+  "schema": "skatai.v2.bidding-d3-self-offer-audit-correction.v1",
+  "captured_at": "2026-09-25T19:34:59Z",
+  "task_id": "BIDDING_D3_PUBLISHED_ARTIFACT_IMPACT_20260925",
+  "classification": "CONCLUDE_FALSE_POSITIVE_AUDIT_SOURCE_FIX",
+  "dataset": {
+    "dataset_id": "bidding-historical-v1",
+    "manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+    "shards_verified": 72,
+    "rows": {
+      "train": 21435764,
+      "validation": 2390888,
+      "test": 1088286,
+      "external_bot_holdout": 44781076
+    },
+    "transformation_commit": "7c39557e6795c62ad03ead2221239c6290abbcb3"
+  },
+  "candidate": {
+    "candidate_id": "V2-B1-bidding-linearish-full-v1",
+    "model_sha256": "fbe8b1f97ee6f6e169fd9a516126f2ae75149562e2abc41e89f2da14d3761ab4",
+    "training_code_commit": "d4e5ca21fee7c447d6998c25476e03dab221247a",
+    "training_uses_actor_bidder_answerer_and_decision_role": true
+  },
+  "initial_audit": {
+    "report": "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_PUBLISHED_ARTIFACT_AUDIT_20260925.json",
+    "sha256": "949d537f9c68d62f1d3542d919e65d9769afa567b9e3e92c51fdfb047658a887",
+    "status": "REVIEW_REQUIRED",
+    "actor_role_mismatch_rows": 1403419,
+    "interpretation": "Superseded. The strict rule incorrectly treated every bidder==answerer state as impossible."
+  },
+  "root_cause": {
+    "protocol_semantics": "After Middlehand and Rearhand both pass before any accepted bid, V2 BiddingState legally transitions to bidder=answerer=0 and Forehand makes the final 18-or-pass decision as BIDDER at bid_index=0.",
+    "historical_transform_supports_state": true,
+    "historical_encoder_supports_state": true,
+    "regression_commit": "5dee97d7d5ba7b9e7b2c8688504dfa3a2a91f782",
+    "regression_commit_time": "2026-09-25T12:40:21+00:00",
+    "dataset_transform_time": "2026-09-23T17:36:28+00:00",
+    "b1_training_code_time": "2026-09-23T18:19:01+00:00",
+    "effect": "The later validator/auditor introduced a false rejection for future materialization/audit. It did not produce the published B1 dataset or train B1."
+  },
+  "aggregate_impact_audit": {
+    "report": "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_ACTOR_ROLE_IMPACT_20260925.json",
+    "sha256": "fdb0079992a2f44ac07d3226d01b379d95915902979b07b152077def8ae67dbe",
+    "strict_audit_mismatch_rows": 1403419,
+    "legal_forehand_self_offer_rows": 1403419,
+    "residual_mismatch_after_legal_self_offer": 0,
+    "invalid_actor": 0,
+    "invalid_bidder": 0,
+    "invalid_answerer": 0,
+    "invalid_role": 0,
+    "actor_role_bad": 0,
+    "by_split": {
+      "train": 651824,
+      "validation": 78777,
+      "test": 36251,
+      "external_bot_holdout": 636567
+    },
+    "target_continue": 1403419,
+    "target_pass": 0,
+    "holdout_policy": "Only aggregate counts were emitted for test/external holdout; no row identities or content were exposed."
+  },
+  "corrected_exact_manifest_audit": {
+    "report": "/workspace/skatai-v2-runtime/continuation/BIDDING_D3_PUBLISHED_ARTIFACT_AUDIT_CORRECTED_20260925.json",
+    "sha256": "fa77a685845bb5b60b9e43e12aeee411f5e29555363b8ede423c9b23d9aebc90",
+    "status": "PASS",
+    "actor_role_mismatch_rows": 0,
+    "feature_target_mismatch_rows": 0,
+    "invalid_calendar_date_rows": 0,
+    "split_mismatch_rows": 0
+  },
+  "runtime_crosscheck": {
+    "b1_model_local_probe": "PASS",
+    "observation": "actor=bidder=answerer=0,bid_index=0,decision_role=BIDDER",
+    "probability_continue": 0.9677846431732178,
+    "meaning": "Runtime/model path accepts the protocol-valid state. Probability is not a strength claim."
+  },
+  "source_correction": {
+    "branch": "fix/bidding-forehand-self-offer-v1",
+    "commit": "44a25dcb30e4e7acc2793a41f8385d9ae6cbbd36",
+    "scope": [
+      "allow only the protocol-defined Forehand self-offer exception",
+      "keep all other bidder==answerer collisions fail-closed",
+      "make exact-artifact audit use the same exception",
+      "add encoder and Parquet regression tests"
+    ],
+    "bidding_relevant_tests": "34 passed",
+    "full_suite_note": "609 tests passed; one unrelated MAIN-agent prompt test failed in the isolated commit worktree because the corresponding prompt correction exists only as uncommitted MAIN WIP. The bidding change does not touch that subsystem."
+  },
+  "scientific_disposition": {
+    "published_b1_dataset_actor_role_integrity": "PASS",
+    "retrain_required_due_to_this_finding": false,
+    "b1_promotion_authorized_by_this_correction": false,
+    "remaining_promotion_requirement": "Complete the preregistered external R9 gameplay gate and all other independent acceptance requirements.",
+    "r9_evidence_disposition": "Continue unchanged; no reinterpretation or reset."
+  },
+  "separate_future_gap": {
+    "id": "ALL_PASS_PARQUET_ANALYSIS_NULLABILITY",
+    "scope": "Future refreshed bidding datasets only; not historical B1-v1.",
+    "observation": "VERIFIED_ALL_PASS has no declarer/bid_level/game outcome fields, while bidding-parquet-v1 analysis columns require them non-null.",
+    "disposition": "Handle as a separately versioned dataset-schema gate; do not mutate bidding-parquet-v1 in place."
+  }
+}
