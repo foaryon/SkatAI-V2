@@ -11,9 +11,10 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
+from skatai.selfplay.bidding import SCHEMA as BIDDING_SCHEMA
 from skatai.selfplay.cardplay import DECK, PICKUP_SCHEMA, SCHEMA as HAND_SCHEMA, make_deal
-from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS
-from skatai.selfplay.game import GameEpisode
+from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS, SCHEMA as DECLARATION_SCHEMA
+from skatai.selfplay.game import SCHEMA as GAME_SCHEMA, GameEpisode
 
 SCHEMA = "skatai.v2.selfplay.basic-score.v3"
 BASE_VALUES = {"C": 12, "S": 11, "H": 10, "D": 9, "G": 24}
@@ -109,7 +110,14 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
     if declaration is None or play is None:
         raise ValueError("NO_PLAYED_GAME_TO_SCORE")
     deal = make_deal(episode.deal_seed)
-    if (episode.deal_sha256 != deal.identity_sha256
+    if (episode.schema != GAME_SCHEMA
+            or episode.bidding.schema != BIDDING_SCHEMA
+            or declaration.schema != DECLARATION_SCHEMA
+            or episode.bidding.deal_seed != deal.seed
+            or declaration.deal_seed != deal.seed
+            or play.deal_seed != deal.seed
+            or episode.bidding.deal_sha256 != deal.identity_sha256
+            or episode.deal_sha256 != deal.identity_sha256
             or declaration.deal_sha256 != deal.identity_sha256
             or play.deal_sha256 != deal.identity_sha256
             or declaration.contract != play.contract
