@@ -11,6 +11,7 @@ from skatai.data.sgf import parse_sgf_line
 
 _module = runpy.run_path(str(Path(__file__).parents[1] / "scripts" / "validate_basic_score_corpus.py"))
 validate_stream = _module["validate_stream"]
+compare_played_record = _module["compare_played_record"]
 _fixtures = runpy.run_path(str(Path(__file__).parent / "test_sgf.py"))
 
 
@@ -33,3 +34,20 @@ def test_stream_hash_scores_train_and_excludes_external_bot_holdout():
     assert corrupted["counts"]["match"] == 0
     with pytest.raises(ValueError, match="SOURCE_SHA256_MISMATCH"):
         validate_stream(io.BytesIO(payload), "0" * 64)
+
+
+def test_oracle_rechecks_ownership_and_follow_suit_on_hash_valid_input():
+    record = parse_sgf_line("oracle-test", _fixtures["PLAYED"])
+    assert compare_played_record(record)["status"] == "MATCH"
+    unowned = dict(record, plays=[list(move) for move in record["plays"]])
+    unowned["plays"][0][1] = record["initial_hands"][1][0]
+    assert compare_played_record(unowned)["status"] == "INVALID"
+    revoke_follow = dict(record, plays=[list(move) for move in record["plays"]])
+    revoke_follow["plays"][2][1] = "CJ"  # Seat 2 owns it but must follow spades.
+    assert compare_played_record(revoke_follow)["status"] == "INVALID"
+    wrong_turn = dict(record, plays=[list(move) for move in record["plays"]])
+    wrong_turn["plays"][0], wrong_turn["plays"][1] = wrong_turn["plays"][1], wrong_turn["plays"][0]
+    assert compare_played_record(wrong_turn)["status"] == "INVALID"
+    broken_deal = dict(record, initial_hands=[list(hand) for hand in record["initial_hands"]])
+    broken_deal["initial_hands"][0][0] = broken_deal["initial_hands"][1][0]
+    assert compare_played_record(broken_deal)["status"] == "INVALID"
