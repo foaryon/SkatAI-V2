@@ -1,8 +1,8 @@
 """Auditable basic Skat contract value for controlled self-play.
 
-This scorer covers ordinary suit/Grand and Null variants. Announced
-Schneider/Schwarz and suit/Grand ouvert are rejected until separately
-validated against an external rules oracle.
+This scorer covers ordinary suit/Grand and Null variants, plus hand games
+with Schneider announced. Schwarz announced and suit/Grand ouvert remain
+unsupported pending separate rules-oracle validation.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from skatai.selfplay.cardplay import DECK, make_deal
 from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS
 from skatai.selfplay.game import GameEpisode
 
-SCHEMA = "skatai.v2.selfplay.basic-score.v2"
+SCHEMA = "skatai.v2.selfplay.basic-score.v3"
 BASE_VALUES = {"C": 12, "S": 11, "H": 10, "D": 9, "G": 24}
 NULL_VALUES = {"N": 23, "NH": 35, "NO": 46, "NHO": 59}
 JACKS = ("CJ", "SJ", "HJ", "DJ")
@@ -71,19 +71,21 @@ def score_basic_game(
         return BasicScore(SCHEMA, token, winning_bid, None, None, value, False,
                           won, value if won else -2 * value)
 
-    hand = len(token) == 2 and token.endswith("H")
-    base = token[:-1] if hand else token
-    if base not in BASE_VALUES or token not in (base, base + "H"):
+    announced_schneider = len(token) == 3 and token.endswith("HS")
+    hand = (len(token) == 2 and token.endswith("H")) or announced_schneider
+    base = token[:-2] if announced_schneider else token[:-1] if hand else token
+    if base not in BASE_VALUES or token not in (base, base + "H", base + "HS"):
         raise ValueError(f"UNSUPPORTED_BASIC_CONTRACT:{contract}")
     matadors = _matadors(set(cards), base)
-    won_by_points = declarer_points >= 61
+    won_by_points = declarer_points >= (90 if announced_schneider else 61)
     if won_by_points:
         schneider = declarer_points >= 90
         schwarz = declarer_tricks == 10
     else:
         schneider = declarer_points <= 30
         schwarz = declarer_tricks == 0
-    level = abs(matadors) + 1 + int(hand) + int(schneider) + int(schwarz)
+    schneider_levels = 2 if announced_schneider else int(schneider)
+    level = abs(matadors) + 1 + int(hand) + schneider_levels + int(schwarz)
     natural = BASE_VALUES[base] * level
     overbid = winning_bid > natural
     if overbid:

@@ -27,6 +27,15 @@ def test_hearts_token_is_distinct_from_hand_modifier():
     assert score("HH").game_level == score("H").game_level + 1
 
 
+def test_hand_schneider_announcement_requires_ninety_points():
+    won = score("GHS", points=95, tricks=8)
+    assert won.won and won.game_level == 5 and won.signed_game_value == 120
+    failed = score("GHS", points=89, tricks=9)
+    assert not failed.won and failed.signed_game_value == -240
+    schwarz = score("GHS", points=120, tricks=10)
+    assert schwarz.game_level == 6 and schwarz.signed_game_value == 144
+
+
 def test_without_top_jack_uses_signed_matador_provenance():
     without_club_jack = tuple(card for card in DECK if card != "CJ")[:12]
     result = score("G", cards=without_club_jack)
@@ -45,7 +54,7 @@ def test_fixed_null_values(contract, bid, value):
 
 def test_unsupported_or_invalid_inputs_fail_closed():
     with pytest.raises(ValueError, match="UNSUPPORTED_BASIC_CONTRACT"):
-        score("GHS")
+        score("GHZ")
     with pytest.raises(ValueError, match="NULL_OVERBID"):
         score("N", bid=24, tricks=0)
     with pytest.raises(ValueError, match="INVALID_DECLARER_TWELVE_CARDS"):
