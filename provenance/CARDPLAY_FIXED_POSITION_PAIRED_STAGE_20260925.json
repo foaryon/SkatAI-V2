@@ -1,0 +1,37 @@
+{
+  "schema": "skatai.v2.cardplay-fixed-position-paired-stage.v1",
+  "captured_at": "2026-09-25T10:59:20Z",
+  "task_id": "CARDPLAY_CAUSAL_GAMEPLAY_PRIMITIVE",
+  "classification": "CONCLUDE",
+  "parent_source_commit": "9cfb58de590eb5552171bcd81faab10f4bbb0e3e",
+  "nearest_gate": "Bounded, fixed-position cardplay treatment before future B0-relative gameplay evaluation",
+  "method": "For each fixed deal, declarer, bid and legal basic contract, run one all-control game, then three games that replace only the candidate seat's cardplay policy. Score each completed game with the V2 basic scorer and express candidate delta in its declarer or defender direction.",
+  "implementation": {
+    "path": "src/skatai/evaluation/cardplay_gameplay_gate.py",
+    "sha256": "df7a2104ececeb2b48afecf1eaf5b9e6749edf3b949f0e05c2d25121fd4e89fc"
+  },
+  "invariants": [
+    "Fresh deterministic policy instances required for matched comparisons",
+    "Hand and pickup modes must match the declared contract",
+    "All four games share the exact deal, declaration, bid and opponent policy family",
+    "Seat deltas from one fixed position are clustered, not independent games",
+    "Existing self-play runner enforces legal plays and point conservation"
+  ],
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_cardplay_gameplay_gate.py tests/test_selfplay_cardplay.py tests/test_selfplay_scoring.py tests/test_selfplay_game.py",
+    "result": "69 passed in 0.74s",
+    "contracts_exercised": ["C", "CH", "G", "GH", "N", "NH"],
+    "identical_policy_zero_delta": true,
+    "changed_policy_nonzero_delta_observed": true,
+    "invalid_contract_mode_rejected_before_gameplay": true,
+    "git_diff_check": "pass"
+  },
+  "scientific_limits": [
+    "This is a reusable evaluation primitive, not a preregistered campaign or strength estimate.",
+    "Only deterministic synthetic policies were exercised; frozen B0 inference was not run.",
+    "Basic contracts only; announced Schneider, Schwarz and suit/Grand ouvert remain outside this scorer's accepted scope.",
+    "Deal selection, sample size, source identities, runtime budget and stopping rule must be frozen before a real candidate run."
+  ],
+  "active_external_work": "Frozen R9 remains independent and was not inspected or modified by this task.",
+  "next_gate": "Choose one weakness-driven cardplay treatment and freeze a leakage-safe, balanced position set plus acceptance protocol; run deployment-matched inference on isolated compute."
+}
