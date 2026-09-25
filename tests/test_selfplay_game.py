@@ -101,6 +101,14 @@ def test_auction_declaration_and_legal_cardplay(seed, pickup):
         score_basic_episode(replace(
             result, cardplay=replace(result.cardplay, deal_seed=seed + 1),
         ))
+    with pytest.raises(ValueError, match="EPISODE_BIDDING_REPLAY_MISMATCH"):
+        score_basic_episode(replace(
+            result, bidding=replace(result.bidding, actions=result.bidding.actions[:-1]),
+        ))
+    with pytest.raises(ValueError, match="EPISODE_BIDDING_REPLAY_MISMATCH"):
+        score_basic_episode(replace(
+            result, bidding=replace(result.bidding, max_accepted_bids_by_seat=(0, 0, 0)),
+        ))
     with pytest.raises(ValueError, match="EPISODE_REPLAY_OR_POINT_MISMATCH"):
         score_basic_episode(replace(
             result, cardplay=replace(result.cardplay, declarer_final_points=0),

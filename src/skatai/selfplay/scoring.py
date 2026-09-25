@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
+from skatai.game.bidding import replay as replay_bidding
 from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
 from skatai.selfplay.bidding import SCHEMA as BIDDING_SCHEMA
 from skatai.selfplay.cardplay import DECK, PICKUP_SCHEMA, SCHEMA as HAND_SCHEMA, make_deal
@@ -125,6 +126,21 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or declaration.declarer != episode.bidding.winner
             or declaration.winning_bid != episode.bidding.winning_bid):
         raise ValueError("EPISODE_IDENTITY_MISMATCH")
+    auction = replay_bidding(tuple(
+        token for seat, action in episode.bidding.actions
+        for token in (str(seat), action)
+    ))
+    bid_maxima = [0, 0, 0]
+    for action in auction.actions:
+        if action["native_action"] != "p":
+            seat = action["actor"]
+            bid_maxima[seat] = max(bid_maxima[seat], action["before"]["current_offer"])
+    if (not auction.ok or auction.all_pass
+            or len(auction.actions) != len(episode.bidding.actions)
+            or auction.winner != episode.bidding.winner
+            or auction.winning_bid != episode.bidding.winning_bid
+            or tuple(bid_maxima) != episode.bidding.max_accepted_bids_by_seat):
+        raise ValueError("EPISODE_BIDDING_REPLAY_MISMATCH")
     expected_play_schema = PICKUP_SCHEMA if declaration.picked_up_skat else HAND_SCHEMA
     if play.schema != expected_play_schema:
         raise ValueError("EPISODE_PLAY_MODE_MISMATCH")
