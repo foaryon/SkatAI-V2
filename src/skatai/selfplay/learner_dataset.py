@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 from skatai.game.bidding import BID_VALUES
-from skatai.game.rules import card_points, game_type_from_contract, replay_tricks
+from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
 from skatai.runtime.interface import (
     BiddingObservation, CardplayObservation, DeclarationObservation,
     DiscardObservation,
@@ -76,11 +76,25 @@ def _validate_decision(item: dict, seat: int, contract: str, threshold: float) -
         expected = CardplayObservation.create(**view)
         if expected.contract != contract or item["action"] not in expected.legal_cards:
             raise ValueError("LEARNER_CARDPLAY_ACTION_ILLEGAL")
+        played = expected.played_cards
+        played_cards = {card for _, card in played}
+        if (len(played) >= 30 or len(played_cards) != len(played)
+                or set(expected.hand) & played_cards
+                or set(expected.skat_cards) & played_cards
+                or set(expected.hand) & set(expected.skat_cards)):
+            raise ValueError("LEARNER_CARDPLAY_CARD_STATE_MISMATCH")
         replayed = replay_tricks(
-            expected.played_cards,
+            played,
             game_type=game_type_from_contract(expected.contract),
             declarer=expected.declarer,
         )
+        if (expected.seat != replayed["expected_actor"]
+                or expected.current_trick != replayed["current_trick"]
+                or set(expected.legal_cards) != set(legal_cards(
+                    expected.hand, expected.current_trick,
+                    game_type_from_contract(expected.contract),
+                ))):
+            raise ValueError("LEARNER_CARDPLAY_HISTORY_OR_LEGAL_MISMATCH")
         declarer_points = int(replayed["declarer_trick_points"])
         if expected.seat == expected.declarer and not expected.blind_hand:
             declarer_points += sum(card_points(card) for card in expected.skat_cards)
@@ -138,6 +152,15 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
                        for i, d in enumerate(declarations))):
             raise ValueError("LEARNER_COMPLETED_DECLARER_SEQUENCE_REQUIRED")
         previous = -1
+        previous_play = None
+        cardplay_count = 0
+        discard_actions = [d["action"] for d in row["decisions"] if d["phase"] == "DISCARD"]
+        expected_skat = set(discard_actions[0]) if pickup else set()
+        declared_cards = (
+            set(next(d["observation"]["hand12"] for d in row["decisions"]
+                     if d["phase"] == "DISCARD")) - expected_skat
+            if pickup else set(declarations[-1]["observation"]["cards"])
+        )
         for decision in row["decisions"]:
             if not isinstance(decision["ordinal"], int) or decision["ordinal"] <= previous:
                 raise ValueError("LEARNER_DECISION_ORDER_INVALID")
@@ -146,4 +169,23 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
                     and decision["observation"]["declarer"] != row["seat"]):
                 raise ValueError("LEARNER_CARDPLAY_NOT_DECLARER")
             _validate_decision(decision, row["seat"], row["contract"], row["threshold"])
+            if decision["phase"] == "CARDPLAY":
+                view = decision["observation"]
+                played = tuple(tuple(move) for move in view["played_cards"])
+                hand = set(view["hand"])
+                if (len(hand) != 10 - cardplay_count
+                        or set(view["skat_cards"]) != expected_skat
+                        or view["blind_hand"] != (not pickup)):
+                    raise ValueError("LEARNER_CARDPLAY_DECLARATION_STATE_MISMATCH")
+                if previous_play is None and hand != declared_cards:
+                    raise ValueError("LEARNER_CARDPLAY_DECLARATION_STATE_MISMATCH")
+                if previous_play is not None:
+                    prior_history, prior_hand, prior_action = previous_play
+                    if (len(played) <= len(prior_history)
+                            or played[:len(prior_history) + 1]
+                            != prior_history + ((row["seat"], prior_action),)
+                            or hand != prior_hand - {prior_action}):
+                        raise ValueError("LEARNER_CARDPLAY_SEQUENCE_MISMATCH")
+                previous_play = (played, hand, decision["action"])
+                cardplay_count += 1
     return rows

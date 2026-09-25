@@ -61,6 +61,28 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     assert len(load_bounded_learner_pilot(
         prefix.with_suffix(".learner-manifest.json"), learner_path,
     )) == 2
+    forged = json.loads(json.dumps(learner_rows))
+    legal_decision = next(
+        d for row in forged for d in row["decisions"]
+        if d["phase"] == "CARDPLAY" and len(d["observation"]["legal_cards"]) > 1
+    )
+    legal_decision["observation"]["legal_cards"] = [legal_decision["action"]]
+    learner_path.write_text("".join(json.dumps(x) + "\n" for x in forged))
+    learner_manifest["learner_sha256"] = hashlib.sha256(learner_path.read_bytes()).hexdigest()
+    prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
+    with pytest.raises(ValueError, match="LEARNER_CARDPLAY_HISTORY_OR_LEGAL_MISMATCH"):
+        load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
+    forged = json.loads(json.dumps(learner_rows))
+    nonempty = next(
+        d["observation"] for row in forged for d in row["decisions"]
+        if d["phase"] == "CARDPLAY" and d["observation"]["current_trick"]
+    )
+    nonempty["current_trick"] = []
+    learner_path.write_text("".join(json.dumps(x) + "\n" for x in forged))
+    learner_manifest["learner_sha256"] = hashlib.sha256(learner_path.read_bytes()).hexdigest()
+    prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
+    with pytest.raises(ValueError, match="LEARNER_CARDPLAY_HISTORY_OR_LEGAL_MISMATCH"):
+        load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
     truncated = json.loads(json.dumps(learner_rows))
     truncated[0]["decisions"].pop()
     learner_path.write_text("".join(json.dumps(x) + "\n" for x in truncated))
