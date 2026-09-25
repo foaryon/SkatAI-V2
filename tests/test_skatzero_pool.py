@@ -5,11 +5,10 @@ import pytest
 import skatai.runtime.skatzero_pool as poolmod
 
 
-def test_default_threads_per_worker_uses_affinity(monkeypatch):
-    monkeypatch.setattr(poolmod.os, "sched_getaffinity", lambda pid: set(range(8)))
-    assert poolmod.default_threads_per_worker(1) == 8
-    assert poolmod.default_threads_per_worker(2) == 4
-    assert poolmod.default_threads_per_worker(4) == 2
+def test_default_threads_per_worker_prefers_worker_parallelism():
+    assert poolmod.default_threads_per_worker(1) == 1
+    assert poolmod.default_threads_per_worker(2) == 1
+    assert poolmod.default_threads_per_worker(4) == 1
     assert poolmod.default_threads_per_worker(16) == 1
 
 

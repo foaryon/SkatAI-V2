@@ -24,11 +24,10 @@ class _WorkerRequestError(SkatAIInterfaceError):
 def default_threads_per_worker(workers: int) -> int:
     if int(workers) < 1:
         raise ValueError("SKATZERO_POOL_WORKERS_LT_ONE")
-    try:
-        cpus = len(os.sched_getaffinity(0))
-    except (AttributeError, OSError):
-        cpus = int(os.cpu_count() or 1)
-    return max(1, cpus // int(workers))
+    # Empirical 8-vCPU throughput measurements on the frozen SkatZero
+    # cardplay path show that intra-process Torch fan-out is strongly
+    # counterproductive. Scale with independent warm workers instead.
+    return 1
 
 
 class _WarmWorker:

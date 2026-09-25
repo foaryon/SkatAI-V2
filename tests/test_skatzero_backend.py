@@ -240,3 +240,80 @@ def test_cardplay_can_use_persistent_runner_without_cli(monkeypatch):
     assert p.play_card(smoke_observation()) == "D8"
     assert len(runner.calls) == 1
     assert runner.calls[0][0][0] == "CARDPLAY"
+
+
+def test_b0_max_bid_deduplicates_identical_inflight_requests():
+    import threading
+    import time
+    import concurrent.futures
+
+    started = threading.Event()
+    release = threading.Event()
+
+    class Runner:
+        def __init__(self):
+            self.calls = 0
+            self.lock = threading.Lock()
+        def run(self, args, *, timeout_s):
+            with self.lock:
+                self.calls += 1
+            started.set()
+            assert release.wait(2.0)
+            return ["72"]
+
+    runner = Runner()
+    p = backend.FrozenB0BiddingPolicy(
+        Path("/r"), Path("/p"), runner=runner, timeout_s=2.0
+    )
+    hand = tuple(HAND10)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(p.max_bid, hand, 0)
+        assert started.wait(1.0)
+        f2 = ex.submit(p.max_bid, hand, 0)
+        time.sleep(0.05)
+        assert runner.calls == 1
+        release.set()
+        assert f1.result(timeout=1.0) == 72
+        assert f2.result(timeout=1.0) == 72
+
+    assert runner.calls == 1
+
+
+def test_b0_max_bid_waiter_retries_after_owner_failure():
+    import threading
+    import concurrent.futures
+
+    first_started = threading.Event()
+    release_first = threading.Event()
+
+    class Runner:
+        def __init__(self):
+            self.calls = 0
+            self.lock = threading.Lock()
+        def run(self, args, *, timeout_s):
+            with self.lock:
+                self.calls += 1
+                call = self.calls
+            if call == 1:
+                first_started.set()
+                assert release_first.wait(2.0)
+                raise backend.SkatAIInterfaceError("synthetic owner failure")
+            return ["72"]
+
+    runner = Runner()
+    p = backend.FrozenB0BiddingPolicy(
+        Path("/r"), Path("/p"), runner=runner, timeout_s=2.0
+    )
+    hand = tuple(HAND10)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(p.max_bid, hand, 0)
+        assert first_started.wait(1.0)
+        f2 = ex.submit(p.max_bid, hand, 0)
+        release_first.set()
+        with pytest.raises(backend.SkatAIInterfaceError):
+            f1.result(timeout=1.0)
+        assert f2.result(timeout=1.0) == 72
+
+    assert runner.calls == 2
