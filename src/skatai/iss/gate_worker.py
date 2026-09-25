@@ -2161,11 +2161,22 @@ class ExternalGateWorker:
         if self._expected_new_table_id == destroyed_table_id:
             self._expected_new_table_id = None
         if self.desired_stack is None:
-            if self._mirror_pause_requested:
+            if self._mirror_pause_requested or self.mirror_writebehind.backpressure_required():
                 self._mirror_pause_requested = False
+                self.evidence._write_mirror_status(state="BACKPRESSURE")
                 return True
             self._create_next_table()
         return False
+
+    def _wait_for_mirror_capacity(self) -> None:
+        # A restart must not bypass the same admission limit that paused the
+        # previous session. Active games are reconciled first and must resume
+        # promptly; this wait applies only between games.
+        if self.assignment_by_game:
+            return
+        while self.mirror_writebehind.backpressure_required():
+            self.evidence._write_mirror_status(state="BACKPRESSURE")
+            time.sleep(self.mirror_policy.poll_interval_s)
 
     def _run_connected_session(
         self,
@@ -2289,6 +2300,7 @@ class ExternalGateWorker:
         attempt_in_cycle = 0
 
         try:
+            self._wait_for_mirror_capacity()
             while True:
                 try:
                     result = self._run_connected_session(
@@ -2298,8 +2310,7 @@ class ExternalGateWorker:
                         # No game is active and the old table's destruction
                         # was observed. The transfer thread alone drains the
                         # queue; a storage outage cannot block protocol I/O.
-                        while self.mirror_writebehind.backpressure_required():
-                            time.sleep(self.mirror_policy.poll_interval_s)
+                        self._wait_for_mirror_capacity()
                         continue
                     if result is not None:
                         # A scientific gate is not complete until every queued

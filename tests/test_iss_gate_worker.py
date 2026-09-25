@@ -263,6 +263,7 @@ def test_run_retries_recoverable_transport_failure_then_resumes(monkeypatch, tmp
     w.paths = type("P", (), {"runtime_root": tmp_path})()
     w.evidence = Evidence()
     w._transport_failure_streak = 0
+    w.assignment_by_game = {}
     w._restore_active_game_authority = lambda: None
     w.mirror_writebehind = type(
         "MirrorWriteBehindStub",
@@ -270,6 +271,7 @@ def test_run_retries_recoverable_transport_failure_then_resumes(monkeypatch, tmp
         {
             "start": lambda self: None,
             "stop": lambda self, *, flush: None,
+            "backpressure_required": lambda self: False,
         },
     )()
 
@@ -307,15 +309,18 @@ def test_run_waits_for_background_mirror_after_confirmed_table_destroy(monkeypat
     import skatai.iss.gate_worker as gw
     from skatai.iss.gate_worker import ExternalGateWorker
 
-    pending = [True, True, False]
+    pending = [False, True, True, False]
     events = []
     class Evidence:
         mirror = SimpleNamespace(probe=lambda: {"ok": True})
+        def _write_mirror_status(self, **kwargs):
+            events.append(kwargs["state"])
 
     w = object.__new__(ExternalGateWorker)
     w.paths = SimpleNamespace(runtime_root=tmp_path)
     w.evidence = Evidence()
     w._transport_failure_streak = 0
+    w.assignment_by_game = {}
     w._restore_active_game_authority = lambda: None
     w.mirror_policy = SimpleNamespace(poll_interval_s=0.1)
     w.mirror_writebehind = SimpleNamespace(
@@ -335,7 +340,39 @@ def test_run_waits_for_background_mirror_after_confirmed_table_destroy(monkeypat
     monkeypatch.setattr(gw.time, "sleep", lambda seconds: events.append("wait"))
 
     assert w.run() == {"finished": True}
-    assert events == ["start", "session", "wait", "wait", "session", ("stop", True), ("stop", False)]
+    assert events == ["start", "session", "BACKPRESSURE", "wait", "BACKPRESSURE", "wait", "session", ("stop", True), ("stop", False)]
+
+
+def test_restart_does_not_admit_new_table_until_existing_backlog_drains(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import skatai.iss.gate_worker as gw
+    from skatai.iss.gate_worker import ExternalGateWorker
+
+    events = []
+    pending = [True, True, False]
+    class Evidence:
+        mirror = SimpleNamespace(probe=lambda: {"ok": True})
+        def _write_mirror_status(self, **kwargs):
+            events.append(kwargs["state"])
+
+    w = object.__new__(ExternalGateWorker)
+    w.paths = SimpleNamespace(runtime_root=tmp_path)
+    w.evidence = Evidence()
+    w.assignment_by_game = {}
+    w._transport_failure_streak = 0
+    w._restore_active_game_authority = lambda: None
+    w.mirror_policy = SimpleNamespace(poll_interval_s=0.1)
+    w.mirror_writebehind = SimpleNamespace(
+        start=lambda: events.append("start"),
+        stop=lambda *, flush: events.append(("stop", flush)),
+        backpressure_required=lambda: pending.pop(0),
+    )
+    w._run_connected_session = lambda *, client_policy: events.append("session") or {"finished": True}
+    monkeypatch.setattr(gw, "readiness", lambda paths: {"ready": True, "blockers": []})
+    monkeypatch.setattr(gw.time, "sleep", lambda seconds: events.append("wait"))
+
+    assert w.run() == {"finished": True}
+    assert events == ["start", "BACKPRESSURE", "wait", "BACKPRESSURE", "wait", "session", ("stop", True), ("stop", False)]
 
 
 def test_run_does_not_retry_authentication_protocol_failure(monkeypatch, tmp_path):
@@ -354,6 +391,7 @@ def test_run_does_not_retry_authentication_protocol_failure(monkeypatch, tmp_pat
     w.paths = type("P", (), {"runtime_root": tmp_path})()
     w.evidence = Evidence()
     w._transport_failure_streak = 0
+    w.assignment_by_game = {}
     w._restore_active_game_authority = lambda: None
     w.mirror_writebehind = type(
         "MirrorWriteBehindStub",
@@ -361,6 +399,7 @@ def test_run_does_not_retry_authentication_protocol_failure(monkeypatch, tmp_pat
         {
             "start": lambda self: None,
             "stop": lambda self, *, flush: None,
+            "backpressure_required": lambda self: False,
         },
     )()
     w._run_connected_session = lambda **kwargs: (_ for _ in ()).throw(
@@ -713,6 +752,12 @@ def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch
     assert worker.desired_stack is None
     assert worker.table_id == "T"
     assert worker._event_is_admitted(parse_service_line("destroy T SkatAI"))
+    worker._mirror_pause_requested = False
+    worker.mirror_writebehind = SimpleNamespace(backpressure_required=lambda: True)
+    worker.evidence._write_mirror_status = lambda **kwargs: None
+    worker._create_next_table = lambda: (_ for _ in ()).throw(AssertionError("new game admitted under pressure"))
+    assert worker._on_destroy("T") is True
+    assert worker.table_id is None
 
 
 def test_mirror_pressure_leaves_only_after_closed_game_and_pauses_on_destroy(tmp_path):
