@@ -1,0 +1,39 @@
+{
+  "captured_at": "2026-09-25T11:11:24.444397Z",
+  "nearest_gates": [
+    "R9 preregistered 300 scored games per arm under independent supervisor",
+    "qualify representative split-safe cardplay data and run bounded weakness diagnostic on isolated compute",
+    "run paired cardplay treatment with frozen B0 control"
+  ],
+  "next_action": "Continue independent qualified cardplay data and causal treatment work while R9 runs; use measured 1->2->4 ISS runtime epochs only after clean R9 gate boundary.",
+  "r9": {
+    "classification": "CONTINUE",
+    "correction": "restart only independent supervisor at clean boundary with pod S3 env and sentinelx HOME; correct root boot path HOME",
+    "failure": "worker mirror preflight failed because resumed supervisor lacked usable S3 launch environment and inherited root HOME",
+    "frozen_treatment_changed": false,
+    "last_reconciled_boundary": {
+      "active_games": 0,
+      "pending_effects": 0
+    },
+    "mirror_probe_ok": true,
+    "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+    "scientific_look_opened": false,
+    "supervisor_pid": 45085,
+    "worker_lifetime_owner": "independent fail-closed supervisor"
+  },
+  "schema": "skatai.v2.resume-recovery-and-v5-gate.v1",
+  "v5": {
+    "all_rows_verified": 96,
+    "asset_id": "v5-point-parity-private-seed-pilot-20260925",
+    "classification": "CONCLUDE",
+    "learner_manifest_sha256": "bc72332377d18d35d33f90a41a23443a159875a72d77b7fb389e38f84fe00dd1",
+    "learner_sha256": "d84fa232bda8ef1616aec155d02df0890e36ae55b82ac5dfc8d12f46220077d9",
+    "local_scratch": "/tmp/skatai-v2-v5-verify",
+    "source": "exact manifest-listed Hetzner objects",
+    "split_sha256": "3f36699118f9d577dbc8e6aea6c87cbe05bf19089a2c2994d082ff67900c9871",
+    "strength_claim_authorized": false,
+    "train_rows_verified": 72,
+    "training_approved": false,
+    "trust": "D1_EXPLORATORY_ONLY"
+  }
+}

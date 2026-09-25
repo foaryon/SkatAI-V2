@@ -75,7 +75,10 @@ fi
 if [ "$(id -u)" -eq 0 ]; then
   uid="$(id -u sentinelx)"
   gid="$(id -g sentinelx)"
-  setsid nohup setpriv --reuid="$uid" --regid="$gid" --init-groups --     /usr/bin/python3 "$SUPERVISOR" >>"$LOG" 2>&1 </dev/null &
+  worker_home="$(getent passwd sentinelx | cut -d: -f6)"
+  setsid nohup env HOME="$worker_home" XDG_CONFIG_HOME="$worker_home/.config" \
+    setpriv --reuid="$uid" --regid="$gid" --init-groups -- \
+    /usr/bin/python3 "$SUPERVISOR" >>"$LOG" 2>&1 </dev/null &
 else
   setsid nohup /usr/bin/python3 "$SUPERVISOR" >>"$LOG" 2>&1 </dev/null &
 fi

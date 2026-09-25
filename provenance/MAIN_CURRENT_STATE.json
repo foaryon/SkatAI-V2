@@ -1,56 +1,55 @@
 {
-  "schema": "skatai.v2.main-current-state.v1",
-  "captured_at": "2026-09-25T11:08:39Z",
-  "git": {
-    "repository": "foaryon/SkatAI-V2",
-    "branch": "main",
-    "verified_head_before_this_manifest": "40f6439d217ff19b69adb4687f4f68565082930d",
-    "remote_state": "pushed through 40f6439; this label-pilot commit pending",
-    "worktree_state": "clean"
-  },
   "active_work": [
     {
-      "task_id": "B1_EXTERNAL_ISS_R9",
       "classification": "CONTINUE",
+      "main_rule": "Do not poll healthy games, open strength look before 300 scored games per arm, or change frozen runtime",
+      "owner": "independent fail-closed supervisor, restored S3/HOME launch environment",
       "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
-      "owner": "independent fail-closed supervisor",
-      "main_rule": "Do not poll healthy games, open strength look before 300 scored games per arm, or change frozen runtime"
+      "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
+  "captured_at": "2026-09-25T11:11:24.444397Z",
   "completed_independent_gate": {
-    "task_id": "OFFLINE_ENDGAME_LEARNER_LABELS",
     "classification": "CONCLUDE",
-    "evidence": "provenance/OFFLINE_ENDGAME_LABEL_PILOT_20260925.json",
-    "source_parent_commit": "40f6439d217ff19b69adb4687f4f68565082930d",
-    "verification": "66 focused tests; 324 deterministic synthetic labels with repeat hash",
-    "scientific_status": "D1 synthetic integration only; no training or strength authority"
+    "evidence": "provenance/MAIN_RESUME_RECOVERY_V5_20260925.json",
+    "scientific_status": "D1 exploratory only; no training or strength authority",
+    "task_id": "V5_EXACT_TRAIN_PARTITION_VERIFICATION",
+    "verification": "Three manifest-listed objects hash verified; reader validated 96 rows and exposed 72 train rows"
+  },
+  "git": {
+    "branch": "main",
+    "remote_state": "pushed through 06d239e; recovery correction pending commit",
+    "repository": "foaryon/SkatAI-V2",
+    "verified_head_before_this_manifest": "06d239e9277deee3de13b0dbc9bb34351a623b21",
+    "worktree_state": "coherent recovery correction pending commit"
   },
   "nearest_gates": [
     {
-      "gate": "B1 R9 preregistered external decision",
-      "dependency": "Independent R9 supervisor reaches clean 300 scored games per arm boundary; reconcile outcomes before any cutover"
+      "dependency": "Independent R9 supervisor reaches clean 300 scored games per arm boundary; reconcile outcomes before any cutover",
+      "gate": "B1 R9 preregistered external decision"
     },
     {
-      "gate": "Weakness-driven cardplay challenger protocol and paired B0 gameplay",
-      "dependency": "Larger split-safe cardplay weakness diagnostic and isolated inference compute; existing 18-event historical agreement smoke does not select a treatment or establish strength"
+      "dependency": "Larger split-safe cardplay weakness diagnostic and isolated inference compute; existing 18-event historical agreement smoke does not select a treatment or establish strength",
+      "gate": "Weakness-driven cardplay challenger protocol and paired B0 gameplay"
     },
     {
-      "gate": "V5 exploratory train-partition artifact check",
-      "dependency": "Exact V5 learner and split objects plus usable object-store access; current process has no AWS credentials"
+      "dependency": "Completed: exact V5 learner and split objects verified and train-only reader exercised; D1 exploratory status remains",
+      "gate": "V5 exploratory train-partition artifact check"
     },
     {
-      "gate": "Current-source release package and actual Skat host integration",
-      "dependency": "Current-source host smoke on isolated compute and actual user host software; current-source package rebuild verified locally"
+      "dependency": "Current-source host smoke on isolated compute and actual user host software; current-source package rebuild verified locally",
+      "gate": "Current-source release package and actual Skat host integration"
     },
     {
-      "gate": "Announced Schwarz/ouvert product scorer qualification",
-      "dependency": "Independent observed loss/overbid oracle or frozen holdout; current research code is opt-in only"
+      "dependency": "Independent observed loss/overbid oracle or frozen holdout; current research code is opt-in only",
+      "gate": "Announced Schwarz/ouvert product scorer qualification"
     },
     {
-      "gate": "Endgame teacher empirical usefulness",
-      "dependency": "Identified train-only cases, bounded treatment, isolated compute, paired B0 gameplay; teacher output is not deployable observation"
+      "dependency": "Identified train-only cases, bounded treatment, isolated compute, paired B0 gameplay; teacher output is not deployable observation",
+      "gate": "Endgame teacher empirical usefulness"
     }
   ],
+  "next_action": "R9 continues under independent supervisor. Qualify representative train-only cardplay data and run bounded weakness diagnostic on isolated compute; then one causal treatment and paired gameplay. At clean R9 boundary run separate measured 1->2->4 ISS epochs.",
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
-  "next_action": "Preserve supervised frozen R9 until its preregistered gate. On independent science, stage exact qualified train-only cardplay data or V5 objects and isolated compute for a bounded causal treatment; endgame labels are pilot-only. At clean R9 boundary run separate measured 1->2->4 ISS throughput epochs."
+  "schema": "skatai.v2.main-current-state.v1"
 }
