@@ -1,0 +1,30 @@
+{
+  "schema": "skatai.v2.b0-reproducibility-acceptance.v1",
+  "captured_at": "2026-09-25T22:16:30Z",
+  "task_id": "B0_REPRODUCIBILITY_ACCEPTANCE",
+  "classification": "OPEN",
+  "question": "Does the existing V2 evidence establish the founding/work-prompt B0 requirement as an immutable, reproducible original SkatZero baseline without relying on V1?",
+  "evidence": {
+    "baseline": {
+      "path": "provenance/B0_SKATZERO_BASELINE.json",
+      "sha256": "dc83e73ff77a04bedbd12d64d05647997e2fc7b292860c4a3e08abd52d3f03a1"
+    },
+    "reproduction": {
+      "path": "provenance/B0_REPRODUCTION.json",
+      "sha256": "d42543e6bc3ded16dfb7c1fde01406436890434625a5ed77b9875f25a75bd2ce"
+    },
+    "environment_lock": {
+      "path": "provenance/B0_ENVIRONMENT.lock.txt",
+      "sha256": "e9d27185f17e907b25d600b3aa1f02551aa9100eee306058d71ec3b8c9579d5c"
+    }
+  },
+  "verified_facts": [
+    "V2-B0 is recorded as SKATZERO_BASELINE with upstream commit, Git tree/archive identity, dependency-manifest identity, implementation hashes, license identity, and exact hashes for nine pretrained model files.",
+    "B0_SKATZERO_BASELINE status is FROZEN_PUBLISHED_RUNTIME_REPRODUCED.",
+    "B0_REPRODUCTION records Python 3.11.13, NumPy 1.26.4, Torch 2.1.2+cpu, nine pretrained agents loaded, API cardplay smoke PASS, cardplay benchmark PASS, and determinism recheck PASS.",
+    "B0_ENVIRONMENT.lock.txt pins the reproduced runtime package set.",
+    "This gate is evidence reconciliation only; it does not mutate B0, train a challenger, alter R9, or make a strength/promotion claim."
+  ],
+  "verification": "PENDING",
+  "decision": "PENDING"
+}
