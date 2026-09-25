@@ -8,6 +8,7 @@ import sys
 import pytest
 
 from skatai.selfplay.learner_dataset import load_bounded_learner_pilot
+from skatai.selfplay.replay_audit import audit_captured_record
 
 
 def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
@@ -37,6 +38,18 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     assert "private_seed_file" not in learner_manifest and "raw_file" not in learner_manifest
     assert all("deal_seed" not in row and "deal_sha256" not in row for row in learner_rows)
     assert all(len({decision["seat"] for decision in row["decisions"]}) == 1 for row in learner_rows)
+    raw_rows = [json.loads(line) for line in (private_dir / "pilot.raw.jsonl").open()]
+    assert all(
+        audit_captured_record(record, seed=seed["deal_seed"])["decisions"] == len(record["decisions"])
+        for record, seed in zip(raw_rows, private["games"])
+    )
+    corrupted = json.loads(json.dumps(raw_rows[0]))
+    corrupted["decisions"][0]["observation"]["hand"][0] = "XX"
+    corrupted["decision_trace_sha256"] = hashlib.sha256(json.dumps(
+        corrupted["decisions"], sort_keys=True, separators=(",", ":"),
+    ).encode()).hexdigest()
+    with pytest.raises(ValueError, match="REPLAY_DECISION_OR_VIEW_MISMATCH"):
+        audit_captured_record(corrupted, seed=private["games"][0]["deal_seed"])
     assert len(load_bounded_learner_pilot(
         prefix.with_suffix(".learner-manifest.json"), learner_path,
     )) == 2
