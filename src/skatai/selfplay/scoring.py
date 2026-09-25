@@ -1,8 +1,7 @@
 """Auditable basic Skat contract value for controlled self-play.
 
-This scorer covers ordinary suit/Grand and Null variants. Hand games with
-Schneider announced require an explicit research gate while oracle coverage
-is incomplete. Schwarz announced and suit/Grand ouvert remain unsupported.
+This scorer covers ordinary suit/Grand and Null variants. Announced hand
+games require explicit research gates and are excluded from default scoring.
 """
 
 from __future__ import annotations
@@ -60,6 +59,7 @@ def score_basic_game(
     declarer_points: int,
     declarer_tricks: int,
     research_announced_schneider: bool = False,
+    research_announced_schwarz_ouvert: bool = False,
 ) -> BasicScore:
     """Score a validated completed game; `declarer_cards` includes final skat."""
     token = str(contract).upper()
@@ -78,22 +78,32 @@ def score_basic_game(
                           won, value if won else -2 * value)
 
     announced_schneider = len(token) == 3 and token.endswith("HS")
+    announced_schwarz = len(token) == 3 and token.endswith("HZ")
+    ouvert = len(token) == 3 and token.endswith("HO")
     if announced_schneider and not research_announced_schneider:
         raise ValueError("ANNOUNCED_SCHNEIDER_REQUIRES_RESEARCH_GATE")
-    hand = (len(token) == 2 and token.endswith("H")) or announced_schneider
-    base = token[:-2] if announced_schneider else token[:-1] if hand else token
-    if base not in BASE_VALUES or token not in (base, base + "H", base + "HS"):
+    if (announced_schwarz or ouvert) and not research_announced_schwarz_ouvert:
+        raise ValueError("ANNOUNCED_SCHWARZ_OUVERT_REQUIRES_RESEARCH_GATE")
+    hand = (len(token) == 2 and token.endswith("H")) or announced_schneider or announced_schwarz or ouvert
+    base = token[:-2] if len(token) == 3 else token[:-1] if hand else token
+    if base not in BASE_VALUES or token not in (base, base + "H", base + "HS", base + "HZ", base + "HO"):
         raise ValueError(f"UNSUPPORTED_BASIC_CONTRACT:{contract}")
     matadors = _matadors(set(cards), base)
-    won_by_points = declarer_points >= (90 if announced_schneider else 61)
-    if won_by_points:
-        schneider = declarer_points >= 90
-        schwarz = declarer_tricks == 10
+    if announced_schwarz or ouvert:
+        # ISkO 2.5.1, 2.5.7–2.5.8: failed Schwarz/ouvert is lost at
+        # least at the announced level, regardless of card points.
+        won_by_points = declarer_tricks == 10
+        level = abs(matadors) + (7 if ouvert else 6)
     else:
-        schneider = declarer_points <= 30
-        schwarz = declarer_tricks == 0
-    schneider_levels = 2 if announced_schneider else int(schneider)
-    level = abs(matadors) + 1 + int(hand) + schneider_levels + int(schwarz)
+        won_by_points = declarer_points >= (90 if announced_schneider else 61)
+        if won_by_points:
+            schneider = declarer_points >= 90
+            schwarz = declarer_tricks == 10
+        else:
+            schneider = declarer_points <= 30
+            schwarz = declarer_tricks == 0
+        schneider_levels = 2 if announced_schneider else int(schneider)
+        level = abs(matadors) + 1 + int(hand) + schneider_levels + int(schwarz)
     natural = BASE_VALUES[base] * level
     overbid = winning_bid > natural
     if overbid:
@@ -105,7 +115,9 @@ def score_basic_game(
                       overbid, won_by_points and not overbid, signed)
 
 
-def score_basic_episode(episode: GameEpisode) -> BasicScore:
+def score_basic_episode(
+    episode: GameEpisode, *, research_announced_schwarz_ouvert: bool = False,
+) -> BasicScore:
     """Reconcile the full episode before assigning a bounded basic value."""
     declaration, play = episode.declaration, episode.cardplay
     if declaration is None or play is None:
@@ -208,4 +220,5 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
         declarer_cards=(*declaration.final_hand, *declaration.final_skat),
         declarer_points=play.declarer_final_points,
         declarer_tricks=declarer_tricks,
+        research_announced_schwarz_ouvert=research_announced_schwarz_ouvert,
     )

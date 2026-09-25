@@ -201,8 +201,8 @@ def test_declaration_rejects_wrong_mode_and_null_bid():
 @pytest.mark.parametrize(
     "contract,scorer_gate",
     [("GHS", "ANNOUNCED_SCHNEIDER_REQUIRES_RESEARCH_GATE"),
-     ("GHZ", "UNSUPPORTED_BASIC_CONTRACT"),
-     ("GHO", "UNSUPPORTED_BASIC_CONTRACT")],
+     ("GHZ", "ANNOUNCED_SCHWARZ_OUVERT_REQUIRES_RESEARCH_GATE"),
+     ("GHO", "ANNOUNCED_SCHWARZ_OUVERT_REQUIRES_RESEARCH_GATE")],
 )
 def test_announced_episode_win_flag_uses_declared_condition(contract, scorer_gate):
     class Choose:
@@ -225,6 +225,12 @@ def test_announced_episode_win_flag_uses_declared_condition(contract, scorer_gat
     assert episode.cardplay.declarer_won is False
     with pytest.raises(ValueError, match=scorer_gate):
         score_basic_episode(episode)
+    if contract in {"GHZ", "GHO"}:
+        research = score_basic_episode(
+            episode, research_announced_schwarz_ouvert=True,
+        )
+        assert research.won is False
+        assert research.signed_game_value == -2 * research.natural_value
     with pytest.raises(ValueError, match="EPISODE_PLAY_WIN_FLAG_MISMATCH"):
         score_basic_episode(replace(
             episode, cardplay=replace(episode.cardplay, declarer_won=True),
