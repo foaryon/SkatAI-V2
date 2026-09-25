@@ -35,15 +35,9 @@ def write_secret(name: str, value: str | None, uid: int, gid: int, mode: int = 0
     os.replace(tmp, path)
 
 
-# R9 uses the ISS password independently. MAIN gets no access to this master
-# file; the controller materializes a short-lived per-turn copy only when an
-# explicitly authorized ISS_RUNTIME capability is active.
-iss = (
-    env.get("RUNPOD_SECRET_skatai_iss_password")
-    or env.get("skatai_iss_password")
-    or env.get("ISS_PASSWORD")
-)
-write_secret("iss_password", iss, 0, sentinel.pw_gid, 0o640)
+# R9 owns the ISS password independently. MAIN must never create, rewrite,
+# chmod, chown, copy, or inspect that credential. Its lifecycle is outside the
+# MAIN control plane; only non-secret ISS connection metadata is shared below.
 
 # MAIN is function-gateway only; self-hosted Codex execution is deliberately
 # disabled. Remove any stale executor key material from prior deployments.
@@ -80,7 +74,7 @@ os.chown(tmp, 0, sentinel.pw_gid)
 os.chmod(tmp, 0o640)
 os.replace(tmp, public_env)
 
-print("iss_password=" + ("present" if iss else "absent"))
+print("iss_password=unmanaged_by_main")
 print("executor_key=disabled_function_gateway_only")
 print("agents_api_key=" + ("present" if agents_key else "absent"))
 print("runpod_deploy_api_key=" + ("present" if runpod_deploy_key else "absent"))

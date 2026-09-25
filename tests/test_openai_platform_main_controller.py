@@ -546,3 +546,13 @@ def test_structured_replacement_is_exact_atomic_and_json_validated(tmp_path, mon
         assert "REPLACEMENT_MATCH_COUNT:provenance/state.json:2" in str(exc)
     else:
         raise AssertionError("ambiguous replacement was accepted")
+
+
+def test_main_secret_prep_never_manages_iss_password():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "scripts" / "prepare_runtime_secrets.py").read_text(encoding="utf-8")
+    assert 'write_secret("iss_password"' not in text
+    assert "RUNPOD_SECRET_skatai_iss_password" not in text
+    assert "skatai_iss_password" not in text
+    assert 'env.get("ISS_PASSWORD")' not in text
+    assert "iss_password=unmanaged_by_main" in text
