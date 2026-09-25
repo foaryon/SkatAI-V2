@@ -18,6 +18,11 @@
     "source_context": "Only provenance and public host metadata; never hidden game state"
   },
   "implementation_authorized": false,
+  "card_seat_static_parity": {
+    "status": "PASS_STATIC_ONLY",
+    "evidence": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
+    "runtime_turn_rotation": "PENDING"
+  },
   "pickup_plan_stage": {
     "source": "src/skatai/runtime/host_service.py",
     "request_schema": "skatai.v2.host-pickup-plan-request.v1",

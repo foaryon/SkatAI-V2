@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:11:29Z",
+  "captured_at": "2026-09-25T12:13:15Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -26,13 +26,13 @@
     "task_id": "B0_SOURCE_BOUND_RELEASE_STAGE",
     "classification": "CONCLUDE_SOURCE_GATE",
     "evidence": "provenance/B0_SOURCE_BOUND_RELEASE_STAGE_20260925.json",
-    "package_smoke_status": "PENDING_ISOLATED_COMPUTE"
+    "package_smoke_status": "PENDING_ISOLATED_COMPUTE_LAUNCH_ACCESS"
   },
   "git": {
     "branch": "main",
-    "remote_state": "verify with Git at resume; product audit/bridge commit planned",
+    "remote_state": "e4b9514 pushed to origin/main; verify later commit at resume",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "1ac9700ce62cd0a97d7f1db347428c3f90ef1ca7",
+    "verified_head_before_this_manifest": "e4b9514",
     "worktree_state": "verify with Git at resume"
   },
   "nearest_gates": [
@@ -68,6 +68,13 @@
   "next_action": "R9 stays independent until clean gate. Stage source-bound host package with pickup plan on isolated compute, then test JSkat adapter callback and rule parity; do not vendor/fork before remaining audit gates.",
   "open_blockers": [
     {
+      "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
+      "evidence": "MAIN shell has no RunPod deployment key in its environment; /proc/1/environ is permission denied; R9 precludes a heavy same-CPU package/inference smoke",
+      "next": "Use an authorized file-backed launch path or schedule the bounded smoke on isolated compute; keep R9 under its supervisor",
+      "scope": "Current-source release package smoke only",
+      "status": "ACCESS_PATH_UNVERIFIED"
+    },
+    {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
       "evidence": "provenance/HOST_SOURCE_DISCOVERY_20260925.json",
       "next": "Integrate through stable host service when authoritative host source/access is available; independent host smoke proceeds now",
@@ -79,6 +86,7 @@
   "product_software_research": {
     "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
+    "card_seat_static_parity": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
     "next_gate": "Versioned pickup plan staged and focused tests pass; stage package and verify actual JSkat callback lifecycle, then rules/assets/Windows build",
     "no_vendor_or_fork": true,

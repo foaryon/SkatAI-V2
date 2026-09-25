@@ -1,0 +1,27 @@
+{
+  "schema": "skatai.v2.jskat-card-seat-parity.v1",
+  "captured_at": "2026-09-25T12:13:15Z",
+  "task_id": "JSKAT_STATIC_CARD_SEAT_PARITY",
+  "classification": "CONCLUDE_STATIC_PASS",
+  "jskat_upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+  "input_identities": {
+    "jskat_card_java_sha256": "3064779f48b44bb623bf71348a6db6493ebd162110c3d646cbbda1e2b7fffbc9",
+    "jskat_player_java_sha256": "16f6beb58d9fc31a75f3b6a1c0b1161cc6f55bf1c567e4075f302595bbc4e9dc",
+    "v2_source_parent_commit": "e4b9514"
+  },
+  "method": "Read-only pinned JSkat Card and Player enums; parse 32 explicit enum card identifiers and three getOrder returns; compare token sets with V2 DECK",
+  "result": {
+    "jskat_card_tokens": 32,
+    "jskat_unique_card_tokens": 32,
+    "v2_card_tokens": 32,
+    "jskat_only": [],
+    "v2_only": [],
+    "seat_orders": {"FOREHAND": 0, "MIDDLEHAND": 1, "REARHAND": 2}
+  },
+  "limits": [
+    "Static identity parity only; runtime hand ordering and turn rotation remain to be tested in JSkat",
+    "No Java engine execution or score/rule parity claim",
+    "No JSkat source copied into V2"
+  ],
+  "next": "Use exact token and seat map in a live headless adapter smoke after isolated package staging"
+}
