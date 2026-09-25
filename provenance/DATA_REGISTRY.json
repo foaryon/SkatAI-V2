@@ -89,6 +89,13 @@
       "manifest_sha256": "c23682dad5642b928b60ddbf5992b7f682e6f6ea39903bc476126b8d9e44663a",
       "exposed_external_bot_holdout_identities": 21,
       "rule": "Preserve frozen split membership; prior mixed-split basic-score oracle claims are quarantined. Thirteen complete scored holdout results were compared. Future scorer probes must filter to train before scoring."
+    },
+    {
+      "incident_id": "historical-iss-protocol-fixture-20260925",
+      "manifest": "provenance/ISS_PROTOCOL_FIXTURE_HOLDOUT_EXPOSURE_20260925.json",
+      "manifest_sha256": "f36f7e079484d3bda305d62222695b5cbea28929cd2ea880179c7abfe8a6045b",
+      "exposed_external_bot_holdout_identities": 1,
+      "rule": "Historical benchmark-bot fixture remains a protocol parser regression only; it is excluded from rules-oracle and independent external holdout acceptance claims."
     }
   ],
   "schema": "skatai.v2.data-registry.v1"
