@@ -1107,6 +1107,82 @@ def test_mirror_queue_rejects_local_artifact_mutation_before_upload(tmp_path):
     assert ev.mirror_backlog_status()["pending_games"] == 1
 
 
+def test_pending_game_survives_source_update_with_original_lineage(tmp_path):
+    import json
+    from skatai.iss.gate_worker import GateEvidence, MirrorPolicy, MirrorWriteBehind
+
+    old = _writebehind_evidence(tmp_path)
+    game_id = "g-before-update"
+    for suffix in ("service.jsonl", "effects.jsonl"):
+        (old.games_dir / f"{game_id}.{suffix}").write_text(
+            f"{game_id}:{suffix}\n"
+        )
+    (old.games_dir / f"{game_id}.evidence.json").write_text(
+        json.dumps({"game_id": game_id, "source_commit": "abc1234"}) + "\n"
+    )
+    marker = old.enqueue_mirror_game(game_id)
+    old.mark_current_mirror_dirty()
+    old_dirty = json.loads(old.mirror_current_dirty_path.read_text())
+
+    updated = GateEvidence(
+        paths=old.paths,
+        identities=old.identities,
+        source_commit="newcommit",
+    )
+    updated.mark_current_mirror_dirty()
+    dirty = json.loads(updated.mirror_current_dirty_path.read_text())
+    assert dirty["source_commit"] == "newcommit"
+    assert dirty["first_dirty_unix_ns"] == old_dirty["first_dirty_unix_ns"]
+    policy = MirrorPolicy(
+        batch_games=1,
+        max_delay_s=1,
+        retry_delay_s=1,
+        poll_interval_s=1,
+        max_pending_games=2,
+        max_pending_bytes=1024,
+        max_backlog_age_s=60,
+    )
+    assert MirrorWriteBehind(updated, policy=policy)._due()
+
+    copied = []
+    updated.mirror.upload_batch_verified = lambda files: copied.extend(files) or []
+    result = updated.mirror_batch(limit=1)
+    manifest = json.loads(
+        (updated.games_dir / f"{game_id}.mirror.json").read_text()
+    )
+    assert manifest["source_commit"] == "abc1234"
+    assert result["pending_games"] == 0
+    assert not marker.exists()
+    assert not updated.mirror_current_dirty_path.exists()
+    assert any(remote == f"manifests/{game_id}.json" for _, remote in copied)
+
+
+def test_pending_game_source_update_rejects_unverified_lineage(tmp_path):
+    import json
+    import pytest
+    from skatai.iss.gate_worker import GateEvidence, ISSGateWorkerError
+
+    old = _writebehind_evidence(tmp_path)
+    game_id = "g-unverified-update"
+    for suffix in ("service.jsonl", "effects.jsonl"):
+        (old.games_dir / f"{game_id}.{suffix}").write_text("evidence\n")
+    (old.games_dir / f"{game_id}.evidence.json").write_text(
+        json.dumps({"game_id": game_id, "source_commit": "abc1234"}) + "\n"
+    )
+    marker = old.enqueue_mirror_game(game_id)
+    updated = GateEvidence(
+        paths=old.paths,
+        identities=old.identities,
+        source_commit="newcommit",
+    )
+    (old.games_dir / f"{game_id}.evidence.json").write_text(
+        json.dumps({"game_id": game_id, "source_commit": "different"}) + "\n"
+    )
+    with pytest.raises(ISSGateWorkerError, match="MIRROR_QUEUE_SOURCE_UNVERIFIED"):
+        updated.pending_mirror_entries()
+    assert marker.exists()
+
+
 def test_mirror_batch_preserves_newer_current_dirty_generation(tmp_path):
     import json
 

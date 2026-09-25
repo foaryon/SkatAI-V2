@@ -829,11 +829,11 @@ class GateEvidence:
             if (
                 payload.get("schema") != "skatai.v2.iss-mirror-queue.v2"
                 or payload.get("game_id") != game_id
-                or payload.get("source_commit") != self.source_commit
             ):
                 raise ISSGateWorkerError(
                     f"MIRROR_QUEUE_MARKER_CONFLICT:{game_id}"
                 )
+            self._verify_outbox_source(game_id, payload)
             self._verify_outbox_artifacts(
                 game_id,
                 payload.get("artifacts") or [],
@@ -851,6 +851,33 @@ class GateEvidence:
         )
         return marker
 
+    def _verify_outbox_source(
+        self, game_id: str, payload: Mapping[str, Any]
+    ) -> None:
+        source = payload.get("source_commit")
+        if source == self.source_commit:
+            return
+        try:
+            game = json.loads(
+                (self.games_dir / f"{game_id}.evidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            raise ISSGateWorkerError(
+                f"MIRROR_QUEUE_SOURCE_UNVERIFIED:{game_id}"
+            ) from exc
+        if (
+            not isinstance(source, str)
+            or not source
+            or not isinstance(game, dict)
+            or game.get("game_id") != game_id
+            or game.get("source_commit") != source
+        ):
+            raise ISSGateWorkerError(
+                f"MIRROR_QUEUE_SOURCE_UNVERIFIED:{game_id}"
+            )
+
     def mark_current_mirror_dirty(self) -> None:
         now = time.time_ns()
         first_dirty = now
@@ -858,10 +885,6 @@ class GateEvidence:
             payload = json.loads(
                 self.mirror_current_dirty_path.read_text(encoding="utf-8")
             )
-            if payload.get("source_commit") != self.source_commit:
-                raise ISSGateWorkerError(
-                    "MIRROR_CURRENT_SOURCE_MISMATCH"
-                )
             first_dirty = int(
                 payload.get(
                     "first_dirty_unix_ns",
@@ -886,10 +909,6 @@ class GateEvidence:
                 raise ISSGateWorkerError(
                     f"MIRROR_QUEUE_SCHEMA_MISMATCH:{marker.name}"
                 )
-            if payload.get("source_commit") != self.source_commit:
-                raise ISSGateWorkerError(
-                    f"MIRROR_QUEUE_SOURCE_MISMATCH:{marker.name}"
-                )
             game_id = str(payload.get("game_id"))
             if marker.name != f"{game_id}.json":
                 raise ISSGateWorkerError(
@@ -900,6 +919,7 @@ class GateEvidence:
                 raise ISSGateWorkerError(
                     f"MIRROR_QUEUE_ARTIFACT_BINDING_MISSING:{marker.name}"
                 )
+            self._verify_outbox_source(game_id, payload)
             out.append((marker, payload))
         out.sort(key=lambda item: int(item[1]["enqueued_unix_ns"]))
         return out
@@ -1673,7 +1693,7 @@ class GateEvidence:
                 manifest = {
                     "schema": "skatai.v2.external-iss-evidence-mirror.v1",
                     "game_id": game_id,
-                    "source_commit": self.source_commit,
+                    "source_commit": payload["source_commit"],
                     "files": [
                         self._mirror_file_metadata(local, remote)
                         for local, remote in game_files
@@ -1734,8 +1754,6 @@ class MirrorWriteBehind:
         if not path.exists():
             return None
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("source_commit") != self.evidence.source_commit:
-            raise ISSGateWorkerError("MIRROR_CURRENT_SOURCE_MISMATCH")
         dirty_ns = int(
             payload.get(
                 "first_dirty_unix_ns",
