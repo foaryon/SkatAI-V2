@@ -116,10 +116,10 @@ def function_tools() -> list[dict[str, Any]]:
         {
             "type": "function",
             "name": "apply_patch",
-            "description": "Apply one unified Git patch, but only to lease-authorized writable_files and only when the lease permits a repository/provenance mutation.",
+            "description": "Apply one standard unified Git diff only to lease-authorized writable_files. The patch MUST contain diff --git a/<path> b/<path>, --- a/<path>, +++ b/<path>, and @@ hunk headers. Never use *** Begin Patch / *** Update File syntax.",
             "parameters": {
                 "type": "object",
-                "properties": {"patch": {"type": "string"}},
+                "properties": {"patch": {"type": "string", "description": "Literal standard Git unified diff beginning with diff --git; *** Begin Patch syntax is invalid."}},
                 "required": ["patch"],
                 "additionalProperties": False,
             },
@@ -408,6 +408,8 @@ class ToolGateway:
 
     @staticmethod
     def _patch_paths(patch: str) -> list[str]:
+        if "*** Begin Patch" in patch or "*** Update File:" in patch:
+            raise RuntimeError("PATCH_FORMAT_INVALID_BEGIN_PATCH_USE_GIT_UNIFIED_DIFF")
         paths = []
         forbidden = (
             "new file mode ", "deleted file mode ", "rename from ", "rename to ",

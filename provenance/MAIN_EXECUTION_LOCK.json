@@ -79,7 +79,7 @@
       "MAIN_CURRENT_STATE no longer lists this D3 integrity issue as an open blocker or suspended D3 claim",
       "Disposition explicitly preserves no-retrain-from-this-finding, no-promotion-from-this-correction-alone, and unchanged R9 evidence"
     ],
-    "next_action": "Call get_active_lease, verify only the listed correction/current-state evidence identities as needed, then patch the two authorized provenance files to reflect PASS_FALSE_POSITIVE_RECONCILED / D3_SEMANTICALLY_VALID while preserving R9 unchanged and promotion still gated. Do not run audit_published_bidding_artifact, do not search for alternate manifests, and do not broaden scope. Verify strict JSON and record the terminal turn outcome."
+    "next_action": "Call get_active_lease. Treat decisive_facts and evidence_identities as controller-bound. Read only the two writable target files plus the correction provenance once; do not reread runtime audit/impact reports unless a concrete identity conflict appears. Then patch the two authorized provenance files using standard Git unified diff to reflect PASS_FALSE_POSITIVE_RECONCILED / D3_SEMANTICALLY_VALID while preserving R9 unchanged and promotion still gated. Do not run an audit, search alternate manifests, or broaden scope. Verify with git diff plus bounded reread/strict-JSON semantics, then record the terminal turn outcome."
   },
   "reason": "Fresh evidence reconciliation: the prior D3-impact-unknown gate was superseded by a corrected exact-manifest audit and integrated validator fix; require only durable provenance reconciliation, not a repeated dataset scan.",
   "schema": "skatai.v2.main-execution-lock.v2",

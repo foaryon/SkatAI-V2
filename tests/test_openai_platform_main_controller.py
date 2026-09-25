@@ -139,6 +139,8 @@ def test_saved_agent_prompt_is_compact_and_points_to_binding_authority():
     assert "get_active_lease" in text
     assert "authority_hashes" in text
     assert "<=8 reconnaissance rounds" in text
+    assert "diff --git" in text
+    assert "*** Begin Patch" in text
     assert "record_turn_outcome" in text
 
 
@@ -479,3 +481,14 @@ def test_serial_tool_round_budget_stops_reconnaissance_loop():
         assert "TOOL_ROUND_BUDGET_EXCEEDED" in str(exc)
     else:
         raise AssertionError("serial tool round cap was not enforced")
+
+
+def test_apply_patch_rejects_begin_patch_format_explicitly():
+    mod = _load_controller()
+    bad = "*** Begin Patch\n*** Update File: provenance/example.json\n@@\n-old\n+new\n*** End Patch\n"
+    try:
+        mod.ToolGateway._patch_paths(bad)
+    except RuntimeError as exc:
+        assert "PATCH_FORMAT_INVALID_BEGIN_PATCH_USE_GIT_UNIFIED_DIFF" in str(exc)
+    else:
+        raise AssertionError("Begin Patch format was not rejected explicitly")
