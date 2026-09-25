@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Iterable, Sequence
 
 RULES_SCHEMA = "skatai.v2.skat-rules.v1"
@@ -24,11 +25,20 @@ CONTRACT_TO_GAME_TYPE = {
     "N": "NULL",
     "NO": "NULL",
 }
+_CONTRACT_TOKEN_RE = re.compile(r"^[GCSHDN][OHSZ]*$")
 
 
 def game_type_from_contract(contract: str) -> str:
     token = str(contract).upper().split(".", 1)[0]
+    if not _CONTRACT_TOKEN_RE.fullmatch(token):
+        raise ValueError(f"UNSUPPORTED_CONTRACT:{contract}")
     base = "NO" if token.startswith("NO") else token[:1]
+    modifiers = token[1:]
+    if (len(modifiers) != len(set(modifiers))
+            or (token[0] == "N" and any(x in modifiers for x in "SZ"))
+            or (token[0] != "N" and any(x in modifiers for x in "SZ")
+                and not any(x in modifiers for x in "HO"))):
+        raise ValueError(f"UNSUPPORTED_CONTRACT:{contract}")
     try:
         return CONTRACT_TO_GAME_TYPE[base]
     except KeyError as exc:

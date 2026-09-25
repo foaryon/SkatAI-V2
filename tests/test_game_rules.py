@@ -1,3 +1,5 @@
+import pytest
+
 from skatai.game.rules import (
     card_points,
     category,
@@ -13,6 +15,12 @@ def test_contract_mapping_handles_iss_modifiers():
     assert game_type_from_contract("CHZ") == "CLUBS"
     assert game_type_from_contract("NHO") == "NULL"
     assert game_type_from_contract("NO") == "NULL"
+
+
+@pytest.mark.parametrize("contract", ["GARBAGE", "NONSENSE", "GSS", "NS", "GZ", "X", ""])
+def test_contract_mapping_rejects_malformed_game_type(contract):
+    with pytest.raises(ValueError, match="UNSUPPORTED_CONTRACT"):
+        game_type_from_contract(contract)
 
 
 def test_suit_game_jacks_and_trump_follow_rule():

@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-09-25T12:29:53Z",
+  "classification": "CORRECT_VERIFIED",
+  "defect": "Shared game-type mapper classified malformed contract names by leading letter; malformed host cardplay input could reach inference as a valid game type.",
+  "remaining_gate": "Runtime parity with actual host and isolated source-bound package smoke remain pending.",
+  "schema": "skatai.v2.correctness-gate.v1",
+  "scope": "Current V2 game-type mapping and host boundary; protocol-compatible modifiers retained. Frozen R9 treatment unchanged.",
+  "source_parent_commit": "0a574c7b28cfebb409ec880558406cf581d649ba",
+  "task_id": "HOST_CONTRACT_TOKEN_VALIDATION",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_game_rules.py tests/test_host_service.py tests/test_iss_protocol.py tests/test_selfplay_cardplay.py",
+    "result": "112 passed in 1.59s"
+  }
+}

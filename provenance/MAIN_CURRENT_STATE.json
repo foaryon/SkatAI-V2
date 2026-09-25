@@ -8,11 +8,12 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:28:05Z",
+  "captured_at": "2026-09-25T12:29:53Z",
   "completed_independent_gate": {
+    "also_completed": "provenance/BIDDING_TERMINAL_264_CORRECTION_20260925.json",
     "classification": "CORRECT_VERIFIED",
-    "evidence": "provenance/BIDDING_TERMINAL_264_CORRECTION_20260925.json",
-    "task_id": "BIDDING_TERMINAL_264_CORRECTION"
+    "evidence": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
+    "task_id": "HOST_CONTRACT_TOKEN_VALIDATION"
   },
   "git": {
     "branch": "main",
@@ -57,7 +58,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Advance independent weakness-driven cardplay and product legality work; R9 remains under independent supervisor until clean gate; source-bound host smoke awaits isolated compute access.",
+  "next_action": "R9 remains independently supervised to clean gate. Current-source package and JSkat runtime parity require isolated compute access; actual host integration awaits source. Continue independent science/product work when executable.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -103,6 +104,7 @@
   "schema": "skatai.v2.main-current-state.v1",
   "staged_host_legality_gate": {
     "classification": "CONCLUDE_SOURCE_GATE",
+    "contract_token_validation": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
     "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
     "jskat_runtime_parity": "PENDING",
     "task_id": "HOST_CARDPLAY_EXACT_LEGAL_SET"
