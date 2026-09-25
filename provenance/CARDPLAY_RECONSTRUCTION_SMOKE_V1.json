@@ -1,0 +1,63 @@
+{
+  "schema": "skatai.v2.cardplay-reconstruction-smoke-provenance.v1",
+  "captured_at": "2026-09-24T00:57:00Z",
+  "status": "BOUNDED_RECONSTRUCTION_SMOKE_PASS",
+  "implementation": {
+    "branch": "lab/cardplay-reconstruction-v1",
+    "source_commit": "a7345c53e0337509dfe8a5814739a615345e0eda",
+    "module": "src/skatai/data/cardplay.py",
+    "diagnostic_script": "scripts/diagnose-cardplay-reconstruction.py",
+    "tests": "tests/test_cardplay_data.py",
+    "product_observation_contract": "src/skatai/runtime/interface.py::CardplayObservation",
+    "deployed_semantics_reference": "src/skatai/iss/bridge.py"
+  },
+  "canonical_parent": {
+    "object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
+    "records": 10845022,
+    "bytes": 13077428492,
+    "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+    "trust": "VERIFIED_CANONICAL_MIGRATED_EVIDENCE"
+  },
+  "bounded_sample": {
+    "method": "first 5000 JSONL records of the canonical parent, diagnostic smoke only",
+    "representative_sample_claim": false,
+    "rows": 5000,
+    "bytes": 6127752,
+    "sha256": "244bfd885105a6f8d2298f3ab361c7c3e50e48da7f03ab26fca516ba3f57f39a"
+  },
+  "result": {
+    "candidate_games": 5000,
+    "reconstruction_ok": 5000,
+    "reconstruction_failed": 0,
+    "complete_30": 4377,
+    "partial": 623,
+    "decision_events": 141259,
+    "artifact_sha256": "8cf0d556860c60c163fd295b2e2b3e912af0e8d4118ca5aa5c492a347f2c61a3",
+    "artifact": "s3://skatai-v2/evidence/cardplay/reconstruction-smoke-first5000-v1.json"
+  },
+  "semantic_contract": {
+    "input_legality": "own remaining hand plus public play/bid state and only legally visible skat/ouvert information",
+    "target": "historical played card stored separately from observation input",
+    "pickup_declarer_skat_visibility": "buried discard cards only",
+    "defender_skat_visibility": "hidden",
+    "hand_game_skat_visibility": "hidden",
+    "ouvert_visibility": "remaining declarer hand is public",
+    "point_semantics": "public completed-trick totals; pickup declarer additionally sees points in its own buried cards, matching current deployed bridge semantics",
+    "auction_maxima": "derived from explicit bidding actions only"
+  },
+  "verification": {
+    "complete_game_legality_tests": true,
+    "hidden_opponent_reallocation_invariance_test": true,
+    "target_not_in_observation_mapping_test": true,
+    "fixture_hand_game_events": 30,
+    "fixture_pickup_game_events": 30,
+    "full_suite": "266 passed"
+  },
+  "authority": {
+    "training_authority": false,
+    "d4_empirical_usefulness": false,
+    "strength_claim_authorized": false,
+    "historical_cardplay_policy": "candidate auxiliary information only until a bounded causal treatment demonstrates value"
+  },
+  "next_science_step": "Use this reconstruction path for bounded held-out diagnostics and teacher/weakness experiments; do not materialize the full historical cardplay corpus or train from it until the treatment and evaluation design justify the compute."
+}
