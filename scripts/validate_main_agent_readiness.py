@@ -196,7 +196,11 @@ def main() -> int:
 
     secret_dir = Path("/run/skatai-v2-secrets")
     if secret_dir.is_dir():
-        for name in ("openai_agents_api_key", "openai_executor_api_key", "runpod_deploy_api_key"):
+        require(
+            not (secret_dir / "openai_executor_api_key").exists(),
+            "RETIRED_EXECUTOR_KEY_STILL_PRESENT",
+        )
+        for name in ("openai_agents_api_key", "runpod_deploy_api_key"):
             p = secret_dir / name
             if p.exists():
                 require(p.stat().st_uid == 0 and mode(p) == 0o600, "CONTROLLER_SECRET_PERMISSIONS:" + name)

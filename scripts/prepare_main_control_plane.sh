@@ -45,6 +45,8 @@ done
 # Legacy control files are no longer authoritative.
 rm -f "$OLD_CTRL/session.json" "$OLD_CTRL/controller.pid" "$OLD_CTRL/exec-server.pid" "$OLD_CTRL/pause-submissions"
 rm -f "$OLD_AGENT/AGENT_REENABLE_APPROVED"
+# The function-gateway design never uses a self-hosted executor API key.
+rm -f /run/skatai-v2-secrets/openai_executor_api_key
 
 # Fail closed after every explicit installation/migration. Reenable is a
 # separate operator decision bound to exact trusted policy hashes.
