@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:06:10.394593+00:00",
+  "captured_at": "2026-09-25T12:06:24.660968+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -68,7 +68,7 @@
     "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
-    "next_gate": "Resolve missing V2 pickup action protocol; validate retained pre-discard declaration snapshot, then rules/assets/Windows build",
+    "next_gate": "Resolve pickup action and joint declaration/discard semantics; verify local lifecycle, then rules/assets/Windows build",
     "no_vendor_or_fork": true,
     "status": "CONDITIONAL_JSKAT_PREFERENCE_NO_ADOPTION"
   },

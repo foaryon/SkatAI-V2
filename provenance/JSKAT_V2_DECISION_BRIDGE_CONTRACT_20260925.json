@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-25T12:06:10.394593+00:00",
+  "captured_at": "2026-09-25T12:06:24.660968+00:00",
   "confirmed_engine_order": {
     "additional_rule_note": "Normal discard permits Jacks; no-Jack restriction at lines 527-529 is only SCHIEBERAMSCH option",
     "declaration_lines": "537-548: announceGame called after discard and GameContract checked weakly with TODO",
@@ -47,7 +47,7 @@
       "v2_phase": "DISCARD"
     },
     {
-      "gap": "CONFIRMED: announceGame follows discard. Retain the immutable pre-discard 12-card snapshot plus selected discard and exact game identity; V2 declaration must use pre-discard 12-card observation while deriving legal contracts from the post-discard 10-card hand and selected skat. Validate this semantics before implementation.",
+      "gap": "CONFIRMED: announceGame follows discard. V2 declaration observation for pickup is pre-discard 12 cards and has no chosen-discard field. Compute/cache declaration while 12 cards are available, then return it at announceGame; require accepted-release consistency between chosen discard and contract. A post-discard call with the stale 12-card snapshot alone hides the chosen pair from a generic policy and is insufficient.",
       "jskat_callback": "announceGame()",
       "mapping": "Map reviewed legal contract set and V2 action to JSkat GameContract",
       "required_inputs": "10 cards for hand or 12 cards for pickup per V2 observation; JSkat may already have discarded to 10",
@@ -74,6 +74,7 @@
   },
   "required_validation": [
     "Confirmed static callback order; reproduce one local pickup and one hand game to verify exact information timing and snapshot semantics",
+    "For pickup, verify declaration and discard decisions are jointly consistent for each accepted release; otherwise version the stable API to carry post-discard 10 cards plus owned skat or an explicit chosen-discard field",
     "Bid schedule and bid_index parity",
     "32-card and contract bijection, with flags hand/Schneider/Schwarz/ouvert/Null",
     "Legal action and scoring parity on independently generated edge cases",
