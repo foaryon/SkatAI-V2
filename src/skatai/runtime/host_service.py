@@ -34,11 +34,27 @@ PICKUP_PLAN_REQUEST_SCHEMA = "skatai.v2.host-pickup-plan-request.v1"
 PICKUP_PLAN_RESPONSE_SCHEMA = "skatai.v2.host-pickup-plan-response.v1"
 PICKUP_CONTRACTS = frozenset({"C", "S", "H", "D", "G", "N", "NO"})
 MAX_REQUEST_BYTES = 1024 * 1024
+HOST_CONTEXT_FIELDS = frozenset({"table_id", "host_game_id", "callback", "host_version"})
+HOST_REQUEST_FIELDS = frozenset({
+    "schema", "game_id", "sequence_no", "decision_type", "observation",
+    "source", "source_context", "legal_actions",
+})
 
 
 def handle_request(ai: SkatAI, release_id: str, payload: Mapping[str, Any]) -> dict:
     if payload.get("schema") != REQUEST_SCHEMA:
         raise SkatAIInterfaceError("HOST_REQUEST_SCHEMA_MISMATCH")
+    if set(payload) - HOST_REQUEST_FIELDS:
+        raise SkatAIInterfaceError("HOST_REQUEST_UNKNOWN_FIELD")
+    if payload.get("source", "HOST") != "HOST":
+        raise SkatAIInterfaceError("HOST_SOURCE_MISMATCH")
+    context = payload.get("source_context")
+    if context is not None:
+        if (not isinstance(context, dict)
+                or set(context) - HOST_CONTEXT_FIELDS
+                or any(not isinstance(value, str) or len(value) > 256
+                       for value in context.values())):
+            raise SkatAIInterfaceError("HOST_SOURCE_CONTEXT_INVALID")
     dtype = DecisionType(payload["decision_type"])
     data = payload["observation"]
     if not isinstance(data, dict):
@@ -53,16 +69,39 @@ def handle_request(ai: SkatAI, release_id: str, payload: Mapping[str, Any]) -> d
     fields = dict(data)
     cards = fields.pop(cards_key)
     observation = cls.create(cards, **fields)
+    if dtype is DecisionType.BID:
+        if (observation.bidder == observation.answerer
+                or observation.actor != (
+                    observation.bidder if observation.decision_role == "BIDDER"
+                    else observation.answerer
+                )):
+            raise SkatAIInterfaceError("HOST_BIDDING_ACTOR_ROLE_MISMATCH")
     request = DecisionRequest.create(
         game_id=payload["game_id"],
         sequence_no=payload["sequence_no"],
         decision_type=dtype,
         observation=observation,
-        source=str(payload.get("source") or "HOST"),
-        source_context=payload.get("source_context"),
+        source="HOST",
+        source_context=context,
         legal_actions=payload.get("legal_actions"),
     )
     if dtype is DecisionType.PLAY_CARD:
+        played = observation.played_cards
+        trick = observation.current_trick
+        played_tokens = [card for _, card in played]
+        if (len(played) > 29
+                or len(played_tokens) != len(set(played_tokens))
+                or set(played_tokens) & set(observation.hand)
+                or len(played) % 3 != len(trick)
+                or any(
+                    played[i + j][0] != (played[i][0] + j) % 3
+                    for i in range(0, len(played) - len(trick), 3)
+                    for j in (1, 2)
+                )
+                or (trick and tuple(played[-len(trick):]) != trick)
+                or (trick and observation.seat != (trick[-1][0] + 1) % 3)
+                or (len(trick) == 2 and trick[1][0] != (trick[0][0] + 1) % 3)):
+            raise SkatAIInterfaceError("HOST_CARDPLAY_HISTORY_INCONSISTENT")
         rule_set = set(rule_legal_cards(
             observation.hand,
             observation.current_trick,

@@ -64,6 +64,46 @@ def test_host_request_rejects_unknown_schema():
         handle_request(_ai(), "release-1", {"schema": "unknown"})
 
 
+def test_host_bid_rejects_impossible_actor_role_before_inference():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-1", "sequence_no": 1,
+        "decision_type": "BID",
+        "observation": {
+            "hand": HAND10, "actor": 1, "bidder": 1, "answerer": 0,
+            "bid_index": 0, "decision_role": "ANSWERER",
+        },
+    }
+    with pytest.raises(SkatAIInterfaceError, match="HOST_BIDDING_ACTOR_ROLE_MISMATCH"):
+        handle_request(_ai(), "release-1", payload)
+    payload["observation"]["actor"] = 0
+    assert handle_request(_ai(), "release-1", payload)["result"]["action"] == "CONTINUE"
+    payload["observation"]["bidder"] = 0
+    with pytest.raises(SkatAIInterfaceError, match="HOST_BIDDING_ACTOR_ROLE_MISMATCH"):
+        handle_request(_ai(), "release-1", payload)
+
+
+def test_host_request_rejects_forged_source_and_private_context():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-1", "sequence_no": 1,
+        "decision_type": "BID",
+        "observation": {
+            "hand": HAND10, "actor": 1, "bidder": 1, "answerer": 0,
+            "bid_index": 0, "decision_role": "BIDDER",
+        },
+    }
+    with pytest.raises(SkatAIInterfaceError, match="HOST_SOURCE_MISMATCH"):
+        handle_request(_ai(), "release-1", {**payload, "source": "ISS"})
+    with pytest.raises(SkatAIInterfaceError, match="HOST_REQUEST_UNKNOWN_FIELD"):
+        handle_request(_ai(), "release-1", {**payload, "opponent_hand": HAND10})
+    with pytest.raises(SkatAIInterfaceError, match="HOST_SOURCE_CONTEXT_INVALID"):
+        handle_request(_ai(), "release-1", {
+            **payload, "source_context": {"opponent_hand": HAND10},
+        })
+    assert handle_request(_ai(), "release-1", {
+        **payload, "source_context": {"table_id": "local-1", "callback": "bidMore"},
+    })["ok"]
+
+
 @pytest.mark.parametrize("contract, error", [
     ("GARBAGE", "CARDPLAY_RULE_CONTEXT_INVALID"),
     ("G.BAD", "CARDPLAY_CONTRACT_NOT_TOKEN"),
@@ -139,6 +179,29 @@ def test_host_cardplay_compares_follow_suit_set_with_independent_rules():
     payload["observation"]["legal_cards"] = ("C7",)
     with pytest.raises(SkatAIInterfaceError, match="HOST_LEGAL_CARDS_RULE_MISMATCH"):
         handle_request(_ai(), "release-1", payload)
+
+
+def test_host_rejects_inconsistent_cardplay_history_before_inference():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-2", "sequence_no": 4,
+        "decision_type": "PLAY_CARD",
+        "observation": {
+            "hand": HAND10, "seat": 1, "declarer": 0, "contract": "G",
+            "winning_bid": 18, "current_trick": ((0, "D7"),),
+            "played_cards": ((0, "D7"),), "legal_cards": HAND10,
+        },
+    }
+    assert handle_request(_ai(), "release-1", payload)["ok"]
+    for changes in (
+        {"current_trick": ()},
+        {"played_cards": ((0, "D8"),)},
+        {"played_cards": ((0, "D7"), (0, "D7"))},
+        {"played_cards": ((0, "D7"), (2, "C7"))},
+        {"seat": 2},
+    ):
+        bad = {**payload, "observation": {**payload["observation"], **changes}}
+        with pytest.raises(SkatAIInterfaceError, match="HOST_CARDPLAY_HISTORY_INCONSISTENT"):
+            handle_request(_ai(), "release-1", bad)
 
 
 def test_host_accepts_reverse_order_legal_discard():

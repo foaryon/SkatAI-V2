@@ -8,17 +8,17 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:32:04Z",
+  "captured_at": "2026-09-25T12:34:21Z",
   "completed_independent_gate": {
-    "classification": "PASS_STATIC_ONLY_CORRECTED",
-    "evidence": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",
-    "task_id": "JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK"
+    "classification": "PASS_SOURCE_ONLY",
+    "evidence": "provenance/HOST_REQUEST_INTEGRITY_GATE_20260925.json",
+    "task_id": "HOST_REQUEST_INTEGRITY_GATE"
   },
   "git": {
     "branch": "main",
-    "remote_state": "e4b9514 pushed to origin/main; verify later commit at resume",
+    "remote_state": "f3e7887 on origin/main before host integrity gate commit; verify current Git at resume",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "e4b9514",
+    "verified_head_before_this_manifest": "f3e7887",
     "worktree_state": "verify with Git at resume"
   },
   "independent_science_diagnostic": {
@@ -57,7 +57,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Keep R9 under independent supervisor. JSkat legal-card source parity is static only; actual callback parity and current-source package smoke require isolated runtime access. Actual user host integration awaits its source.",
+  "next_action": "R9 remains owned by its independent supervisor. Continue independent source/data/product gates; source-bound host package smoke needs isolated authorized compute, and actual JSkat/host integration needs Java and authoritative host source.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -106,6 +106,7 @@
     "classification": "CONCLUDE_SOURCE_GATE",
     "contract_token_validation": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
     "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
+    "host_request_integrity": "provenance/HOST_REQUEST_INTEGRITY_GATE_20260925.json",
     "jskat_runtime_parity": "PENDING",
     "jskat_static_parity": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",
     "task_id": "HOST_CARDPLAY_EXACT_LEGAL_SET"
