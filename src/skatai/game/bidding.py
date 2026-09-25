@@ -94,10 +94,13 @@ class BiddingState:
                     self.bidder_turn = False
         else:
             if action == "y":
-                self.bid_index += 1
-                if self.bid_index >= len(BID_VALUES):
-                    raise ValueError("OFFER_EXHAUSTED")
-                self.bidder_turn = True
+                if self.bid_index == len(BID_VALUES) - 1:
+                    self.winner = self.answerer
+                    self.winning_bid = self.offer
+                    self.finished = True
+                else:
+                    self.bid_index += 1
+                    self.bidder_turn = True
             else:
                 if self.bidder == 2:
                     self.winner = self.bidder
@@ -105,12 +108,15 @@ class BiddingState:
                     self.finished = True
                 else:
                     old_bidder = self.bidder
-                    self.answerer = old_bidder
-                    self.bidder = 2
-                    self.bid_index += 1
-                    if self.bid_index >= len(BID_VALUES):
-                        raise ValueError("OFFER_EXHAUSTED")
-                    self.bidder_turn = True
+                    if self.bid_index == len(BID_VALUES) - 1:
+                        self.winner = old_bidder
+                        self.winning_bid = self.offer
+                        self.finished = True
+                    else:
+                        self.answerer = old_bidder
+                        self.bidder = 2
+                        self.bid_index += 1
+                        self.bidder_turn = True
 
         return before
 
