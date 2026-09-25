@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 import urllib.request
 
-from skatai.data.sgf import SGFParseError, parse_sgf_line
+from skatai.data.sgf import SGFParseError, parse_properties, parse_sgf_line
 from scripts.validate_announced_hs_corpus import check_record
 
 
@@ -73,7 +73,11 @@ def scan(plan: dict) -> dict:
                 except (SGFParseError, ValueError):
                     counts["parse_invalid"] += 1
                     continue
-                if (record.get("classification") != "PARSED_PLAYED_GAME"
+                source_outcomes = set(
+                    parse_properties(raw.decode("utf-8")).get("R", "").split()
+                ) & {"win", "loss"}
+                if (len(source_outcomes) != 1
+                        or record.get("classification") != "PARSED_PLAYED_GAME"
                         or record.get("announcement") != "DHS"
                         or record.get("play_count") != 30
                         or record.get("game_value") is None
