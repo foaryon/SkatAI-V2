@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
+import shutil
 
+import pytest
 import torch
 
 from skatai.data.bidding_parquet import materialize_jsonl
-from skatai.models.bidding import BiddingModelConfig
-from skatai.training.bidding import train
+from skatai.models.bidding import BiddingMLP, BiddingModelConfig
+from skatai.training.bidding import evaluate, train
 
 
 def _game(identity: str, day: int):
@@ -97,3 +99,47 @@ def test_resume_rejects_dataset_identity_change(tmp_path):
         assert "DATASET_IDENTITY_MISMATCH" in str(exc)
     else:
         raise AssertionError("resume must reject changed dataset identity")
+
+
+def test_training_rejects_changed_shard_before_creating_output(tmp_path):
+    source = tmp_path / "games.jsonl"
+    source.write_text("".join(json.dumps(_game(str(i + 1), i + 1)) + "\n" for i in range(4)))
+    dataset = tmp_path / "dataset"
+    materialize_jsonl(source, dataset, rows_per_shard=5)
+    shard = next((dataset / "train").glob("*.parquet"))
+    altered = bytearray(shard.read_bytes())
+    altered[len(altered) // 2] ^= 1
+    shard.write_bytes(altered)
+    output = tmp_path / "run"
+    with pytest.raises(ValueError, match="DATASET_SHARD_HASH_MISMATCH"):
+        train(dataset, output, epochs=1, max_batches=1)
+    assert not output.exists()
+
+
+def test_training_rejects_unlisted_shard_before_creating_output(tmp_path):
+    source = tmp_path / "games.jsonl"
+    source.write_text("".join(json.dumps(_game(str(i + 1), i + 1)) + "\n" for i in range(4)))
+    dataset = tmp_path / "dataset"
+    materialize_jsonl(source, dataset, rows_per_shard=5)
+    shard = next((dataset / "train").glob("*.parquet"))
+    shutil.copyfile(shard, dataset / "train" / "extra.parquet")
+    output = tmp_path / "run"
+    with pytest.raises(ValueError, match="DATASET_SHARD_SET_MISMATCH"):
+        train(dataset, output, epochs=1, max_batches=1)
+    assert not output.exists()
+
+
+def test_evaluation_rejects_changed_validation_shard(tmp_path):
+    train_game = _game("1", 1)
+    validation_game = dict(_game("2", 2), date="2023-06-01")
+    source = tmp_path / "games.jsonl"
+    source.write_text(json.dumps(train_game) + "\n" + json.dumps(validation_game) + "\n")
+    dataset = tmp_path / "dataset"
+    materialize_jsonl(source, dataset, rows_per_shard=5)
+    shard = next((dataset / "validation").glob("*.parquet"))
+    altered = bytearray(shard.read_bytes())
+    altered[len(altered) // 2] ^= 1
+    shard.write_bytes(altered)
+    model = BiddingMLP(BiddingModelConfig(hidden_dim=8, depth=1, dropout=0.0))
+    with pytest.raises(ValueError, match="DATASET_SHARD_HASH_MISMATCH"):
+        evaluate(model, dataset, "validation")

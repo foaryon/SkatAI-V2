@@ -1,4 +1,6 @@
 from skatai.data.sgf import SGFParseError, parse_sgf_line, parse_properties
+from skatai.game.rules import replay_tricks
+from skatai.selfplay.scoring import score_basic_game
 
 
 PLAYED = b"(;GM[Skat]PC[Internet Skat Server]CO[]SE[53]ID[9]DT[2007-10-29/04:58:00/UTC]P0[jeff]P1[Montana]P2[vaun]R0[0.0]R1[0.0]R2[0.0]MV[w S7.ST.CA.DT.CQ.S8.C8.D9.HT.SQ.HQ.DK.H9.DJ.HK.HJ.C9.DQ.HA.H8.SA.CJ.CK.DA.H7.C7.S9.CT.SK.D7.SJ.D8 1 18 0 p 2 20 1 p 2 CH 0 SQ 1 H9 2 SA 2 SK 0 ST 1 HK 0 D9 1 DQ 2 DA 2 D7 0 DT 1 DK 0 HT 1 H8 2 H7 0 S8 1 HQ 2 S9 2 C7 0 CA 1 DJ 1 C9 2 CT 0 C8 2 CK 0 CQ 1 HJ 1 HA 2 CJ 0 S7 ]R[d:2 loss v:-96 m:2 bidok p:56 t:5 s:0 z:0 p0:0 p1:0 p2:0 l:-1 to:-1 r:0] ;)"
@@ -127,3 +129,24 @@ def test_live_iss_split_pickup_discard_representation_is_normalized():
     assert g["discards"] == ["SK", "S7"]
     assert g["play_count"] == 30
     assert g["game_value"] == -144
+
+
+def test_basic_scorer_matches_two_independent_iss_result_records():
+    for raw in (PLAYED, LIVE_SPLIT_PICKUP):
+        parsed = parse_sgf_line("scoring-oracle", raw)
+        replay = replay_tricks(
+            parsed["plays"], game_type=parsed["game_type"],
+            declarer=parsed["declarer"],
+        )
+        declarer_tricks = sum(
+            trick["winner"] == parsed["declarer"]
+            for trick in replay["completed_tricks"]
+        )
+        cards = (*parsed["initial_hands"][parsed["declarer"]], *parsed["skat_initial"])
+        result = score_basic_game(
+            contract=parsed["contract_base"] + parsed["contract_modifiers"],
+            winning_bid=parsed["bid_level"], declarer_cards=cards,
+            declarer_points=parsed["card_points"], declarer_tricks=declarer_tricks,
+        )
+        assert result.signed_game_value == parsed["game_value"]
+        assert result.matadors == parsed["matadors"]

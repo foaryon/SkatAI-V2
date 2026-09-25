@@ -1,0 +1,84 @@
+{
+  "schema": "skatai.v2.b0-cardplay-historical-agreement-smoke-provenance.v1",
+  "captured_at": "2026-09-24T02:33:20Z",
+  "status": "BOUNDED_DIAGNOSTIC_SMOKE_PASS",
+  "implementation": {
+    "branch": "lab/cardplay-reconstruction-v1",
+    "source_commit": "a99b2b9",
+    "reconstruction_commit": "a7345c5",
+    "module": "src/skatai/evaluation/cardplay_weakness.py",
+    "runner": "scripts/diagnose-b0-cardplay-agreement.py",
+    "tests": "tests/test_cardplay_weakness.py"
+  },
+  "input": {
+    "canonical_parent_sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+    "bounded_sample_path": "/tmp/skatai-canonical-head-5000.jsonl",
+    "bounded_sample_sha256": "244bfd885105a6f8d2298f3ab361c7c3e50e48da7f03ab26fca516ba3f57f39a",
+    "bounded_sample_bytes": 6127752,
+    "rows": 5000,
+    "representative_population_claim": false
+  },
+  "selection": {
+    "seed": 20260924,
+    "dimensions": ["contract_family", "role", "game_phase"],
+    "per_stratum": 1,
+    "strata": 18,
+    "selected_events": 18,
+    "identity_sha256": "0650b918c77e29045276090a97504b82f34fa9e492c840a665631f3d12dd05c6",
+    "balanced_diagnostic_not_population_estimate": true
+  },
+  "reconstruction": {
+    "candidate_games": 5000,
+    "reconstruction_ok": 5000,
+    "reconstruction_failed": 0,
+    "decision_events_available": 141259
+  },
+  "b0_inference": {
+    "successful_events": 18,
+    "failed_events": 0,
+    "legal_predictions": 18,
+    "latency_ms_p50": 1301.3664500322193,
+    "latency_ms_p95": 1348.0690723168664
+  },
+  "agreement": {
+    "overall": {
+      "n": 18,
+      "agreement_count": 9,
+      "agreement_rate": 0.5
+    },
+    "by_family": {
+      "SUIT": {"n": 6, "agreement_rate": 1.0},
+      "GRAND": {"n": 6, "agreement_rate": 0.3333333333333333},
+      "NULL": {"n": 6, "agreement_rate": 0.16666666666666666}
+    },
+    "by_role": {
+      "DECLARER": {"n": 9, "agreement_rate": 0.4444444444444444},
+      "DEFENDER": {"n": 9, "agreement_rate": 0.5555555555555556}
+    },
+    "by_phase": {
+      "EARLY": {"n": 6, "agreement_rate": 0.3333333333333333},
+      "MIDDLE": {"n": 6, "agreement_rate": 0.5},
+      "END": {"n": 6, "agreement_rate": 0.6666666666666666}
+    }
+  },
+  "artifact": {
+    "object": "s3://skatai-v2/evidence/cardplay/b0-historical-agreement-smoke-v1.json",
+    "bytes": 20154,
+    "sha256": "6a60097d387e39d4d897c56d09c060c9924b26fa70dc524d87c1ffe2ba02f30f",
+    "remote_sha256_verified": true
+  },
+  "verification": {
+    "diagnostic_unit_tests": "3 passed",
+    "lab_full_suite": "269 passed",
+    "source_worktree_byte_identical_to_committed_implementation": true
+  },
+  "interpretation": {
+    "historical_agreement_is_strength_metric": false,
+    "historical_action_is_ground_truth": false,
+    "training_authority": false,
+    "strength_claim_authorized": false,
+    "d4_usefulness_claim_authorized": false,
+    "small_sample_rates_are_hypothesis_signals_only": true
+  },
+  "next_science_step": "Run a larger deterministic balanced held-out diagnostic only when compute isolation cannot contaminate live ISS latency; use resulting strata to prioritize bounded cardplay treatments, not to promote a model."
+}
