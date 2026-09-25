@@ -329,8 +329,18 @@ def ensure_flex(session_id, session):
     log("session_settings_verified model=gpt-6-sol service_tier=flex")
     return updated
 
-def send_message(session_id, text):
-    idem = hashlib.sha256((session_id + "\n" + text + "\n" + str(time.time_ns())).encode()).hexdigest()
+def logical_submit_key(session_id, state, text):
+    """Stable per logical submission; changes only after a confirmed submit."""
+    seq = int(state.get("session_submit_count") or 0)
+    text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        f"{session_id}\n{seq}\n{text_hash}".encode("utf-8")
+    ).hexdigest()
+
+def send_message(session_id, text, *, idempotency_key=None):
+    idem = idempotency_key or hashlib.sha256(
+        (session_id + "\n" + text + "\n" + str(time.time_ns())).encode()
+    ).hexdigest()
     api("POST", f"/agents/sessions/{session_id}/events", {
         "events": [{
             "type": "agent.session.input.message",
@@ -354,7 +364,12 @@ def send_next_input(session_id, state):
             except Exception:
                 continue
         if parts:
-            send_message(session_id, "\n\n".join(parts))
+            text = "\n\n".join(parts)
+            send_message(
+                session_id,
+                text,
+                idempotency_key=logical_submit_key(session_id, state, text),
+            )
             for f in files:
                 try:
                     os.replace(f, PROCESSED / f.name)
@@ -375,7 +390,11 @@ def send_next_input(session_id, state):
         state["initial_sent"] = True
     else:
         text = CONTINUE.read_text(encoding="utf-8")
-    send_message(session_id, text)
+    send_message(
+        session_id,
+        text,
+        idempotency_key=logical_submit_key(session_id, state, text),
+    )
     log("submitted_autonomous_continue")
     return True
 

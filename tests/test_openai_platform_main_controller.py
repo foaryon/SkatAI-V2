@@ -92,3 +92,14 @@ def test_executor_uses_persistent_codex_home(tmp_path, monkeypatch):
     assert env["HOME"] == str(codex_home)
     assert env["CODEX_HOME"] == str(codex_home)
     assert env["CODEX_API_KEY"] == "executor-key"
+
+
+def test_logical_submit_key_is_stable_across_retry_and_changes_after_confirmed_sequence():
+    mod = _load_controller()
+    state = {"session_submit_count": 2}
+    first = mod.logical_submit_key("sess", state, "same payload")
+    retry = mod.logical_submit_key("sess", state, "same payload")
+    assert retry == first
+
+    state["session_submit_count"] = 3
+    assert mod.logical_submit_key("sess", state, "same payload") != first
