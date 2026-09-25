@@ -59,6 +59,7 @@ def check_record(record: dict) -> dict:
         declarer_cards=(*record["initial_hands"][declarer], *skat),
         declarer_points=points,
         declarer_tricks=sum(t["winner"] == declarer for t in replay["completed_tricks"]),
+        research_announced_schneider=True,
     )
     return {
         "identity": identity, "contract": record["announcement"],

@@ -1,8 +1,8 @@
 """Auditable basic Skat contract value for controlled self-play.
 
-This scorer covers ordinary suit/Grand and Null variants, plus hand games
-with Schneider announced. Schwarz announced and suit/Grand ouvert remain
-unsupported pending separate rules-oracle validation.
+This scorer covers ordinary suit/Grand and Null variants. Hand games with
+Schneider announced require an explicit research gate while oracle coverage
+is incomplete. Schwarz announced and suit/Grand ouvert remain unsupported.
 """
 
 from __future__ import annotations
@@ -54,6 +54,7 @@ def score_basic_game(
     declarer_cards: Sequence[str],
     declarer_points: int,
     declarer_tricks: int,
+    research_announced_schneider: bool = False,
 ) -> BasicScore:
     """Score a validated completed game; `declarer_cards` includes final skat."""
     token = str(contract).upper()
@@ -72,6 +73,8 @@ def score_basic_game(
                           won, value if won else -2 * value)
 
     announced_schneider = len(token) == 3 and token.endswith("HS")
+    if announced_schneider and not research_announced_schneider:
+        raise ValueError("ANNOUNCED_SCHNEIDER_REQUIRES_RESEARCH_GATE")
     hand = (len(token) == 2 and token.endswith("H")) or announced_schneider
     base = token[:-2] if announced_schneider else token[:-1] if hand else token
     if base not in BASE_VALUES or token not in (base, base + "H", base + "HS"):

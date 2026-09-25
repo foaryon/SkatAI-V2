@@ -4,10 +4,11 @@ from skatai.selfplay.cardplay import DECK
 from skatai.selfplay.scoring import score_basic_game
 
 
-def score(contract, *, bid=18, points=61, tricks=5, cards=DECK[:12]):
+def score(contract, *, bid=18, points=61, tricks=5, cards=DECK[:12], research=False):
     return score_basic_game(
         contract=contract, winning_bid=bid, declarer_cards=cards,
         declarer_points=points, declarer_tricks=tricks,
+        research_announced_schneider=research,
     )
 
 
@@ -28,11 +29,13 @@ def test_hearts_token_is_distinct_from_hand_modifier():
 
 
 def test_hand_schneider_announcement_requires_ninety_points():
-    won = score("GHS", points=95, tricks=8)
+    with pytest.raises(ValueError, match="ANNOUNCED_SCHNEIDER_REQUIRES_RESEARCH_GATE"):
+        score("GHS", points=95, tricks=8)
+    won = score("GHS", points=95, tricks=8, research=True)
     assert won.won and won.game_level == 5 and won.signed_game_value == 120
-    failed = score("GHS", points=89, tricks=9)
+    failed = score("GHS", points=89, tricks=9, research=True)
     assert not failed.won and failed.signed_game_value == -240
-    schwarz = score("GHS", points=120, tricks=10)
+    schwarz = score("GHS", points=120, tricks=10, research=True)
     assert schwarz.game_level == 6 and schwarz.signed_game_value == 144
 
 
