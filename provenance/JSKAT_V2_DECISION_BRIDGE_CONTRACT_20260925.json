@@ -11,9 +11,10 @@
     "status": "PASS_STATIC_ONLY"
   },
   "cardplay_legal_set_static_parity": {
-    "evidence": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
+    "evidence": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",
+    "prior_evidence": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
     "runtime_parity": "PENDING",
-    "status": "PASS_STATIC_ONLY"
+    "status": "PASS_STATIC_ONLY_CORRECTED"
   },
   "confirmed_engine_order": {
     "additional_rule_note": "Normal discard permits Jacks; no-Jack restriction at lines 527-529 is only SCHIEBERAMSCH option",

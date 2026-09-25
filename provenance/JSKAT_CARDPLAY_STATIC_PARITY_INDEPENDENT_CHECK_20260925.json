@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-09-25T12:32:04Z",
+  "classification": "PASS_STATIC_ONLY_CORRECTED",
+  "defect_in_prior_check": "The prior 89,280-case translation used V2 category() to classify trump, making trump parity circular. Preserve the earlier evidence as a limited source-shape check, not independent category parity.",
+  "independent_translation": "tests/test_jskat_cardplay_source_parity.py computes trump from JSkat Card.isTrump and SuitGrandRamschRule source conditions, then applies JSkat SuitGrandRamschRule/NullRule isCardAllowed predicates without calling V2 category().",
+  "limits": "Static translated source only, with two-card hands. Java execution, full game state, callback sequencing and actual host parity remain pending; no adoption or strength claim.",
+  "schema": "skatai.v2.jskat-cardplay-static-parity-correction.v1",
+  "source_identity": "Pinned JSkat commit 9ef3cd6a081c54cc84ed61378ed3879992246ae7; exact source hashes in superseded record.",
+  "supersedes": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_jskat_cardplay_source_parity.py tests/test_host_service.py tests/test_product_interface.py tests/test_iss_bridge.py tests/test_game_rules.py",
+    "mismatches": 0,
+    "result": "45 passed in 1.15s",
+    "translated_pair_hand_cases": 89280
+  }
+}

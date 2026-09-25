@@ -8,14 +8,11 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:31:31Z",
+  "captured_at": "2026-09-25T12:32:04Z",
   "completed_independent_gate": {
-    "classification": "CORRECT_VERIFIED_AND_PASS_STATIC_ONLY",
-    "evidence": [
-      "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
-      "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json"
-    ],
-    "task_id": "HOST_CARDPLAY_TOKEN_AND_JSKAT_STATIC_LEGALITY"
+    "classification": "PASS_STATIC_ONLY_CORRECTED",
+    "evidence": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",
+    "task_id": "JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK"
   },
   "git": {
     "branch": "main",
@@ -84,7 +81,7 @@
     "bid_schedule_static_parity": "provenance/JSKAT_BID_SCHEDULE_PARITY_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "card_seat_static_parity": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
-    "cardplay_legal_set_static_parity": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
+    "cardplay_legal_set_static_parity": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
     "contract_mapping_static": "provenance/JSKAT_CONTRACT_MAPPING_STATIC_20260925.json",
     "next_gate": "Versioned pickup plan staged and focused tests pass; stage package and verify actual JSkat callback lifecycle, then rules/assets/Windows build",
@@ -110,7 +107,7 @@
     "contract_token_validation": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
     "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
     "jskat_runtime_parity": "PENDING",
-    "jskat_static_parity": "provenance/JSKAT_CARDPLAY_LEGALITY_STATIC_PARITY_20260925.json",
+    "jskat_static_parity": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",
     "task_id": "HOST_CARDPLAY_EXACT_LEGAL_SET"
   },
   "staged_product_gate": {
