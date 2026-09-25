@@ -168,6 +168,31 @@ def load_runtime_env(path: Path) -> dict[str, str]:
     return values
 
 
+def _verify_frozen_identity(frozen_repo: Path, launcher: Path) -> None:
+    expected_commit = os.environ.get("SKATAI_R9_EXPECTED_SOURCE_COMMIT", "").strip()
+    expected_launcher = os.environ.get("SKATAI_R9_EXPECTED_LAUNCHER_SHA256", "").strip().lower()
+    if expected_commit:
+        head = subprocess.check_output(
+            ["git", "-C", str(frozen_repo), "rev-parse", "HEAD"],
+            text=True,
+            timeout=10,
+        ).strip()
+        if head != expected_commit:
+            raise RuntimeError(f"R9_FROZEN_SOURCE_MISMATCH:{head}")
+        dirty = subprocess.check_output(
+            ["git", "-C", str(frozen_repo), "status", "--porcelain"],
+            text=True,
+            timeout=10,
+        ).strip()
+        if dirty:
+            raise RuntimeError("R9_FROZEN_SOURCE_DIRTY")
+    if expected_launcher:
+        import hashlib
+        h = hashlib.sha256(launcher.read_bytes()).hexdigest()
+        if h != expected_launcher:
+            raise RuntimeError(f"R9_LAUNCHER_SHA256_MISMATCH:{h}")
+
+
 def supervise(
     *,
     runtime: Path,
@@ -204,6 +229,7 @@ def supervise(
             time.sleep(blocked_poll_s)
             continue
 
+        _verify_frozen_identity(frozen_repo, launcher)
         env = dict(os.environ)
         env.update(load_runtime_env(env_file))
         with log_path.open("ab", buffering=0) as log:

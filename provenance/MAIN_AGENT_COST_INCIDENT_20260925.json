@@ -1,0 +1,32 @@
+{
+  "schema": "skatai.v2.main-agent-cost-incident.v1",
+  "captured_date": "2026-09-25",
+  "source_exports": {
+    "completions_usage_sha256": "cc478355f65439faf12cff35dfeeca798198d75706806d02dc4ed3bd15894eee",
+    "cost_sha256": "8cb1b0b0cc65a963f9afbaf2d51b1834612f81b7ef1d380d751b6430ac9953f7"
+  },
+  "utc_day_observation": {
+    "model_requests": 2999,
+    "input_tokens": 335157288,
+    "output_tokens": 1045759,
+    "cached_input_tokens": 331799038,
+    "cache_write_input_tokens": 3056939,
+    "uncached_input_tokens": 301311,
+    "cached_share_of_input": 0.9899800776523767,
+    "cost_usd": 42.23721065
+  },
+  "controller_observation": {
+    "autonomous_continue_submits": 67,
+    "user_inbox_submits": 4,
+    "finding": "Idle-driven resubmission plus commit-sensitive progress allowed repeated expensive turns."
+  },
+  "corrective_requirements": [
+    "No idle-driven autonomous submit",
+    "Outcome/gate-based progress only",
+    "Exactly one MAIN primary WIP gate",
+    "Hard daily autonomous submit/cost-estimate guard",
+    "Turn timeout fail-closed",
+    "Compact saved-agent instructions",
+    "Explicit reenable interlock"
+  ]
+}

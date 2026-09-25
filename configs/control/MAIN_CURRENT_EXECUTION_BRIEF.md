@@ -8,7 +8,7 @@ This file is recovery context, not a replacement specification. SKATAI_V2_FOUNDI
 
 Carry SkatAI V2 to a clean, reproducible, deployment-valid and continuously improving Skat system: trustworthy data -> training -> challenger -> controlled evaluation -> promotion/rejection -> release -> stable host integration, with FULL-AFK recovery, scientific gates, external validation/failure mining, and ongoing autonomous improvement.
 
-ISS throughput is one product-science workstream, not the whole project. While an ISS treatment runs healthily, continue independent high-value Big-Prompt work instead of spending model tokens live-polling games.
+ISS throughput is one product-science workstream, not the whole project. A healthy independently supervised ISS treatment is an external dependency, not permission to open arbitrary parallel work. MAIN follows only the authenticated execution lock supplied by the controller and never spends model tokens live-polling healthy games.
 
 ## Verified architecture milestone
 
@@ -96,12 +96,16 @@ The target is the highest sustainable valid, deployment-safe games/hour, not a f
 - The independent ISS runtime metadata contract is /workspace/skatai-v2-runtime/iss/iss-runtime.env and contains only non-secret connection metadata plus ISS_PASSWORD_FILE.
 - Big Prompt SHA-256 after the Multi-Table update: 2eb047d6ddbf19ed541e0118cb87c4147c75acd2cf54e2925811e7e8883052a4.
 
+## Cost-discipline execution governance
+
+The 2026-09-25 MAIN cost incident established that idle-driven continuation and commit-sensitive progress are unacceptable. MAIN now operates only under the trusted execution governor, an authenticated root-owned execution lock, and a finite root-owned work permit. Exactly one PRIMARY gate is executable; a SECONDARY is allowed only when explicitly named and PRIMARY is externally blocked/waiting. Idle, commits, test passes, documentation, general audits and cleanup do not authorize another autonomous turn. Every turn must produce a nonce-bound outcome in the private executor outbox, and only material gate progress can authorize a follow-up within the same permit. The controller remains fail-closed until explicit reenable conditions are satisfied.
+
 ## Resume behavior
 
 On MAIN resume:
-- inspect this brief once, then verify the minimum changing state directly;
-- do not redo the already-validated Multi-Table implementation merely because this brief mentions it;
-- protect frozen R9 until its gate concludes;
-- continue independent Big-Prompt science/product work while R9 runs;
-- after the R9 boundary, execute the staged 1 -> 2 -> 4 deployment ladder and preserve matched evidence;
-- keep the overall SkatAI V2 final product mission above this throughput subproject.
+- inspect this brief once, then read the execution lock and verify only state relevant to its PRIMARY gate;
+- do not redo already-validated work merely because this brief mentions it;
+- protect frozen R9 under its independent supervisor and react only to a real gate transition/anomaly;
+- do not open independent science/product work unless it is the locked PRIMARY or an explicitly authorized SECONDARY;
+- after a terminal PRIMARY decision, stop; a new PRIMARY requires a newly authenticated operator-issued permit before changing workstreams;
+- keep the overall SkatAI V2 final product mission above infrastructure or throughput subprojects.

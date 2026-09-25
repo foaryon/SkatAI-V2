@@ -1,0 +1,107 @@
+{
+  "schema": "skatai.v2.main-goal-policy.v1",
+  "final_goal": "A clean, reproducible, deployment-valid, continuously improving Skat AI system that autonomously acquires/validates data, trains challengers, evaluates scientifically, rejects/promotes by evidence, recovers, validates externally, packages releases, integrates through one stable SkatAI interface, and operates FULL-AFK.",
+  "north_star": "Reproducibly accepted deployment-valid Skat playing strength per useful compute, model cost, and wall-clock time.",
+  "goal_path": [
+    {
+      "id": "G1_TRUSTED_EVIDENCE",
+      "purpose": "Trusted, leakage-safe, versioned data and evidence."
+    },
+    {
+      "id": "G2_REPRODUCIBLE_BASELINE",
+      "purpose": "Reproducible deployment-valid baseline/champion."
+    },
+    {
+      "id": "G3_CHALLENGER_CREATION",
+      "purpose": "Evidence-backed bounded challenger/training work."
+    },
+    {
+      "id": "G4_CONTROLLED_EVALUATION",
+      "purpose": "Controlled leakage-safe deployment-matched evaluation."
+    },
+    {
+      "id": "G5_DECISION_PROMOTION",
+      "purpose": "ACCEPT/REJECT/INCONCLUSIVE and atomic promotion or incumbent retention."
+    },
+    {
+      "id": "G6_RELEASE_INTEGRATION",
+      "purpose": "Reproducible release packaging and stable Skat software integration."
+    },
+    {
+      "id": "G7_FULL_AFK",
+      "purpose": "Verified autonomous recovery, cost control, and unattended operation."
+    },
+    {
+      "id": "G8_STEADY_IMPROVEMENT",
+      "purpose": "Continuous weakness mining and scientifically gated improvement loop."
+    }
+  ],
+  "primary_selection": {
+    "rule": "Choose the single unresolved consequential gate with the greatest verified contribution to the shortest valid path from current state to the final goal. Prefer a real blocker/decision boundary over adjacent polish.",
+    "required_fields": [
+      "goal_path_id",
+      "end_state_contribution",
+      "selection_basis",
+      "completion",
+      "model_tier",
+      "model_reason",
+      "evidence"
+    ],
+    "forbidden_bases": [
+      "interesting",
+      "might be useful",
+      "cleanup opportunity",
+      "new idea",
+      "idle capacity",
+      "commit activity",
+      "documentation completeness"
+    ]
+  },
+  "background_work": {
+    "rule": "Long-running scientifically valid jobs run under independent supervisors and do not consume MAIN model attention while healthy.",
+    "model_polling_forbidden": true,
+    "main_reentry_only_on": [
+      "verified gate transition",
+      "verified anomaly requiring MAIN decision",
+      "verified dependency becoming executable",
+      "explicit user directive"
+    ]
+  },
+  "turn_triggers": {
+    "allowed": [
+      "USER_DIRECTIVE",
+      "PRIMARY_NEXT_STEP",
+      "EXTERNAL_EVENT",
+      "RECOVERY_RECONCILIATION"
+    ],
+    "forbidden": [
+      "IDLE",
+      "CURIOSITY",
+      "ADJACENT_IMPROVEMENT",
+      "COMMIT_ONLY",
+      "TEST_PASS_ONLY",
+      "DOCUMENTATION_ONLY",
+      "BACKGROUND_POLL"
+    ]
+  },
+  "evidence_guard": {
+    "mutable_state": "Verify current state directly before material action; stale narrative is not authority.",
+    "unsupported_claim": "Classify UNKNOWN and perform the smallest bounded verification. Never act as though an inferred fact were verified.",
+    "material_effects": "Before external/provisioning/deletion/promotion/training-launch/ISS effects, verify identity, current state, authorization, and duplicate-effect risk.",
+    "followup_evidence": "Every autonomous follow-up requires at least one controller-verifiable evidence path under the V2 repository or runtime.",
+    "no_fabrication": [
+      "paths",
+      "processes",
+      "artifacts",
+      "metrics",
+      "experiment outcomes",
+      "external state",
+      "credentials",
+      "commit identities"
+    ]
+  },
+  "loop_guard": {
+    "rule": "Do not repeat the same primary gate + next action + evidence signature. Repetition without new verified evidence is a loop and must hold autonomously.",
+    "max_same_gate_autonomous_followups_without_terminal_decision": 3
+  }
+}

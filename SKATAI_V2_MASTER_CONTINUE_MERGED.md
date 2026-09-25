@@ -262,6 +262,34 @@ Do not overbuild speculative infrastructure before it is needed. Do not defer re
 
 For infrastructure work, record the concrete blocked gate, failure mode, invariant, or required acceptance capability that justifies it.
 
+### 4.5 MAIN execution WIP and model-cost discipline
+
+System-level parallelism remains allowed and desirable where independent workers can run safely. **MAIN model attention is not an unbounded parallel work queue.**
+
+MAIN must operate under a compact machine-readable execution lock:
+
+```text
+exactly 1 PRIMARY consequential gate
+at most 1 SECONDARY gate
+SECONDARY usable only when PRIMARY is explicitly WAITING_EXTERNAL or BLOCKED_EXTERNAL
+```
+
+Independently supervised jobs may continue in parallel without consuming MAIN model turns. Their existence does not authorize MAIN to invent unrelated work.
+
+While the controller is in BOUNDED_GATE mode, MAIN may not switch PRIMARY at all. A terminal or genuinely external-blocked outcome ends the current permit; changing PRIMARY requires a new authenticated operator-issued lock/permit. Explicit user text cannot broaden the active permit. After FULL-AFK transition control has itself been scientifically and operationally accepted, a separate trusted controller policy may authorize deterministic gate transitions without user involvement; that future mode must remain fail-closed and evidence-bound. A commit, test pass, documentation update, refactor, audit finding, branch, worktree, or generic cleanup is not by itself material progress.
+
+Autonomous continuation must be outcome-driven, not idle-driven. A finished/idle model session does not imply that another model turn is useful. Each turn must persist a compact nonce-bound outcome identifying the locked gate, material progress class, evidence, concrete next action, and whether a follow-up is justified. No material gate progress means no automatic follow-up until a real external event or explicit user input changes the executable state.
+
+Use hard controller-side limits for autonomous submissions, estimated daily model cost, minimum submit spacing, and maximum turn duration. Exceeding a limit must hold or fail closed; it must not be bypassed by creating a new session, making a micro-commit, or rewriting state.
+
+Minimize context and model/tool round trips. Keep full governing documents authoritative on disk, but do not inject or reread them in full on every turn. Use compact execution instructions plus targeted reads of relevant sections. Prefer bounded scripts and batched inspections for deterministic work.
+
+Every MAIN PRIMARY gate must state the exact final-goal path it advances, its end-state contribution, why it is the best verified current gate, completion criteria, and justified model tier. R9, training jobs, evaluators, transfers, and similar long-running work may run autonomously in parallel under independent supervisors; they are dependencies/evidence generators, not substitutes for goal-directed MAIN work and must not be polled with model turns.
+
+Never act on a hallucinated or merely inferred material fact. Verify mutable state from authoritative live/runtime/file/artifact evidence before material action. When evidence is absent or conflicting, classify the fact or outcome as UNKNOWN, perform the smallest bounded verification, and preserve the discrepancy. Autonomous follow-up requires controller-verifiable evidence, an allowed goal/event trigger, and a non-repeated progress signature.
+
+Use the cheapest model tier that preserves decision quality for the locked task. Deterministic monitoring uses no model. Escalation to the strongest reasoning tier requires a lock-level justification tied to scientific, architectural, promotion, or similarly consequential ambiguity.
+
 ---
 
 ## 5. Standard Control Loop

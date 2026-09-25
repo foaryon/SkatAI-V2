@@ -24,12 +24,16 @@ def main() -> None:
         raise SystemExit("R9_SUPERVISOR_S3_CREDENTIALS_UNAVAILABLE")
     environment["HOME"] = account.pw_dir
     environment["XDG_CONFIG_HOME"] = str(Path(account.pw_dir) / ".config")
+    supervisor = os.environ.get(
+        "SKATAI_R9_SUPERVISOR_PATH",
+        str(Path(__file__).resolve().with_name("supervise_frozen_r9.py")),
+    )
     os.execvpe(
         "setpriv",
         [
             "setpriv", f"--reuid={account.pw_uid}", f"--regid={account.pw_gid}",
             "--init-groups", "--", "/usr/bin/python3",
-            "/workspace/skatai-v2/scripts/supervise_frozen_r9.py",
+            supervisor,
         ],
         environment,
     )

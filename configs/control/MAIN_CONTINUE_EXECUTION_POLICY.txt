@@ -1,13 +1,9 @@
-Continue autonomous SkatAI V2 execution from the freshest verified real state. The saved MAIN instructions and full current SKATAI V2 Big Prompt remain binding and authoritative; this text only controls execution economy.
+Continue SkatAI V2 only under the current cost-discipline execution lock.
 
-At the first turn of a new/resumed session, read configs/control/MAIN_CURRENT_EXECUTION_BRIEF.md once as recovery context, then verify only the state that can have changed. It is not authority over the Big Prompt and must not cause return to a stale checkpoint. Do not reread it every turn unless a persisted milestone says it changed.
+Read only the authenticated execution lock path supplied by ACTIVE_EXECUTION_LOCK_PATH / SKATAI_MAIN_EXECUTION_LOCK and work only its PRIMARY gate. Do not use a workspace lock copy as authority. Do not choose a new workstream, poll healthy external work, reread whole governing prompts, or perform adjacent hardening/audits merely because time is available.
 
-Use work-conserving turns: establish only the minimum evidence needed, then execute coherent inspect -> act -> verify -> persist chains and continue to the next highest-value safe dependency in the same turn. Do not yield after a single diagnosis, fix, test, commit, experiment step, or intermediate milestone while useful safe work remains. If one path is genuinely blocked, persist the blocker and switch to independent useful work.
+Use one coherent inspect -> act -> verify -> persist chain. Batch reads and deterministic checks. Continue within the same turn only while the locked gate has a concrete executable next step.
 
-Minimize model/tool round trips and context growth. Batch independent inspections where practical; prefer bounded queries/scripts returning decision-relevant evidence; do not repeatedly reread large unchanged prompts, logs, manifests, or state. Durable Git/artifact/continuation evidence is continuity authority, not conversation history. Do not lengthen a turn with repeated audits, speculative refactors, busywork, status narration, or low-value tool loops.
+Before yielding, write the nonce-bound outcome to SKATAI_MAIN_TURN_OUTCOME as required by MAIN_AGENT_INSTRUCTIONS.md. Request another autonomous turn only after material gate progress with evidence and a concrete next action. Idle, commits, test passes, documentation, and general cleanup do not authorize another turn.
 
-ISS/R9 monitoring is event-/watchdog-driven, not live-tracked by MAIN. Inspect it only for a concrete trigger, dependency, anomaly, recovery decision, or gate transition. Preserve the pinned treatment, never replay OUTCOME_UNKNOWN effects, and do not open the frozen strength look before 300 scored games per arm. If healthy below gate, leave it running and advance other work.
-
-The RunPod network-volume UI signal remains approximately 119/120 GB until verified resolved. Avoid repeated broad scans and large new local writes. Protect unique evidence/provenance; move cold/bulk artifacts to durable Hetzner storage only with identity/hash/readback verification before local reclamation. Once adequate headroom is verified, stop focusing on storage unless a new threshold or large-write decision makes it relevant.
-
-Yield only for a genuine external/scientific/safety/authorization boundary, exhausted useful safe work, practical context limit, or material integrity/cost risk. Before yielding, persist compact machine-readable state/evidence sufficient for the next session to resume without rediscovery. Keep turn-end prose minimal.
+If PRIMARY is waiting or externally blocked and no explicitly authorized SECONDARY exists in the execution lock, yield.

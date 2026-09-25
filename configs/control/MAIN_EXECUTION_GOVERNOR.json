@@ -1,0 +1,105 @@
+{
+  "schema": "skatai.v2.main-execution-governor.v2",
+  "enabled": true,
+  "policy_epoch": "goal-cost-discipline-v3-20260925",
+  "restart_requires": {
+    "hard_disable_absent": true,
+    "reenable_approved_present": true,
+    "active_work_permit_present": true,
+    "active_lock_hash_match": true,
+    "governor_enabled": true,
+    "fresh_policy_session": true
+  },
+  "wip": {
+    "max_primary": 1,
+    "max_secondary": 1,
+    "secondary_only_when_primary_external_wait": true
+  },
+  "hard_total_budget": {
+    "max_model_submits_per_utc_day": 10,
+    "max_estimated_cost_usd_per_utc_day": 7.0,
+    "incident_estimated_cost_per_submit_usd": 0.7,
+    "user_input_may_bypass_min_interval": true,
+    "user_input_may_bypass_hard_total": false
+  },
+  "autonomous_budget": {
+    "max_submits_per_utc_day": 8,
+    "max_submits_per_session": 2,
+    "max_estimated_cost_usd_per_utc_day": 5,
+    "incident_estimated_cost_per_submit_usd": 0.7,
+    "min_seconds_between_submits": 600,
+    "max_turn_seconds": 1200,
+    "max_consecutive_no_material_progress": 0,
+    "max_same_gate_followups_without_terminal": 3
+  },
+  "executor_security": {
+    "user": "skatai-main-agent",
+    "raw_cloud_credentials_to_model_forbidden": true,
+    "permitted_capabilities": [
+      "ISS_RUNTIME"
+    ],
+    "permitted_material_effects": [
+      "READ_ONLY_INSPECTION",
+      "LOCAL_DETERMINISTIC_ANALYSIS",
+      "PROVENANCE_WRITE",
+      "LOCAL_GIT_CHANGE",
+      "BOUNDED_TEST_EXECUTION",
+      "LOCAL_TRAINING_LAUNCH",
+      "CONTROLLED_EVALUATION_LAUNCH",
+      "ISS_PROTOCOL_ACTION",
+      "RELEASE_PACKAGE_BUILD",
+      "ATOMIC_MODEL_PROMOTION",
+      "VERIFIED_LOCAL_CLEANUP"
+    ],
+    "goal_effects": {
+      "G1_TRUSTED_EVIDENCE": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION"],
+      "G2_REPRODUCIBLE_BASELINE": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "LOCAL_TRAINING_LAUNCH", "CONTROLLED_EVALUATION_LAUNCH"],
+      "G3_CHALLENGER_CREATION": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "LOCAL_TRAINING_LAUNCH"],
+      "G4_CONTROLLED_EVALUATION": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "CONTROLLED_EVALUATION_LAUNCH", "ISS_PROTOCOL_ACTION"],
+      "G5_DECISION_PROMOTION": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "ATOMIC_MODEL_PROMOTION"],
+      "G6_RELEASE_INTEGRATION": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "RELEASE_PACKAGE_BUILD"],
+      "G7_FULL_AFK": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "VERIFIED_LOCAL_CLEANUP"],
+      "G8_STEADY_IMPROVEMENT": ["READ_ONLY_INSPECTION", "LOCAL_DETERMINISTIC_ANALYSIS", "PROVENANCE_WRITE", "LOCAL_GIT_CHANGE", "BOUNDED_TEST_EXECUTION", "LOCAL_TRAINING_LAUNCH", "CONTROLLED_EVALUATION_LAUNCH"]
+    },
+    "goal_capabilities": {
+      "G1_TRUSTED_EVIDENCE": [],
+      "G2_REPRODUCIBLE_BASELINE": [],
+      "G3_CHALLENGER_CREATION": [],
+      "G4_CONTROLLED_EVALUATION": ["ISS_RUNTIME"],
+      "G5_DECISION_PROMOTION": [],
+      "G6_RELEASE_INTEGRATION": [],
+      "G7_FULL_AFK": [],
+      "G8_STEADY_IMPROVEMENT": []
+    },
+    "rule": "The model executor runs without sudo and receives a minimal environment. AWS, RunPod, SentinelX and other raw privileged credentials are never inherited. Capabilities are injected only when both the governor permits them and the current execution lock requests them."
+  },
+  "model_policy": {
+    "default_tier": "VERIFIED_CURRENT",
+    "default_model": "gpt-6-sol",
+    "monitoring_model": null,
+    "unverified_model_switching_forbidden": true,
+    "rule": "Monitoring uses no model. MAIN execution uses only a model identity verified available in the live Agents runtime. Do not switch to a cheaper or stronger model based on an assumed product/model name. Model changes require direct availability verification plus an explicit policy update."
+  },
+  "progress": {
+    "require_turn_outcome_nonce": true,
+    "git_head_alone_is_progress": false,
+    "idle_alone_triggers_submit": false,
+    "require_goal_path_id": true,
+    "require_allowed_trigger_type": true,
+    "require_controller_verifiable_evidence": true,
+    "reject_repeated_followup_signature": true,
+    "allowed_progress_kinds": [
+      "GATE_DECISION",
+      "BLOCKER_REMOVED",
+      "DECISION_BOUNDARY_ADVANCED",
+      "REQUIRED_CAPABILITY_ACCEPTED",
+      "UNKNOWN_RECONCILED",
+      "EXTERNAL_EVENT"
+    ]
+  },
+  "notes": [
+    "Safety defaults derived from the 2026-09-25 cost incident; they are not a spending authorization.",
+    "Explicit user inbox work may bypass autonomous daily submit count but never the hard total, work-permit, hard-disable, reenable, or governor interlocks.",
+    "The governor is enabled as policy but inert until an operator creates a finite hash-bound work permit and explicitly removes the hard-disable latch."
+  ]
+}

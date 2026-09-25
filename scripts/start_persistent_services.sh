@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set +e
 
-# Isolated science pods share the source volume but have no authority to start
-# MAIN or the frozen external ISS supervisor.
+# Compatibility bridge only. Root boot must execute exclusively the root-owned
+# trusted snapshot, never mutable /workspace implementation code.
 if [ "${SKATAI_NODE_ROLE:-}" = "ISOLATED_SCIENCE" ]; then
   exit 0
 fi
 
-# Scientific ISS work is intentionally independent from MAIN.
-if [ -x /workspace/skatai-v2/scripts/start_frozen_r9_supervisor.sh ]; then
-  /workspace/skatai-v2/scripts/start_frozen_r9_supervisor.sh
-fi
+TRUST=/opt/skatai-main-controller/current
+[ -d "$TRUST" ] || exit 0
 
-# MAIN owns autonomous project execution, not the lifetime of ISS workers.
-if [ -x /workspace/openai-agent/boot.sh ]; then
-  /workspace/openai-agent/boot.sh
-fi
+(
+  cd "$TRUST" || exit 1
+  sha256sum -c MANIFEST.sha256 >/var/lib/skatai-main-controller/trusted-manifest-check.log 2>&1
+) || exit 0
 
+[ -x "$TRUST/r9_trusted_boot.sh" ] && "$TRUST/r9_trusted_boot.sh"
+[ -x "$TRUST/openai_agent_boot.sh" ] && "$TRUST/openai_agent_boot.sh"
 exit 0
