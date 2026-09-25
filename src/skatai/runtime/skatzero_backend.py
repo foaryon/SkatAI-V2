@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import Callable
 
 from skatai.game.bidding import BID_VALUES
 from skatai.runtime.bidding_adapter import LearnedBiddingAdapter
@@ -15,6 +16,7 @@ from skatai.runtime.interface import (
 )
 
 BACKEND_SCHEMA = "skatai.v2.frozen-skatzero-cli-backend.v2"
+CLIRunner = Callable[[list[str]], list[str]]
 
 
 def _require_bid_vector(
@@ -78,6 +80,14 @@ def _run_cli(
     return lines
 
 
+def _run_transport(
+    root: Path, python: Path, args: list[str], timeout_s: float,
+    runner: CLIRunner | None,
+) -> list[str]:
+    return (_run_cli(root, python, args, timeout_s=timeout_s)
+            if runner is None else runner(args))
+
+
 class FrozenB0BiddingPolicy:
     """Original SkatZero BID CLI mapped to the stable V2 bidding interface."""
 
@@ -87,20 +97,22 @@ class FrozenB0BiddingPolicy:
         python_executable: Path,
         *,
         timeout_s: float = 120.0,
+        runner: CLIRunner | None = None,
     ) -> None:
         self.skatzero_root = skatzero_root
         self.python_executable = python_executable
         self.timeout_s = float(timeout_s)
+        self.runner = runner
         self._max_bid_cache: dict[tuple[tuple[str, ...], int], int] = {}
 
     def max_bid(self, hand: tuple[str, ...], seat: int) -> int:
         key = (hand, seat)
         if key not in self._max_bid_cache:
-            lines = _run_cli(
+            lines = _run_transport(
                 self.skatzero_root,
                 self.python_executable,
                 ["BID", ",".join(hand), str(seat)],
-                timeout_s=self.timeout_s,
+                self.timeout_s, self.runner,
             )
             try:
                 value = int(lines[-1])
@@ -127,10 +139,12 @@ class FrozenB0DeclarationDiscardPolicy:
         python_executable: Path,
         *,
         timeout_s: float = 120.0,
+        runner: CLIRunner | None = None,
     ) -> None:
         self.skatzero_root = skatzero_root
         self.python_executable = python_executable
         self.timeout_s = float(timeout_s)
+        self.runner = runner
         self._pickup_cache: dict[
             tuple[tuple[str, ...], int, int, tuple[int, int, int]], tuple[str, ...]
         ] = {}
@@ -149,7 +163,7 @@ class FrozenB0DeclarationDiscardPolicy:
             raise SkatAIInterfaceError("B0_PICKUP_REQUIRES_12_CARDS")
         key = (tuple(cards), observation.seat, observation.winning_bid, bids)
         if key not in self._pickup_cache:
-            lines = _run_cli(
+            lines = _run_transport(
                 self.skatzero_root,
                 self.python_executable,
                 [
@@ -160,7 +174,7 @@ class FrozenB0DeclarationDiscardPolicy:
                     str(opp2),
                     str(observation.winning_bid),
                 ],
-                timeout_s=self.timeout_s,
+                self.timeout_s, self.runner,
             )
             self._pickup_cache[key] = tuple(lines)
         return self._pickup_cache[key]
@@ -186,7 +200,7 @@ class FrozenB0DeclarationDiscardPolicy:
         else:
             if len(observation.cards) != 10:
                 raise SkatAIInterfaceError("B0_HAND_DECLARATION_REQUIRES_10_CARDS")
-            lines = _run_cli(
+            lines = _run_transport(
                 self.skatzero_root,
                 self.python_executable,
                 [
@@ -197,7 +211,7 @@ class FrozenB0DeclarationDiscardPolicy:
                     str(opp2),
                     str(observation.winning_bid),
                 ],
-                timeout_s=self.timeout_s,
+                self.timeout_s, self.runner,
             )
             final = lines[-1]
             contract = "PICKUP" if final == "s" else final.split(".", 1)[0]
@@ -273,17 +287,19 @@ class FrozenB0CardplayPolicy:
         python_executable: Path,
         *,
         timeout_s: float = 120.0,
+        runner: CLIRunner | None = None,
     ) -> None:
         self.skatzero_root = skatzero_root
         self.python_executable = python_executable
         self.timeout_s = float(timeout_s)
+        self.runner = runner
 
     def play_card(self, observation: CardplayObservation) -> str:
-        lines = _run_cli(
+        lines = _run_transport(
             self.skatzero_root,
             self.python_executable,
             _cardplay_args(observation),
-            timeout_s=self.timeout_s,
+            self.timeout_s, self.runner,
         )
         card = lines[-1]
         if card not in observation.legal_cards:
@@ -294,10 +310,12 @@ class FrozenB0CardplayPolicy:
 def build_b0_skat_ai(
     skatzero_root: Path,
     python_executable: Path,
+    *,
+    runner: CLIRunner | None = None,
 ) -> SkatAI:
-    bidding = FrozenB0BiddingPolicy(skatzero_root, python_executable)
-    downstream = FrozenB0DeclarationDiscardPolicy(skatzero_root, python_executable)
-    cardplay = FrozenB0CardplayPolicy(skatzero_root, python_executable)
+    bidding = FrozenB0BiddingPolicy(skatzero_root, python_executable, runner=runner)
+    downstream = FrozenB0DeclarationDiscardPolicy(skatzero_root, python_executable, runner=runner)
+    cardplay = FrozenB0CardplayPolicy(skatzero_root, python_executable, runner=runner)
     return SkatAI(
         bidding=bidding,
         declaration=downstream,
@@ -314,10 +332,11 @@ def build_b1_skat_ai(
     *,
     device: str = "cpu",
     threshold: float = 0.5,
+    runner: CLIRunner | None = None,
 ) -> SkatAI:
     bidding = LearnedBiddingAdapter.load(b1_model, device=device)
-    downstream = FrozenB0DeclarationDiscardPolicy(skatzero_root, python_executable)
-    cardplay = FrozenB0CardplayPolicy(skatzero_root, python_executable)
+    downstream = FrozenB0DeclarationDiscardPolicy(skatzero_root, python_executable, runner=runner)
+    cardplay = FrozenB0CardplayPolicy(skatzero_root, python_executable, runner=runner)
     return SkatAI(
         bidding=bidding,
         declaration=downstream,

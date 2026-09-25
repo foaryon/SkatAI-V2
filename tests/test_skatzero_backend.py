@@ -163,6 +163,34 @@ def test_cardplay_uses_final_cli_decision(monkeypatch):
     assert p.play_card(smoke_observation()) == "D8"
 
 
+def test_optional_reused_transport_covers_bidding_declaration_and_cardplay(monkeypatch):
+    monkeypatch.setattr(
+        backend, "_run_cli",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("default CLI must not run with explicit transport")
+        ),
+    )
+    calls = []
+    def reused(args):
+        calls.append(args[0])
+        return {"BID": ["18"], "SKAT_OR_HAND_DECL": ["GH"],
+                "CARDPLAY": ["DJ"]}[args[0]]
+
+    ai = backend.build_b0_skat_ai(Path("/r"), Path("/p"), runner=reused)
+    bid = BiddingObservation.create(
+        HAND10, actor=0, bidder=0, answerer=0, bid_index=0,
+        decision_role="BIDDER",
+    )
+    declaration = DeclarationObservation.create(
+        HAND10, seat=0, winning_bid=18, picked_up_skat=False,
+        legal_contracts=["GH"], max_accepted_bids_by_seat=[18, 0, 0],
+    )
+    assert ai.decide_bid(bid) == "CONTINUE"
+    assert ai.choose_contract(declaration) == "GH"
+    assert ai.play_card(smoke_observation()) == "DJ"
+    assert calls == ["BID", "SKAT_OR_HAND_DECL", "CARDPLAY"]
+
+
 def test_cardplay_refuses_missing_points():
     obs = CardplayObservation.create(
         ["C7"],
