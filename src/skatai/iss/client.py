@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import concurrent.futures
+import copy
 import json
 import os
 from pathlib import Path
@@ -98,15 +100,22 @@ class ISSClientCore:
         journal: ISSJournal | None = None,
         move_provider: TableMoveProvider | TableDecisionProvider | None = None,
         effect_guard: ISSAuthorityGuard | None = None,
+        decision_executor: concurrent.futures.Executor | None = None,
     ) -> None:
         self.transport = transport
         self.policy = policy
         self.journal = journal
         self.move_provider = move_provider
         self.effect_guard = effect_guard
+        self.decision_executor = decision_executor
         self.state = ISSSessionState()
         self._sent_decision_keys: set[tuple[str, int, int, str]] = set()
         self._send_lock = threading.Lock()
+        self._state_lock = threading.RLock()
+        self._decision_futures: dict[
+            tuple[str, int], concurrent.futures.Future
+        ] = {}
+        self._decision_errors: list[BaseException] = []
 
     def _send(self, line: str) -> None:
         with self._send_lock:
@@ -121,15 +130,106 @@ class ISSClientCore:
             raise ValueError("BAD_SERVICE_COMMAND")
         self._send(value)
 
+    def _raise_async_decision_error(self) -> None:
+        with self._state_lock:
+            if not self._decision_errors:
+                return
+            exc = self._decision_errors.pop(0)
+        raise exc
+
+    def _send_decision(self, table, decision) -> None:
+        from skatai.iss.service import command_play
+
+        outbound = command_play(
+            table.table_id,
+            table.viewer_name,
+            str(decision.wire_action),
+        )
+        if self.effect_guard is not None:
+            state_hash = table_state_hash(table)
+            effect, created = self.effect_guard.prepare(
+                decision.request,
+                decision.result,
+                current_external_state_hash=state_hash,
+                table_id=table.table_id,
+                game_sequence=table.game_sequence,
+                protocol_sequence=len(table.moves),
+                wire_action=str(decision.wire_action),
+                outbound_line=outbound,
+            )
+            if not created:
+                return
+            self.effect_guard.send(
+                effect,
+                created_now=True,
+                send_line=self._send,
+                outbound_line=outbound,
+            )
+            return
+
+        key = (
+            table.table_id,
+            table.game_sequence,
+            len(table.moves),
+            str(decision.wire_action),
+        )
+        if key in self._sent_decision_keys:
+            return
+        self._send(outbound)
+        self._sent_decision_keys.add(key)
+
+    def _async_decision_done(
+        self,
+        key: tuple[str, int],
+        expected_state_hash: str,
+        expected_protocol_sequence: int,
+        future: concurrent.futures.Future,
+    ) -> None:
+        reschedule = None
+        try:
+            decision = future.result()
+        except BaseException as exc:
+            with self._state_lock:
+                self._decision_futures.pop(key, None)
+                self._decision_errors.append(exc)
+            return
+
+        with self._state_lock:
+            self._decision_futures.pop(key, None)
+            table = self.state.tables.get(key[0])
+            if (
+                table is None
+                or not self.state.connected
+                or not table.in_progress
+                or table.game_sequence != key[1]
+            ):
+                return
+
+            # A decision is material only for the exact external state it was
+            # computed from. If another ISS event advanced/reconciled this
+            # table while inference was running, discard it and compute again.
+            if (
+                table_state_hash(table) != expected_state_hash
+                or len(table.moves) != expected_protocol_sequence
+            ):
+                reschedule = table
+            elif decision is not None:
+                if (
+                    self.effect_guard is None
+                    or not self.effect_guard.has_pending_for_game(
+                        table.table_id, table.game_sequence
+                    )
+                ):
+                    self._send_decision(table, decision)
+
+        if reschedule is not None:
+            self._maybe_send_move(reschedule)
+
     def _maybe_send_move(self, table) -> None:
         if self.move_provider is None or not table.is_player or not table.in_progress:
             return
 
         # Exactly one material external effect may be in flight per game.
-        # Out-of-order ISS messages such as defender RE/LE can leave the same
-        # player on turn while changing the reconstructed protocol position.
-        # Do not even re-run inference until the durable prior effect has been
-        # confirmed or made stale by reconciliation.
         if (
             self.effect_guard is not None
             and self.effect_guard.has_pending_for_game(
@@ -138,53 +238,36 @@ class ISSClientCore:
         ):
             return
 
-        from skatai.iss.service import command_play
-
         decision_method = getattr(self.move_provider, "next_decision", None)
         if callable(decision_method):
-            decision = decision_method(table)
-            if decision is None:
-                return
-            outbound = command_play(
-                table.table_id,
-                table.viewer_name,
-                str(decision.wire_action),
-            )
-            if self.effect_guard is not None:
-                state_hash = table_state_hash(table)
-                effect, created = self.effect_guard.prepare(
-                    decision.request,
-                    decision.result,
-                    current_external_state_hash=state_hash,
-                    table_id=table.table_id,
-                    game_sequence=table.game_sequence,
-                    protocol_sequence=len(table.moves),
-                    wire_action=str(decision.wire_action),
-                    outbound_line=outbound,
-                )
-                if not created:
-                    # An unresolved durable intent from this exact position exists.
-                    # Never replay it merely because process/session code ran again.
-                    return
-                self.effect_guard.send(
-                    effect,
-                    created_now=True,
-                    send_line=self._send,
-                    outbound_line=outbound,
-                )
+            if self.decision_executor is None:
+                decision = decision_method(table)
+                if decision is not None:
+                    self._send_decision(table, decision)
                 return
 
-            key = (
-                table.table_id,
-                table.game_sequence,
-                len(table.moves),
-                str(decision.wire_action),
+            key = (str(table.table_id), int(table.game_sequence))
+            with self._state_lock:
+                existing = self._decision_futures.get(key)
+                if existing is not None and not existing.done():
+                    return
+                snapshot = copy.deepcopy(table)
+                expected_state_hash = table_state_hash(table)
+                expected_protocol_sequence = len(table.moves)
+                future = self.decision_executor.submit(
+                    decision_method, snapshot
+                )
+                self._decision_futures[key] = future
+            future.add_done_callback(
+                lambda done, key=key, state_hash=expected_state_hash,
+                protocol_sequence=expected_protocol_sequence:
+                    self._async_decision_done(
+                        key, state_hash, protocol_sequence, done
+                    )
             )
-            if key in self._sent_decision_keys:
-                return
-            self._send(outbound)
-            self._sent_decision_keys.add(key)
             return
+
+        from skatai.iss.service import command_play
 
         action = self.move_provider.next_action(table)
         if action is None:
@@ -198,21 +281,25 @@ class ISSClientCore:
     def connect_and_login(self, password: str) -> str:
         self.transport.connect()
         client_id = self.transport.login(password)
-        self.state.set_connected(client_id)
+        with self._state_lock:
+            self.state.set_connected(client_id)
         return client_id
 
     def handle_line(self, line: str) -> ServiceEvent:
         if self.journal is not None:
             self.journal.write("in", line)
+        self._raise_async_decision_error()
         event = parse_service_line(line)
-        table = self.state.apply(event)
+        with self._state_lock:
+            table = self.state.apply(event)
 
-        if (
-            self.effect_guard is not None
-            and event.kind in {"table_start", "table_play", "table_state", "table_go"}
-            and table is not None
-        ):
-            self.effect_guard.journal.reconcile_table(table)
+            if (
+                self.effect_guard is not None
+                and event.kind
+                in {"table_start", "table_play", "table_state", "table_go"}
+                and table is not None
+            ):
+                self.effect_guard.journal.reconcile_table(table)
 
         if event.kind == "invite" and self.policy.accept_invitations:
             self._send(
@@ -248,7 +335,11 @@ class ISSClientCore:
             self.step()
 
     def close(self) -> None:
-        self.state.set_disconnected()
+        with self._state_lock:
+            self.state.set_disconnected()
+            for future in self._decision_futures.values():
+                future.cancel()
+            self._decision_futures.clear()
         self.transport.close()
 
 
@@ -258,6 +349,7 @@ def client_from_environment(
     policy: ISSClientPolicy = ISSClientPolicy(),
     move_provider: TableMoveProvider | TableDecisionProvider | None = None,
     effect_guard: ISSAuthorityGuard | None = None,
+    decision_executor: concurrent.futures.Executor | None = None,
 ) -> tuple[ISSClientCore, str]:
     """Build a client from environment without retaining the password.
 
@@ -315,5 +407,6 @@ def client_from_environment(
         journal=None if journal_path is None else ISSJournal(journal_path),
         move_provider=move_provider,
         effect_guard=effect_guard,
+        decision_executor=decision_executor,
     )
     return client, password

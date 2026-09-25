@@ -315,3 +315,94 @@ def test_client_does_not_redecide_while_game_effect_is_pending(tmp_path):
     client._maybe_send_move(table)
     assert client.transport.sent == []
     assert len(journal.pending_for_game("T", 1)) == 1
+
+
+def test_async_decision_executor_allows_other_table_to_progress():
+    import concurrent.futures
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    from skatai.iss.session import TableSession
+
+    slow_started = threading.Event()
+    release_slow = threading.Event()
+
+    class Provider:
+        def next_decision(self, table):
+            if table.table_id == "T1":
+                slow_started.set()
+                assert release_slow.wait(2.0)
+                return SimpleNamespace(wire_action="18")
+            return SimpleNamespace(wire_action="20")
+
+    tr = FakeTransport()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        client = ISSClientCore(tr, move_provider=Provider(), decision_executor=pool)
+        client.state.set_connected("SkatAI")
+        t1 = TableSession("T1", "SkatAI", "3", True, in_progress=True, game_sequence=1)
+        t2 = TableSession("T2", "SkatAI", "3", True, in_progress=True, game_sequence=1)
+        client.state.tables = {"T1": t1, "T2": t2}
+
+        client._maybe_send_move(t1)
+        assert slow_started.wait(1.0)
+        client._maybe_send_move(t2)
+
+        deadline = time.time() + 1.0
+        while "table T2 SkatAI play 20" not in tr.sent and time.time() < deadline:
+            time.sleep(0.01)
+        assert "table T2 SkatAI play 20" in tr.sent
+        assert "table T1 SkatAI play 18" not in tr.sent
+
+        release_slow.set()
+        deadline = time.time() + 1.0
+        while "table T1 SkatAI play 18" not in tr.sent and time.time() < deadline:
+            time.sleep(0.01)
+        assert "table T1 SkatAI play 18" in tr.sent
+        client.close()
+
+
+def test_async_stale_decision_is_discarded_and_recomputed():
+    import concurrent.futures
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    from skatai.iss.session import TableSession
+
+    started = threading.Event()
+    release = threading.Event()
+
+    class Provider:
+        def __init__(self):
+            self.calls = 0
+
+        def next_decision(self, table):
+            self.calls += 1
+            if self.calls == 1:
+                started.set()
+                assert release.wait(2.0)
+                return SimpleNamespace(wire_action="18")
+            return None
+
+    provider = Provider()
+    tr = FakeTransport()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        client = ISSClientCore(tr, move_provider=provider, decision_executor=pool)
+        client.state.set_connected("SkatAI")
+        table = TableSession("T1", "SkatAI", "3", True, in_progress=True, game_sequence=1)
+        client.state.tables = {"T1": table}
+
+        client._maybe_send_move(table)
+        assert started.wait(1.0)
+
+        # Advance the protocol state while the old inference is still running.
+        client.handle_line("table T1 SkatAI play 1 18")
+        release.set()
+
+        deadline = time.time() + 1.0
+        while provider.calls < 2 and time.time() < deadline:
+            time.sleep(0.01)
+        assert provider.calls >= 2
+        assert "table T1 SkatAI play 18" not in tr.sent
+        client.close()

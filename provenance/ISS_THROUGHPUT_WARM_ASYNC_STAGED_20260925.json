@@ -1,0 +1,29 @@
+{
+  "schema": "skatai.v2.iss-throughput-warm-async-staged.v1",
+  "captured_at": "2026-09-25T09:07:44Z",
+  "status": "STAGED_NOT_LIVE_R9",
+  "parent_branch": "feat/iss-mirror-writebehind-v1",
+  "live_r9_modified": false,
+  "changes": {
+    "remote_evidence": "fsync-local then asynchronous batched writebehind",
+    "decision_loop": "optional executor keeps slow inference off ISS network event loop",
+    "arm_routing": "bound per (table_id, game_sequence), not one global mutable arm",
+    "skatzero": "optional persistent process pool; models loaded once per worker; fresh SkatEnv per request"
+  },
+  "cardplay_equivalence_probe": {
+    "frozen_call_final_action": "DJ",
+    "cold_seconds": 4.323,
+    "warm_startup_seconds": 2.357,
+    "warm_request_seconds": [1.220, 1.070, 1.039],
+    "all_warm_final_actions_equal_cold": true
+  },
+  "verification": {
+    "focused_tests_passed": 84,
+    "suites": [
+      "tests/test_skatzero_backend.py",
+      "tests/test_iss_client.py",
+      "tests/test_iss_gate_worker.py"
+    ]
+  },
+  "deployment_rule": "Do not modify the frozen live R9 treatment. Require matched equivalence, fault, latency, evidence-lag and multi-table validation before a new live epoch."
+}

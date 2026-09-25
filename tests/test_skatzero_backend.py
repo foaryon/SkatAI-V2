@@ -198,3 +198,45 @@ def test_cardplay_maps_absolute_iss_seats_to_relative_skatzero_roles():
     assert args[3] == "1"
     assert args[11] == "1"
     assert args[13] == "0DA,1D7,2DT,2H7"
+
+
+class _FakeRunner:
+    def __init__(self, lines):
+        self.lines = list(lines)
+        self.calls = []
+
+    def run(self, args, *, timeout_s):
+        self.calls.append((list(args), float(timeout_s)))
+        return list(self.lines)
+
+
+def test_b0_backend_can_use_persistent_runner_without_cli(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("cold CLI must not run when warm runner is supplied")
+
+    monkeypatch.setattr(backend, "_run_cli", forbidden)
+    runner = _FakeRunner(["diagnostic", "72"])
+    p = backend.FrozenB0BiddingPolicy(
+        Path("/r"), Path("/p"), runner=runner
+    )
+    obs = BiddingObservation.create(
+        HAND10, actor=0, bidder=0, answerer=0,
+        bid_index=0, decision_role="BIDDER"
+    )
+    assert p.probability_continue(obs) == 1.0
+    assert len(runner.calls) == 1
+    assert runner.calls[0][0][0] == "BID"
+
+
+def test_cardplay_can_use_persistent_runner_without_cli(monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError("cold CLI must not run when warm runner is supplied")
+
+    monkeypatch.setattr(backend, "_run_cli", forbidden)
+    runner = _FakeRunner(["D8 81.29", "After recursion:", "D8"])
+    p = backend.FrozenB0CardplayPolicy(
+        Path("/r"), Path("/p"), runner=runner
+    )
+    assert p.play_card(smoke_observation()) == "D8"
+    assert len(runner.calls) == 1
+    assert runner.calls[0][0][0] == "CARDPLAY"

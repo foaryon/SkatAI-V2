@@ -214,9 +214,9 @@ def test_reconnect_start_reuses_frozen_active_assignment_and_offsets():
 
     class Switch:
         def __init__(self):
-            self.arm = None
-        def set_arm(self, arm):
-            self.arm = arm
+            self.binding = None
+        def bind_game(self, table_id, game_sequence, arm):
+            self.binding = (table_id, game_sequence, arm)
 
     class Evidence:
         def scored_rows(self):
@@ -240,7 +240,7 @@ def test_reconnect_start_reuses_frozen_active_assignment_and_offsets():
 
     line = "table T SkatAI start 7 SkatAI 100 kermit 100 zoot 100"
     w._on_start_preapply(line)
-    assert w.switch.arm == "B1"
+    assert w.switch.binding == ("T", 7, "B1")
     active = w.assignment_by_game[("T", 7)]
     assert active.protocol_offset == 10
     assert active.effect_offset == 20
@@ -1676,3 +1676,88 @@ def test_writebehind_storage_outage_retains_games_then_drains_without_duplicates
         assert uploaded.count("manifests/g2.json") == 1
     finally:
         wb.stop(flush=False)
+
+
+def test_active_game_payload_supports_multiple_concurrent_tables():
+    from skatai.iss.gate_worker import (
+        ActiveGame,
+        GameAssignment,
+        active_games_payload,
+        parse_active_games_payload,
+    )
+
+    games = {
+        ("T1", 11): ActiveGame(
+            GameAssignment("B0", "kermit+zoot", 0, 300, True), 10, 20
+        ),
+        ("T2", 22): ActiveGame(
+            GameAssignment("B1", "kermit+theCount", 2, 300, True), 30, 40
+        ),
+    }
+    payload = active_games_payload(games, source_commit="abc1234")
+    restored = parse_active_games_payload(
+        payload, expected_source_commit="abc1234"
+    )
+    assert restored == games
+
+
+def test_recording_switch_routes_concurrent_games_to_bound_arms():
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import RecordingSwitchProvider
+
+    class Provider:
+        def __init__(self, arm):
+            self.arm = arm
+        def next_decision(self, table):
+            return SimpleNamespace(
+                request=SimpleNamespace(
+                    game_id=f"iss:{table.table_id}:{table.game_sequence}"
+                ),
+                result=SimpleNamespace(
+                    decision_id=f"d-{self.arm}",
+                    latency_ms=1.0,
+                ),
+                wire_action=self.arm,
+            )
+
+    switch = RecordingSwitchProvider(
+        {"B0": Provider("B0"), "B1": Provider("B1")}
+    )
+    switch.bind_game("T1", 1, "B0")
+    switch.bind_game("T2", 2, "B1")
+    t1 = SimpleNamespace(table_id="T1", game_sequence=1)
+    t2 = SimpleNamespace(table_id="T2", game_sequence=2)
+    assert switch.next_decision(t1).wire_action == "B0"
+    assert switch.next_decision(t2).wire_action == "B1"
+
+
+def test_throughput_policy_defaults_preserve_single_table_cold_sync():
+    from skatai.iss.gate_worker import throughput_policy_from_environment
+
+    p = throughput_policy_from_environment({})
+    assert p.tables == 1
+    assert p.inference_workers == 1
+    assert p.warm_skatzero is False
+    assert p.async_decisions is False
+
+
+def test_multitable_policy_requires_async_and_bounds_workers():
+    import pytest
+    from skatai.iss.gate_worker import throughput_policy_from_environment
+
+    with pytest.raises(ValueError, match="MULTITABLE_REQUIRES_ASYNC"):
+        throughput_policy_from_environment(
+            {"ISS_GATE_TABLES": "2", "ISS_GATE_INFERENCE_WORKERS": "1"}
+        )
+
+    p = throughput_policy_from_environment(
+        {
+            "ISS_GATE_TABLES": "4",
+            "ISS_GATE_INFERENCE_WORKERS": "2",
+            "ISS_GATE_WARM_SKATZERO": "true",
+            "ISS_GATE_ASYNC_DECISIONS": "1",
+        }
+    )
+    assert (p.tables, p.inference_workers) == (4, 2)
+    assert p.warm_skatzero is True
+    assert p.async_decisions is True

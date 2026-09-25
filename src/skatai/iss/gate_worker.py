@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 from dataclasses import dataclass
 import hashlib
 import json
@@ -43,6 +44,7 @@ from skatai.iss.service import (
     parse_table_start_payload,
 )
 from skatai.runtime.skatzero_backend import build_b0_skat_ai, build_b1_skat_ai
+from skatai.runtime.skatzero_pool import PersistentSkatZeroPool
 
 SCHEMA = "skatai.v2.external-iss-gate-worker.v1"
 PRIMARY_STACKS = tuple(DEFAULT_OPPONENTS)
@@ -182,6 +184,63 @@ def mirror_policy_from_environment(
     return policy
 
 
+
+
+@dataclass(frozen=True)
+class ThroughputPolicy:
+    tables: int = 1
+    inference_workers: int = 1
+    warm_skatzero: bool = False
+    async_decisions: bool = False
+
+    def validate(self) -> None:
+        if self.tables < 1 or self.tables > 16:
+            raise ValueError("ISS_GATE_TABLES_OUT_OF_RANGE")
+        if self.inference_workers < 1 or self.inference_workers > 16:
+            raise ValueError("ISS_GATE_INFERENCE_WORKERS_OUT_OF_RANGE")
+        if self.inference_workers > self.tables:
+            raise ValueError("ISS_GATE_INFERENCE_WORKERS_GT_TABLES")
+        if self.tables > 1 and not self.async_decisions:
+            raise ValueError("ISS_GATE_MULTITABLE_REQUIRES_ASYNC_DECISIONS")
+
+
+def _env_bool(env: Mapping[str, str], name: str, default: bool) -> bool:
+    raw = env.get(name)
+    if raw is None:
+        return default
+    value = str(raw).strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"BAD_BOOLEAN_ENV:{name}")
+
+
+def throughput_policy_from_environment(
+    environ: Mapping[str, str] | None = None,
+) -> ThroughputPolicy:
+    env = os.environ if environ is None else environ
+    try:
+        policy = ThroughputPolicy(
+            tables=int(env.get("ISS_GATE_TABLES", "1")),
+            inference_workers=int(
+                env.get("ISS_GATE_INFERENCE_WORKERS", "1")
+            ),
+            warm_skatzero=_env_bool(
+                env, "ISS_GATE_WARM_SKATZERO", False
+            ),
+            async_decisions=_env_bool(
+                env, "ISS_GATE_ASYNC_DECISIONS", False
+            ),
+        )
+    except ValueError as exc:
+        if str(exc).startswith("BAD_BOOLEAN_ENV:"):
+            raise
+        raise ValueError("BAD_ISS_THROUGHPUT_ENV") from exc
+    policy.validate()
+    return policy
+
+
 def reconnect_policy_from_environment(
     environ: Mapping[str, str] | None = None,
 ) -> ReconnectPolicy:
@@ -284,8 +343,6 @@ def parse_active_games_payload(
             protocol_offset=int(row["protocol_offset"]),
             effect_offset=int(row["effect_offset"]),
         )
-    if len(out) > 1:
-        raise ISSGateWorkerError("MULTIPLE_ACTIVE_ISS_GAMES_NOT_SUPPORTED")
     return out
 
 
@@ -468,27 +525,61 @@ def next_underfilled_stack(
 
 
 class RecordingSwitchProvider:
+    """Route decisions by active ISS game, safe for concurrent tables."""
+
     def __init__(self, providers: Mapping[str, ISSSkatAIDecisionProvider]) -> None:
         self.providers = dict(providers)
-        self.arm = "B0"
+        self.default_arm = "B0"
+        self.arm_by_game: dict[tuple[str, int], str] = {}
         self.latencies: dict[str, dict[str, float]] = {}
+        self._lock = threading.RLock()
+
+    def _validate_arm(self, arm: str) -> str:
+        value = str(arm)
+        if value not in self.providers:
+            raise ISSGateWorkerError(f"UNKNOWN_ARM:{value}")
+        return value
 
     def set_arm(self, arm: str) -> None:
-        if arm not in self.providers:
-            raise ISSGateWorkerError(f"UNKNOWN_ARM:{arm}")
-        self.arm = arm
+        """Backward-compatible default for single-table tests/tooling."""
+        with self._lock:
+            self.default_arm = self._validate_arm(arm)
+
+    def bind_game(self, table_id: str, game_sequence: int, arm: str) -> None:
+        key = (str(table_id), int(game_sequence))
+        with self._lock:
+            value = self._validate_arm(arm)
+            existing = self.arm_by_game.get(key)
+            if existing is not None and existing != value:
+                raise ISSGateWorkerError(
+                    f"GAME_ARM_REBIND_CONFLICT:{key}:{existing}!={value}"
+                )
+            self.arm_by_game[key] = value
+
+    def unbind_game(self, table_id: str, game_sequence: int) -> None:
+        with self._lock:
+            self.arm_by_game.pop((str(table_id), int(game_sequence)), None)
+
+    def arm_for_game(self, table_id: str, game_sequence: int) -> str:
+        with self._lock:
+            return self.arm_by_game.get(
+                (str(table_id), int(game_sequence)), self.default_arm
+            )
 
     def next_decision(self, table):
-        decision = self.providers[self.arm].next_decision(table)
+        arm = self.arm_for_game(table.table_id, table.game_sequence)
+        decision = self.providers[arm].next_decision(table)
         if decision is not None:
             game = decision.request.game_id
-            self.latencies.setdefault(game, {})[decision.result.decision_id] = float(
-                decision.result.latency_ms
-            )
+            with self._lock:
+                self.latencies.setdefault(game, {})[
+                    decision.result.decision_id
+                ] = float(decision.result.latency_ms)
         return decision
 
     def latency_summary(self, game_id: str) -> tuple[float | None, float | None]:
-        xs = sorted(self.latencies.pop(game_id, {}).values())
+        with self._lock:
+            xs = sorted(self.latencies.pop(game_id, {}).values())
         if not xs:
             return None, None
         p50 = statistics.median(xs)
@@ -1973,14 +2064,44 @@ class ExternalGateWorker:
         verified = verify_deployment_assets(paths)
         self.identities = verified["deployment_identities"]
         self.source_commit = _source_commit(paths.repo_root)
+        self.throughput_policy = throughput_policy_from_environment()
 
-        b0_ai = build_b0_skat_ai(paths.skatzero_root, paths.skatzero_python)
-        b1_ai = build_b1_skat_ai(
-            paths.b1_model,
-            paths.skatzero_root,
-            paths.skatzero_python,
-            threshold=0.5,
-        )
+        self.skatzero_pool: PersistentSkatZeroPool | None = None
+        self.decision_executor: concurrent.futures.ThreadPoolExecutor | None = None
+        runner = None
+        try:
+            if self.throughput_policy.warm_skatzero:
+                self.skatzero_pool = PersistentSkatZeroPool(
+                    paths.skatzero_root,
+                    paths.skatzero_python,
+                    workers=self.throughput_policy.inference_workers,
+                )
+                runner = self.skatzero_pool
+            if self.throughput_policy.async_decisions:
+                self.decision_executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=self.throughput_policy.inference_workers,
+                    thread_name_prefix="iss-decision",
+                )
+
+            b0_ai = build_b0_skat_ai(
+                paths.skatzero_root,
+                paths.skatzero_python,
+                runner=runner,
+            )
+            b1_ai = build_b1_skat_ai(
+                paths.b1_model,
+                paths.skatzero_root,
+                paths.skatzero_python,
+                threshold=0.5,
+                runner=runner,
+            )
+        except BaseException:
+            if self.decision_executor is not None:
+                self.decision_executor.shutdown(wait=False, cancel_futures=True)
+            if self.skatzero_pool is not None:
+                self.skatzero_pool.close()
+            raise
+
         self.switch = RecordingSwitchProvider(
             {
                 "B0": ISSSkatAIDecisionProvider(
@@ -2023,11 +2144,19 @@ class ExternalGateWorker:
         self.assignment_by_game = restored
         if not restored:
             return
-        (table_id, _), active = next(iter(restored.items()))
-        self.table_id = table_id
-        self._expected_new_table_id = None
-        self.desired_stack = active.assignment.stack
-        self.switch.set_arm(active.assignment.arm)
+        # Every active game owns its arm independently. This is required for
+        # concurrent tables where B0 and B1 can be in flight at the same time.
+        for (table_id, game_sequence), active in restored.items():
+            self.switch.bind_game(
+                table_id, game_sequence, active.assignment.arm
+            )
+        # Legacy scalar lifecycle fields are retained until the table-slot
+        # refactor below is complete; they are only meaningful in 1-table mode.
+        if len(restored) == 1:
+            (table_id, _), active = next(iter(restored.items()))
+            self.table_id = table_id
+            self._expected_new_table_id = None
+            self.desired_stack = active.assignment.stack
 
     def _persist_active_game_authority(self) -> None:
         self.evidence.persist_active_games(
@@ -2130,7 +2259,9 @@ class ExternalGateWorker:
                 raise ISSGateWorkerError(
                     f"RECONNECT_ACTIVE_GAME_IDENTITY_MISMATCH:{key}"
                 )
-            self.switch.set_arm(existing.assignment.arm)
+            self.switch.bind_game(
+                key[0], key[1], existing.assignment.arm
+            )
             return
 
         rows = self.evidence.scored_rows()
@@ -2144,7 +2275,7 @@ class ExternalGateWorker:
                 stack=stack,
                 seat=seat,
             )
-        self.switch.set_arm(assignment.arm)
+        self.switch.bind_game(key[0], key[1], assignment.arm)
         self.assignment_by_game[key] = ActiveGame(
             assignment=assignment,
             protocol_offset=self.evidence._file_size(self.evidence.protocol_journal),
@@ -2331,6 +2462,7 @@ class ExternalGateWorker:
             policy=client_policy,
             move_provider=self.switch,
             effect_guard=self.effect_guard,
+            decision_executor=self.decision_executor,
         )
         self.client = client
         self.password = password
@@ -2503,6 +2635,16 @@ class ExternalGateWorker:
             # On an abnormal stop the durable queue is intentionally retained
             # for restart reconciliation; do not block shutdown on Hetzner.
             self.mirror_writebehind.stop(flush=False)
+            decision_executor = getattr(self, "decision_executor", None)
+            if decision_executor is not None:
+                decision_executor.shutdown(
+                    wait=False, cancel_futures=True
+                )
+                self.decision_executor = None
+            skatzero_pool = getattr(self, "skatzero_pool", None)
+            if skatzero_pool is not None:
+                skatzero_pool.close()
+                self.skatzero_pool = None
 
 
 def main() -> None:
