@@ -839,6 +839,9 @@ class GateEvidence:
                 payload.get("artifacts") or [],
             )
             return marker
+        self._verify_outbox_source(
+            game_id, {"source_commit": self.source_commit}
+        )
         _atomic_json(
             marker,
             {
@@ -855,8 +858,6 @@ class GateEvidence:
         self, game_id: str, payload: Mapping[str, Any]
     ) -> None:
         source = payload.get("source_commit")
-        if source == self.source_commit:
-            return
         try:
             game = json.loads(
                 (self.games_dir / f"{game_id}.evidence.json").read_text(

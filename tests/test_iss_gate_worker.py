@@ -879,6 +879,18 @@ def _writebehind_evidence(tmp_path):
     )
 
 
+def _writebehind_closed_game(ev, game_id):
+    import json
+
+    for suffix in ("service.jsonl", "effects.jsonl"):
+        (ev.games_dir / f"{game_id}.{suffix}").write_text(
+            f"{game_id}:{suffix}\n"
+        )
+    (ev.games_dir / f"{game_id}.evidence.json").write_text(
+        json.dumps({"game_id": game_id, "source_commit": ev.source_commit}) + "\n"
+    )
+
+
 def test_active_authority_persist_is_local_and_marks_remote_dirty(tmp_path):
     from skatai.iss.gate_worker import ActiveGame, GameAssignment
 
@@ -918,10 +930,7 @@ def test_mirror_batch_combines_games_and_current_state_in_one_transfer(tmp_path)
     ev.mark_current_mirror_dirty()
 
     for game_id in ("g1", "g2"):
-        for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
-            (ev.games_dir / f"{game_id}.{suffix}").write_text(
-                f"{game_id}:{suffix}\n"
-            )
+        _writebehind_closed_game(ev, game_id)
         ev.enqueue_mirror_game(game_id)
 
     calls = []
@@ -953,10 +962,7 @@ def test_mirror_batch_failure_preserves_durable_queue(tmp_path):
 
     ev = _writebehind_evidence(tmp_path)
     game_id = "g-fail"
-    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
-        (ev.games_dir / f"{game_id}.{suffix}").write_text(
-            f"{game_id}:{suffix}\n"
-        )
+    _writebehind_closed_game(ev, game_id)
     marker = ev.enqueue_mirror_game(game_id)
     ev.mark_current_mirror_dirty()
 
@@ -1064,10 +1070,7 @@ def test_mirror_policy_environment_is_bounded():
 def test_mirror_queue_duplicate_enqueue_is_idempotent_and_hash_bound(tmp_path):
     ev = _writebehind_evidence(tmp_path)
     game_id = "g-duplicate"
-    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
-        (ev.games_dir / f"{game_id}.{suffix}").write_text(
-            f"{game_id}:{suffix}\n"
-        )
+    _writebehind_closed_game(ev, game_id)
 
     first = ev.enqueue_mirror_game(game_id)
     first_bytes = first.read_bytes()
@@ -1081,16 +1084,39 @@ def test_mirror_queue_duplicate_enqueue_is_idempotent_and_hash_bound(tmp_path):
     assert all(len(item["sha256"]) == 64 for item in payload["artifacts"])
 
 
+def test_mirror_queue_rejects_false_game_source_before_enqueue_or_retry(tmp_path):
+    import json
+    import pytest
+    from skatai.iss.gate_worker import ISSGateWorkerError
+
+    ev = _writebehind_evidence(tmp_path)
+    game_id = "g-false-source"
+    _writebehind_closed_game(ev, game_id)
+    evidence_path = ev.games_dir / f"{game_id}.evidence.json"
+    evidence_path.write_text(
+        json.dumps({"game_id": game_id, "source_commit": "different"}) + "\n"
+    )
+    with pytest.raises(ISSGateWorkerError, match="MIRROR_QUEUE_SOURCE_UNVERIFIED"):
+        ev.enqueue_mirror_game(game_id)
+    assert not (ev.mirror_queue_dir / f"{game_id}.json").exists()
+
+    _writebehind_closed_game(ev, game_id)
+    marker = ev.enqueue_mirror_game(game_id)
+    payload = json.loads(marker.read_text())
+    payload["source_commit"] = "different"
+    marker.write_text(json.dumps(payload) + "\n")
+    with pytest.raises(ISSGateWorkerError, match="MIRROR_QUEUE_SOURCE_UNVERIFIED"):
+        ev.pending_mirror_entries()
+    assert marker.exists()
+
+
 def test_mirror_queue_rejects_local_artifact_mutation_before_upload(tmp_path):
     import pytest
     from skatai.iss.gate_worker import ISSGateWorkerError
 
     ev = _writebehind_evidence(tmp_path)
     game_id = "g-mutated"
-    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
-        (ev.games_dir / f"{game_id}.{suffix}").write_text(
-            f"{game_id}:{suffix}\n"
-        )
+    _writebehind_closed_game(ev, game_id)
     marker = ev.enqueue_mirror_game(game_id)
     (ev.games_dir / f"{game_id}.effects.jsonl").write_text("tampered\n")
 
@@ -1129,6 +1155,7 @@ def test_pending_game_survives_source_update_with_original_lineage(tmp_path):
         identities=old.identities,
         source_commit="newcommit",
     )
+    assert updated.enqueue_mirror_game(game_id) == marker
     updated.mark_current_mirror_dirty()
     dirty = json.loads(updated.mirror_current_dirty_path.read_text())
     assert dirty["source_commit"] == "newcommit"
@@ -1188,10 +1215,7 @@ def test_mirror_batch_preserves_newer_current_dirty_generation(tmp_path):
 
     ev = _writebehind_evidence(tmp_path)
     game_id = "g-current-race"
-    for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
-        (ev.games_dir / f"{game_id}.{suffix}").write_text(
-            f"{game_id}:{suffix}\n"
-        )
+    _writebehind_closed_game(ev, game_id)
     ev.enqueue_mirror_game(game_id)
     ev.active_games_path.write_text(
         json.dumps(
@@ -1228,10 +1252,7 @@ def test_mirror_backpressure_drains_bounded_backlog(tmp_path):
 
     ev = _writebehind_evidence(tmp_path)
     for game_id in ("g1", "g2", "g3", "g4"):
-        for suffix in ("service.jsonl", "effects.jsonl", "evidence.json"):
-            (ev.games_dir / f"{game_id}.{suffix}").write_text(
-                f"{game_id}:{suffix}\n"
-            )
+        _writebehind_closed_game(ev, game_id)
         ev.enqueue_mirror_game(game_id)
 
     calls = []
