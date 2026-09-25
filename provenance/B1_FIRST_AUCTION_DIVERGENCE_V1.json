@@ -1,0 +1,89 @@
+{
+  "counts": {
+    "changed": 71,
+    "unchanged": 229
+  },
+  "interpretation": "Exploratory local diagnostic only; no training identity selection, external holdout use, or strength decision.",
+  "schema": "skatai.v2.b1-first-auction-divergence.v1",
+  "source_schema": "skatai.v2.b0-vs-b1-local-paired-gameplay.v1",
+  "source_sha256": "836785a374437bc3417d9865a7a9ca22396765d2eb60fd930c72dad4e184d634",
+  "summary": {
+    "direction:CONTINUE_TO_PASS": {
+      "deal_cluster_mean_delta": -9.972222222222221,
+      "independent_deal_count": 18,
+      "negative_deal_count": 6,
+      "pair_count": 20,
+      "positive_deal_count": 4
+    },
+    "direction:PASS_TO_CONTINUE": {
+      "deal_cluster_mean_delta": -16.369565217391305,
+      "independent_deal_count": 46,
+      "negative_deal_count": 23,
+      "pair_count": 51,
+      "positive_deal_count": 22
+    },
+    "direction_role:CONTINUE_TO_PASS:ANSWERER": {
+      "deal_cluster_mean_delta": -9.6,
+      "independent_deal_count": 10,
+      "negative_deal_count": 2,
+      "pair_count": 10,
+      "positive_deal_count": 2
+    },
+    "direction_role:CONTINUE_TO_PASS:BIDDER": {
+      "deal_cluster_mean_delta": -9.277777777777779,
+      "independent_deal_count": 9,
+      "negative_deal_count": 4,
+      "pair_count": 10,
+      "positive_deal_count": 2
+    },
+    "direction_role:PASS_TO_CONTINUE:ANSWERER": {
+      "deal_cluster_mean_delta": -36.13636363636363,
+      "independent_deal_count": 11,
+      "negative_deal_count": 6,
+      "pair_count": 11,
+      "positive_deal_count": 5
+    },
+    "direction_role:PASS_TO_CONTINUE:BIDDER": {
+      "deal_cluster_mean_delta": -10.157142857142857,
+      "independent_deal_count": 35,
+      "negative_deal_count": 17,
+      "pair_count": 40,
+      "positive_deal_count": 17
+    },
+    "offer_band:18-24": {
+      "deal_cluster_mean_delta": -22.720085470085472,
+      "independent_deal_count": 39,
+      "negative_deal_count": 18,
+      "pair_count": 48,
+      "positive_deal_count": 15
+    },
+    "offer_band:25+": {
+      "deal_cluster_mean_delta": 2.7857142857142856,
+      "independent_deal_count": 21,
+      "negative_deal_count": 9,
+      "pair_count": 23,
+      "positive_deal_count": 11
+    },
+    "overall": {
+      "deal_cluster_mean_delta": -14.697916666666668,
+      "independent_deal_count": 56,
+      "negative_deal_count": 26,
+      "pair_count": 71,
+      "positive_deal_count": 24
+    },
+    "role:ANSWERER": {
+      "deal_cluster_mean_delta": -23.5,
+      "independent_deal_count": 21,
+      "negative_deal_count": 8,
+      "pair_count": 21,
+      "positive_deal_count": 7
+    },
+    "role:BIDDER": {
+      "deal_cluster_mean_delta": -8.796511627906977,
+      "independent_deal_count": 43,
+      "negative_deal_count": 20,
+      "pair_count": 50,
+      "positive_deal_count": 19
+    }
+  }
+}

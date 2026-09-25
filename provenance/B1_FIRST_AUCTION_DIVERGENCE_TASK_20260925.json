@@ -1,0 +1,40 @@
+{
+  "schema": "skatai.v2.b1-first-auction-divergence-task.v1",
+  "captured_at": "2026-09-25T12:20:50Z",
+  "task_id": "B1_LOCAL_FIRST_AUCTION_DIVERGENCE",
+  "classification": "CONCLUDE_EXPLORATORY_DIAGNOSTIC",
+  "current_evidence": {
+    "local_paired_result_sha256": "836785a374437bc3417d9865a7a9ca22396765d2eb60fd930c72dad4e184d634",
+    "prior_weakness_evidence": "provenance/B1_LOCAL_WEAKNESS_DIAGNOSTIC_V1.json",
+    "source_parent_commit": "9511010"
+  },
+  "goal_or_hypothesis": "Identify the first B0/B1 action difference in changed local auctions and describe payoff by direction, role and offer band without using the frozen ISS campaign.",
+  "nearest_gate": "Weakness-driven next bidding treatment after independent confirmation and R9 decision",
+  "smallest_intervention": "Hash-pin the existing 100-deal local paired artifact, aggregate only first action divergence and deal-cluster payoff",
+  "invariants_to_preserve": [
+    "No R9 strength look or frozen-worker modification",
+    "No local confirmation deal IDs used for training selection",
+    "No promotion or threshold tuning from exploratory subgroups",
+    "No additional B0 inference or competing compute"
+  ],
+  "input_identities": {
+    "script_sha256": "bde5b57cdcf2ad4a99198ebf71052b6590fe4bd14c398af701d1dc0b75447639",
+    "result_sha256": "a9cc8996479b5f60bc54bd9ea8c88ea25d364f02c5405a809fd08b22b26853a4",
+    "result_file": "provenance/B1_FIRST_AUCTION_DIVERGENCE_V1.json"
+  },
+  "resource_bound": "One 1.6 MB local read, no large write and no model inference",
+  "verification": {
+    "repeated_output_byte_identical": true,
+    "paired_count": 300,
+    "changed_count_matches_prior_diagnostic": 71,
+    "unchanged_count": 229,
+    "independent_deals_with_changed_pairs": 56,
+    "tampered_input_hash_rejected": true,
+    "python_compile": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "descriptive_finding": "Of 71 changed pairs, 51 first changed PASS to CONTINUE; 48 first changes occurred at offers 18-24. Their deal-cluster mean deltas are negative locally, but these are post hoc overlapping strata from 100 deals.",
+  "decision": "NO_STRENGTH_DECISION",
+  "next_on_success": "Use disjoint predeclared train-only research and gameplay confirmation to test any low-bid/answerer treatment after the frozen R9 gate is decided",
+  "next_on_failure_or_inconclusive": "Retain B0/B1 local result and reject this diagnostic as a selection signal"
+}

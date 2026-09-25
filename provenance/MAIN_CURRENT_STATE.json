@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:16:31Z",
+  "captured_at": "2026-09-25T12:20:50Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -27,6 +27,12 @@
     "classification": "CONCLUDE_SOURCE_GATE",
     "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
     "jskat_runtime_parity": "PENDING"
+  },
+  "independent_science_diagnostic": {
+    "task_id": "B1_LOCAL_FIRST_AUCTION_DIVERGENCE",
+    "classification": "CONCLUDE_EXPLORATORY_DIAGNOSTIC",
+    "evidence": "provenance/B1_FIRST_AUCTION_DIVERGENCE_TASK_20260925.json",
+    "strength_decision": "NONE"
   },
   "staged_release_gate": {
     "task_id": "B0_SOURCE_BOUND_RELEASE_STAGE",
@@ -93,6 +99,7 @@
     "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "card_seat_static_parity": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
+    "asset_triage": "provenance/JSKAT_DISTRIBUTABLE_ASSET_TRIAGE_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
     "next_gate": "Versioned pickup plan staged and focused tests pass; stage package and verify actual JSkat callback lifecycle, then rules/assets/Windows build",
     "no_vendor_or_fork": true,
