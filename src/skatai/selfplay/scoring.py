@@ -10,7 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
-from skatai.selfplay.cardplay import DECK
+from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
+from skatai.selfplay.cardplay import DECK, make_deal
+from skatai.selfplay.game import GameEpisode
 
 SCHEMA = "skatai.v2.selfplay.basic-score.v1"
 BASE_VALUES = {"C": 12, "S": 11, "H": 10, "D": 9, "G": 24}
@@ -90,3 +92,63 @@ def score_basic_game(
         signed = natural if won_by_points else -2 * natural
     return BasicScore(SCHEMA, token, winning_bid, matadors, level, natural,
                       overbid, won_by_points and not overbid, signed)
+
+
+def score_basic_episode(episode: GameEpisode) -> BasicScore:
+    """Reconcile the full episode before assigning a bounded basic value."""
+    declaration, play = episode.declaration, episode.cardplay
+    if declaration is None or play is None:
+        raise ValueError("NO_PLAYED_GAME_TO_SCORE")
+    deal = make_deal(episode.deal_seed)
+    if (episode.deal_sha256 != deal.identity_sha256
+            or declaration.deal_sha256 != deal.identity_sha256
+            or play.deal_sha256 != deal.identity_sha256
+            or declaration.contract != play.contract
+            or declaration.declarer != play.declarer
+            or declaration.declarer != episode.bidding.winner
+            or declaration.winning_bid != episode.bidding.winning_bid):
+        raise ValueError("EPISODE_IDENTITY_MISMATCH")
+    original = set((*deal.hands[declaration.declarer], *deal.skat))
+    if (len(declaration.final_hand) != 10 or len(declaration.final_skat) != 2
+            or len(set((*declaration.final_hand, *declaration.final_skat))) != 12
+            or set((*declaration.final_hand, *declaration.final_skat)) != original):
+        raise ValueError("EPISODE_CARD_PARTITION_MISMATCH")
+    if len(play.plays) != 30 or len(play.trick_winners) != 10:
+        raise ValueError("EPISODE_INCOMPLETE_PLAY")
+    played_cards = tuple(card for _, card in play.plays)
+    if len(set(played_cards)) != 30 or set(played_cards) != set(DECK) - set(declaration.final_skat):
+        raise ValueError("EPISODE_PLAYED_CARD_SET_MISMATCH")
+    game_type = game_type_from_contract(play.contract)
+    hands = [list(hand) for hand in deal.hands]
+    hands[play.declarer] = list(declaration.final_hand)
+    current: list[tuple[int, str]] = []
+    for actor, card in play.plays:
+        if actor not in (0, 1, 2):
+            raise ValueError("EPISODE_BAD_PLAY_ACTOR")
+        if card not in legal_cards(hands[actor], current, game_type):
+            raise ValueError("EPISODE_ILLEGAL_OR_UNOWNED_PLAY")
+        hands[actor].remove(card)
+        current.append((actor, card))
+        if len(current) == 3:
+            current = []
+    if any(hands):
+        raise ValueError("EPISODE_HAND_NOT_EXHAUSTED")
+    replay = replay_tricks(
+        play.plays, game_type=game_type,
+        declarer=play.declarer,
+    )
+    winners = tuple(trick["winner"] for trick in replay["completed_tricks"])
+    skat_points = sum(card_points(c) for c in declaration.final_skat)
+    if (winners != play.trick_winners
+            or replay["declarer_trick_points"] != play.declarer_trick_points
+            or replay["defender_trick_points"] != play.defender_trick_points
+            or skat_points != play.skat_points
+            or play.declarer_final_points != play.declarer_trick_points + skat_points
+            or play.declarer_final_points + play.defender_trick_points != 120):
+        raise ValueError("EPISODE_REPLAY_OR_POINT_MISMATCH")
+    return score_basic_game(
+        contract=play.contract, winning_bid=declaration.winning_bid,
+        declarer_cards=(*declaration.final_hand, *declaration.final_skat),
+        declarer_points=play.declarer_final_points,
+        declarer_tricks=sum(w == play.declarer for w in winners),
+    )

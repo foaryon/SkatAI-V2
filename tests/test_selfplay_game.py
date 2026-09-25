@@ -7,6 +7,7 @@ from skatai.game.rules import card_points
 from skatai.selfplay.cardplay import RandomLegalPolicy, make_deal, run_cardplay
 from skatai.selfplay.declaration import run_declaration
 from skatai.selfplay.game import run_game
+from skatai.selfplay.scoring import score_basic_episode
 
 
 class BidPolicy:
@@ -79,6 +80,20 @@ def test_auction_declaration_and_legal_cardplay(seed, pickup):
     assert result.cardplay.declarer_final_points + result.cardplay.defender_trick_points == 120
     assert result.bidding.winning_bid == 18
     assert result.cardplay.skat_points == sum(card_points(c) for c in result.declaration.final_skat)
+    scored = score_basic_episode(result)
+    assert scored.signed_game_value != 0
+    assert scored.won == (scored.signed_game_value > 0)
+    with pytest.raises(ValueError, match="EPISODE_REPLAY_OR_POINT_MISMATCH"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, declarer_final_points=0),
+        ))
+    swapped = list(result.cardplay.plays)
+    swapped[0] = (swapped[0][0], result.cardplay.plays[1][1])
+    swapped[1] = (swapped[1][0], result.cardplay.plays[0][1])
+    with pytest.raises(ValueError, match="EPISODE_ILLEGAL_OR_UNOWNED_PLAY"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, plays=tuple(swapped)),
+        ))
 
 
 def test_all_pass_skips_declaration_and_play():
@@ -91,6 +106,8 @@ def test_all_pass_skips_declaration_and_play():
         legal_contracts=("G",),
     )
     assert result.bidding.all_pass and result.declaration is result.cardplay is None
+    with pytest.raises(ValueError, match="NO_PLAYED_GAME_TO_SCORE"):
+        score_basic_episode(result)
 
 
 def test_invalid_discard_contract_partition_and_deal_identity_fail_closed():
