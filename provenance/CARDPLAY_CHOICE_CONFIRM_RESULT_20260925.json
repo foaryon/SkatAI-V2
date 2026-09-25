@@ -1,0 +1,40 @@
+{
+  "agreement": {
+    "GRAND": {
+      "agree": 39,
+      "n": 72
+    },
+    "NULL": {
+      "agree": 32,
+      "n": 72
+    },
+    "SUIT": {
+      "agree": 32,
+      "n": 72
+    }
+  },
+  "balanced_events_by_family": 72,
+  "captured_at": "2026-09-25T11:35:42.332519Z",
+  "choice_only": true,
+  "classification": "CONCLUDE",
+  "decision": "REJECT_SUIT_SPECIFIC_AGREEMENT_HYPOTHESIS",
+  "inference": {
+    "failed_events": 0,
+    "failures": [],
+    "successful_events": 216
+  },
+  "next_gate": "Use controlled gameplay weakness or another independently verified diagnostic to select one causal cardplay treatment; do not optimize toward this failed Suit agreement hypothesis",
+  "pod_deletion_verified": true,
+  "pod_id": "3pl3vtf10q7h41",
+  "preregistered_rule": "Suit agreement at least 0.15 lower than both Grand and Null",
+  "remote_readback_verified_by_worker": true,
+  "result_object": "s3://skatai-v2/evidence/cardplay-diagnostic/cardplay-choice-confirm-20260925-v1/1c414ef96deeaf7b250378882a0e4f9b0180d9a0d412ede2062d4b4dbe781951.json",
+  "result_sha256": "1c414ef96deeaf7b250378882a0e4f9b0180d9a0d412ede2062d4b4dbe781951",
+  "rule_met": false,
+  "sample_sha256": "9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc",
+  "schema": "skatai.v2.cardplay-choice-confirm-result.v1",
+  "scientific_limit": "Historical action agreement is not deployment-valid playing strength; no cardplay candidate or promotion decision follows",
+  "selection_sha256": "ff493a527c67ea3c904316084c0f61faec414f17d77f8ed0765146996cd06782",
+  "source_commit": "c4744b26d277085e1e4b222e285f4da9a06d1713",
+  "task_id": "CARDPLAY_CHOICE_AGREEMENT_CONFIRM_216"
+}

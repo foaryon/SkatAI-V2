@@ -1,7 +1,7 @@
 {
   "captured_at": "2026-09-25T11:28:59.506059Z",
   "choices_only": true,
-  "classification": "CONTINUE",
+  "classification": "CONCLUDE",
   "diagnostic_sha256": "844d5e9be976173956c95b7083b062fa23506a171b3a69c461a9aa48f078f4e4",
   "dispatch_record": "/workspace/skatai-v2-runtime/isolated-science/cardplay-choice-confirm-20260925-v1/dispatch.json",
   "dispatched_at": "2026-09-25T11:29:19.810285Z",
@@ -18,7 +18,7 @@
   "next_on_success": "Choose one bounded Suit cardplay treatment only if confirmatory direction holds; test causally with paired B0 gameplay before any strength claim",
   "per_stratum": 12,
   "pod_id": "3pl3vtf10q7h41",
-  "pod_state": "CREATED_RUNNING",
+  "pod_state": "COMPLETE_AND_DELETED",
   "primary_descriptive_rule": "If Suit agreement is at least 0.15 lower than both Grand and Null on the 72 Suit / 72 Grand / 72 Null choice-only events, retain a Suit cardplay treatment hypothesis; otherwise treat pilot ranking as unstable. No strength decision follows.",
   "resource_bound": {
     "cpu_vcpu": 2,
@@ -27,7 +27,8 @@
     "memory_gb": 4,
     "unit_price_per_vcpu_hour_usd": 0.03
   },
-  "result": "PENDING",
+  "result": "REJECT_SUIT_SPECIFIC_AGREEMENT_HYPOTHESIS",
+  "result_evidence": "provenance/CARDPLAY_CHOICE_CONFIRM_RESULT_20260925.json",
   "runner_sha256": "d75c5a680e005fb246faf5477162b1958f9a2161ce1e83c9a59c186b6bd8d348",
   "sample_object": "s3://skatai-v2/datasets/research/cardplay-train-range-sample/9431aa49e13401fcf9efc33038321413b596b5ddd3845eee119b52cddc5075dc.jsonl",
   "sample_rows": 832,
