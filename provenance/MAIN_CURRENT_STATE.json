@@ -18,17 +18,19 @@
       "task_sha256": "434c455f09fd7ecab24a88f82c319954af0f7fad755c16a622b64f8081cc93ee"
     },
     {
+      "attempt": 2,
       "classification": "CONTINUE",
       "cost_bound_usd": 0.045,
       "max_wall_seconds": 2700,
-      "pinned_source_commit": "a0bfd7ea9aa04bf7517c2f23589c89589c66436e",
-      "pod_id": "vct3prorv5r7ha",
-      "runtime_root": "/workspace/skatai-v2-runtime/isolated-science/b0-host-smoke-20260925-v1",
+      "pinned_source_commit": "b990471d6504e9f6c7e52f630fd12c523e8ae317",
+      "pod_id": "2afma2v8oqd044",
+      "prior_failure_evidence": "provenance/B0_HOST_SMOKE_ATTEMPT_20260925.json",
+      "runtime_root": "/workspace/skatai-v2-runtime/isolated-science/b0-host-smoke-20260925-v2",
       "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE",
       "task_sha256": "2885d8ca7e71ea89c3d26ff5bfaa4f9885106f14ac0d05b94a19e11a3e076219"
     }
   ],
-  "captured_at": "2026-09-25T11:49:45.972047+00:00",
+  "captured_at": "2026-09-25T11:51:43.053606+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "decision": "OPERATIONAL_PASS_SCIENTIFICALLY_INCONCLUSIVE",
@@ -38,9 +40,9 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through a0bfd7e",
+    "remote_state": "pushed through b990471",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "a0bfd7ea9aa04bf7517c2f23589c89589c66436e",
+    "verified_head_before_this_manifest": "b990471d6504e9f6c7e52f630fd12c523e8ae317",
     "worktree_state": "clean before state update"
   },
   "nearest_gates": [
@@ -69,7 +71,7 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "Await terminal events for isolated PIMC campaign and B0 host release smoke, reconcile outputs/pods, apply frozen conclusion. R9 remains frozen under independent supervisor.",
+  "next_action": "Await terminal events for isolated 30-deal PIMC campaign and corrected four-phase host smoke. Reconcile result hashes and pod deletion; apply frozen campaign decision. R9 remains frozen under independent supervisor.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -81,7 +83,7 @@
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {
     "estimated_unit_price_usd_per_hour": 0.06,
-    "isolated_host_pod_id": "vct3prorv5r7ha",
+    "isolated_host_pod_id": "2afma2v8oqd044",
     "isolated_pod_id": "ncj3ula4s9r33d",
     "last_pod_deleted": false,
     "last_pod_id": "ncj3ula4s9r33d"
