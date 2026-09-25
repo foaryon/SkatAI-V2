@@ -1807,11 +1807,6 @@ class MirrorWriteBehind:
             )
         )
 
-    def enforce_backpressure(self) -> None:
-        while self.backpressure_required():
-            self.evidence._write_mirror_status(state="BACKPRESSURE")
-            self.evidence.mirror_batch(limit=self.policy.batch_games)
-
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
             return
@@ -1896,6 +1891,7 @@ class ExternalGateWorker:
         self._expected_new_table_id: str | None = None
         self._table_password: str | None = None
         self._transport_failure_streak = 0
+        self._mirror_pause_requested = False
 
     def _restore_active_game_authority(self) -> None:
         restored = self.evidence.restore_active_games(source_commit=self.source_commit)
@@ -2070,17 +2066,25 @@ class ExternalGateWorker:
         self._persist_active_game_authority()
         self._transport_failure_streak = 0
 
-        # Remote mirroring stays off the normal hot path. If the durable
-        # write-behind backlog breaches its bounded safety envelope, stop
-        # starting new games until verified remote persistence catches up.
-        self.mirror_writebehind.enforce_backpressure()
-
         target = status["next_per_arm_target"]
         if target is None:
             self.client.send_service_command(
                 command_leave(table.table_id, table.viewer_name)
             )
             return False
+
+        # Leave at the game boundary. Never perform remote I/O or wait for it
+        # on the ISS protocol thread. The destroy event confirms that this
+        # table can be retired before the worker pauses between sessions.
+        if self.mirror_writebehind.backpressure_required():
+            self._mirror_pause_requested = True
+            self.evidence._write_mirror_status(state="BACKPRESSURE")
+            self.client.send_service_command(
+                command_leave(table.table_id, table.viewer_name)
+            )
+            self.desired_stack = None
+            self._table_password = None
+            return True
 
         # Diagnostic/wrong-stack games never pin the campaign to that table.
         rows = self.evidence.scored_rows()
@@ -2150,6 +2154,18 @@ class ExternalGateWorker:
             f"ISS_TABLE_ERROR_DURING_ACTIVE_GAME:{table.table_id}:"
             f"{table.game_sequence}:{error_text}"
         )
+
+    def _on_destroy(self, destroyed_table_id: str) -> bool:
+        if self.table_id == destroyed_table_id:
+            self.table_id = None
+        if self._expected_new_table_id == destroyed_table_id:
+            self._expected_new_table_id = None
+        if self.desired_stack is None:
+            if self._mirror_pause_requested:
+                self._mirror_pause_requested = False
+                return True
+            self._create_next_table()
+        return False
 
     def _run_connected_session(
         self,
@@ -2231,13 +2247,8 @@ class ExternalGateWorker:
                     if not keep_running:
                         return self.campaign_status()
                 elif event.kind == "destroy":
-                    destroyed_table_id = str(event.fields["table_id"])
-                    if self.table_id == destroyed_table_id:
-                        self.table_id = None
-                    if self._expected_new_table_id == destroyed_table_id:
-                        self._expected_new_table_id = None
-                    if self.desired_stack is None:
-                        self._create_next_table()
+                    if self._on_destroy(str(event.fields["table_id"])):
+                        return {"mirror_paused": True}
         finally:
             keepalive_stop.set()
             if keepalive_thread is not None:
@@ -2283,6 +2294,13 @@ class ExternalGateWorker:
                     result = self._run_connected_session(
                         client_policy=client_policy
                     )
+                    if result is not None and result.get("mirror_paused"):
+                        # No game is active and the old table's destruction
+                        # was observed. The transfer thread alone drains the
+                        # queue; a storage outage cannot block protocol I/O.
+                        while self.mirror_writebehind.backpressure_required():
+                            time.sleep(self.mirror_policy.poll_interval_s)
+                        continue
                     if result is not None:
                         # A scientific gate is not complete until every queued
                         # game and the final current-state snapshot are remotely
