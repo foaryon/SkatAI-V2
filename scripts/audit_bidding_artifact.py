@@ -83,8 +83,16 @@ def audit_artifact(manifest_path: Path, root: Path, expected_manifest_sha256: st
                 if (observed_split != split
                         or (split != "external_bot_holdout" and expected_split != split)):
                     anomalies["split_mismatch_rows"] += 1
+                forehand_self_offer = (
+                    actor == 0
+                    and bidder == 0
+                    and answerer == 0
+                    and bid_index == 0
+                    and role == 0
+                )
                 if (actor not in (0, 1, 2) or bidder not in (0, 1, 2)
-                        or answerer not in (0, 1, 2) or bidder == answerer
+                        or answerer not in (0, 1, 2)
+                        or (bidder == answerer and not forehand_self_offer)
                         or role not in (0, 1)
                         or actor != (bidder if role == 0 else answerer)):
                     anomalies["actor_role_mismatch_rows"] += 1

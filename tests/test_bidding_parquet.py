@@ -93,3 +93,21 @@ def test_pinned_artifact_audit_counts_quarantine_and_detects_role_corruption(tmp
     assert changed["status"] == "REVIEW_REQUIRED"
     assert changed["anomalies"]["actor_role_mismatch_rows"] > 0
     assert changed["anomalies"]["feature_target_mismatch_rows"] == 4
+
+
+def test_parquet_audit_accepts_legal_forehand_self_offer_at_18(tmp_path):
+    game = _game()
+    game["declarer"] = 0
+    game["bid_level"] = 18
+    game["bidding_history"] = ["1", "p", "2", "p", "0", "18"]
+    src = tmp_path / "games.jsonl"
+    src.write_text(json.dumps(game) + "\n")
+    root = tmp_path / "out"
+    manifest = materialize_jsonl(src, root, rows_per_shard=4)
+    report = audit_artifact(
+        root / "manifest.json",
+        root,
+        manifest["manifest_sha256"],
+    )
+    assert report["status"] == "PASS"
+    assert report["anomalies"]["actor_role_mismatch_rows"] == 0

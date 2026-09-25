@@ -80,6 +80,32 @@ def test_bidding_feature_encoder_rejects_actor_role_mismatch():
         encode_decision({**row, "answerer": row["bidder"]})
 
 
+
+def test_bidding_feature_encoder_accepts_legal_forehand_self_offer_at_18():
+    from skatai.data.bidding_features import encode_decision
+
+    game = _game()
+    game["declarer"] = 0
+    game["bid_level"] = 18
+    game["bidding_history"] = ["1", "p", "2", "p", "0", "18"]
+    row = list(iter_bidding_decisions(game))[-1]
+
+    assert row["actor"] == row["bidder"] == row["answerer"] == 0
+    assert row["bid_index"] == 0
+    assert row["decision_role"] == "BIDDER"
+    encoded = encode_decision(row)
+    assert encoded.actor == encoded.bidder == encoded.answerer == 0
+    assert encoded.bid_index == 0
+    assert encoded.decision_role == 0
+    assert encoded.target_continue == 1
+
+    passed = encode_decision({**row, "target": "PASS"})
+    assert passed.actor == passed.bidder == passed.answerer == 0
+    assert passed.bid_index == 0
+    assert passed.decision_role == 0
+    assert passed.target_continue == 0
+
+
 def test_bidding_state_exposes_only_public_duel_state():
     row = list(iter_bidding_decisions(_game()))[2]
     assert row["actor"] == 2
