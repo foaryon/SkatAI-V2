@@ -1,11 +1,11 @@
 {
   "schema": "skatai.v2.main-current-state.v1",
-  "captured_at": "2026-09-25T11:00:07Z",
+  "captured_at": "2026-09-25T11:02:44Z",
   "git": {
     "repository": "foaryon/SkatAI-V2",
     "branch": "main",
-    "verified_head_before_this_manifest": "fcba77c",
-    "remote_state": "pushed",
+    "verified_head_before_this_manifest": "8ee2a1cbdbe3da7ebec1c5f1c6584ee512012b8a",
+    "remote_state": "verified origin/main at parent; push pending for this change",
     "worktree_state": "clean"
   },
   "active_work": [
@@ -18,12 +18,12 @@
     }
   ],
   "completed_independent_gate": {
-    "task_id": "CARDPLAY_CAUSAL_GAMEPLAY_PRIMITIVE",
+    "task_id": "CARDPLAY_CLUSTERED_HAND_CAMPAIGN_STAGE",
     "classification": "CONCLUDE",
-    "evidence": "provenance/CARDPLAY_FIXED_POSITION_PAIRED_STAGE_20260925.json",
-    "source_commit": "fcba77c",
-    "verification": "69 focused tests passed",
-    "scientific_status": "capability staged; no B0 or candidate strength estimate"
+    "evidence": "provenance/CARDPLAY_CLUSTERED_HAND_CAMPAIGN_STAGE_20260925.json",
+    "source_parent_commit": "8ee2a1cbdbe3da7ebec1c5f1c6584ee512012b8a",
+    "verification": "61 focused tests passed",
+    "scientific_status": "position-set and clustered summary staged; no strength estimate"
   },
   "nearest_gates": [
     {
@@ -44,5 +44,5 @@
     }
   ],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
-  "next_action": "On a clean R9 gate event, reconcile and decide B1, then stage separate measured 1, 2, 4 table epochs. Independently resume cardplay/data work when exact input and isolated compute become available."
+  "next_action": "Continue independent cardplay/data work with exact qualified inputs and isolated inference; R9 remains supervised through its preregistered gate, then run measured 1->2->4 throughput epochs."
 }
