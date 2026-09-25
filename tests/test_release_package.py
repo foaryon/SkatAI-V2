@@ -13,6 +13,16 @@ from skatai.artifacts.release import (
     materialize_release_package,
     validate_release_package,
 )
+from skatai.artifacts.b0_release import V3_SOURCE_COMMIT, release_id_for_source_commit
+
+
+def test_b0_release_id_changes_with_source_and_preserves_frozen_v3_identity():
+    assert release_id_for_source_commit(V3_SOURCE_COMMIT) == "V2-B0-package-v3"
+    current = "0e390cc7009a44eeea282bf0ed4f66ebc0fc3c94"
+    assert release_id_for_source_commit(current) == f"V2-B0-package-v4-{current}"
+    assert release_id_for_source_commit("a" * 40) != release_id_for_source_commit("b" * 40)
+    with pytest.raises(ReleasePackageError, match="BAD_V2_SOURCE_COMMIT"):
+        release_id_for_source_commit("1234")
 
 
 def _release():

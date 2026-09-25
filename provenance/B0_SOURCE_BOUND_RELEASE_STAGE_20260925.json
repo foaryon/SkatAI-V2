@@ -1,0 +1,42 @@
+{
+  "schema": "skatai.v2.b0-source-bound-release-stage.v1",
+  "captured_at": "2026-09-25T12:11:29Z",
+  "task_id": "B0_SOURCE_BOUND_RELEASE_STAGE",
+  "classification": "CONCLUDE_SOURCE_GATE",
+  "current_evidence": {
+    "parent_commit": "0e390cc7009a44eeea282bf0ed4f66ebc0fc3c94",
+    "prior_staged_release_id": "V2-B0-package-v3",
+    "prior_staged_source_commit": "f56a1003075e9043924eac39eed83d37995647bf",
+    "prior_staged_package_sha256": "0497d17c89f0c5f28fc5517b295fd7acf2320cfe8e3023ed9cbf11d2d7a45694"
+  },
+  "goal_or_hypothesis": "A new package with the pickup host operation must have a distinct release ID bound to its exact V2 source commit.",
+  "nearest_gate": "Build and smoke a reproducible current-source B0 host package on isolated compute",
+  "smallest_intervention": "Keep v3 only for its original source; assign later builds v4 plus the full source commit and check the pickup plan in the package host smoke",
+  "invariants_to_preserve": [
+    "Frozen B0 upstream source and nine model hashes unchanged",
+    "Prior staged v3 package identity unchanged",
+    "R9 worker lifetime and frozen source unchanged",
+    "No accepted-release claim from a package smoke"
+  ],
+  "input_identities": {
+    "builder_sha256": "eec63116dd14432e0a8c1ded81570af8e0830139c30e7d91afef01fa144788b6",
+    "smoke_script_sha256": "18c0442ffebe16fde0f92849610f8d759faa57b9985c9ac59d9aa4905b2521de",
+    "upstream_archive_sha256": "40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d"
+  },
+  "resource_bound": "Focused CPU unit tests only on MAIN; package build and B0 inference reserved for isolated compute while R9 is active",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_release_package.py tests/test_release_loader.py tests/test_host_service.py",
+    "passed": 34,
+    "failed": 0,
+    "python_compile": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "result": "SOURCE_BOUND_ID_AND_PICKUP_SMOKE_STAGED",
+  "limits": [
+    "New package has not been built or remote-published",
+    "Pickup smoke has not yet run against an embedded current-source release",
+    "JSkat Java adapter and Windows product integration remain pending"
+  ],
+  "next_on_success": "Launch one bounded isolated package smoke from exact Git commit, publish hash-verified evidence, then qualify Java adapter callbacks",
+  "next_on_failure_or_inconclusive": "Retain v3 staged artifact and correct only the source-bound package path"
+}

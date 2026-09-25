@@ -17,6 +17,17 @@ from skatai.artifacts.release import (
     sha256_file,
 )
 
+V3_SOURCE_COMMIT = "f56a1003075e9043924eac39eed83d37995647bf"
+
+
+def release_id_for_source_commit(commit: str) -> str:
+    """Never reuse the staged v3 identity for a different source archive."""
+    if len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
+        raise ReleasePackageError("BAD_V2_SOURCE_COMMIT")
+    if commit == V3_SOURCE_COMMIT:
+        return "V2-B0-package-v3"
+    return f"V2-B0-package-v4-{commit}"
+
 
 def _git(repo: Path, *args: str) -> str:
     return subprocess.check_output(
@@ -71,8 +82,7 @@ def build_b0_release(
                 raise ReleasePackageError(f"B0_EMBEDDED_MODEL_HASH_MISMATCH:{name}")
 
     commit = _git(repo, "rev-parse", "HEAD")
-    if len(commit) != 40:
-        raise ReleasePackageError("BAD_V2_SOURCE_COMMIT")
+    release_id = release_id_for_source_commit(commit)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix="b0-release-build-", dir=output.parent) as scratch:
@@ -82,7 +92,7 @@ def build_b0_release(
             check=True,
         )
         metadata = {
-            "release_id": "V2-B0-package-v3",
+            "release_id": release_id,
             "release_status": "BASELINE_PACKAGE_STAGED",
             "source_commit": commit,
             "parent_lineage": {
@@ -115,6 +125,8 @@ def build_b0_release(
                 "host_service_module": "skatai.runtime.host_service",
                 "host_request_schema": "skatai.v2.host-request.v1",
                 "host_response_schema": "skatai.v2.host-response.v1",
+                "host_pickup_plan_request_schema": "skatai.v2.host-pickup-plan-request.v1",
+                "host_pickup_plan_response_schema": "skatai.v2.host-pickup-plan-response.v1",
             },
             "acceptance_evidence": [
                 {"kind": "baseline_reproduction", "sha256": sha256_file(reproduction_path)},
