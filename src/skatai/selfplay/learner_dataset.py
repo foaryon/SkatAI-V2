@@ -116,6 +116,15 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
                 or not row["decisions"] or not isinstance(row["signed_basic_value"], int)
                 or row["signed_basic_value"] == 0):
             raise ValueError("LEARNER_RECORD_INVALID")
+        phases = [decision["phase"] for decision in row["decisions"]]
+        declarations = [decision for decision in row["decisions"] if decision["phase"] == "DECLARATION"]
+        pickup = bool(declarations and declarations[0]["action"] == "PICKUP")
+        terminal_phases = (["DECLARATION", "DISCARD", "DECLARATION"] if pickup else ["DECLARATION"])
+        if (phases != ["BID"] * phases.count("BID") + terminal_phases + ["CARDPLAY"] * 10
+                or not declarations or declarations[-1]["action"] != row["contract"]
+                or any(d["observation"]["picked_up_skat"] != (pickup and i == 1)
+                       for i, d in enumerate(declarations))):
+            raise ValueError("LEARNER_COMPLETED_DECLARER_SEQUENCE_REQUIRED")
         previous = -1
         for decision in row["decisions"]:
             if not isinstance(decision["ordinal"], int) or decision["ordinal"] <= previous:

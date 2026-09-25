@@ -53,6 +53,13 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     assert len(load_bounded_learner_pilot(
         prefix.with_suffix(".learner-manifest.json"), learner_path,
     )) == 2
+    truncated = json.loads(json.dumps(learner_rows))
+    truncated[0]["decisions"].pop()
+    learner_path.write_text("".join(json.dumps(x) + "\n" for x in truncated))
+    learner_manifest["learner_sha256"] = hashlib.sha256(learner_path.read_bytes()).hexdigest()
+    prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
+    with pytest.raises(ValueError, match="LEARNER_COMPLETED_DECLARER_SEQUENCE_REQUIRED"):
+        load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
     altered = json.loads(json.dumps(learner_rows))
     bid = next(d for row in altered for d in row["decisions"] if d["phase"] == "BID")
     bid["native_bid_action"] = "y" if bid["native_bid_action"] != "y" else "p"
