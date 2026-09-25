@@ -10,6 +10,7 @@ import sys
 from typing import Any, Mapping
 
 from skatai.artifacts.release import validate_release_package
+from skatai.game.rules import game_type_from_contract, legal_cards as rule_legal_cards
 from skatai.runtime.decision import (
     DecisionRequest,
     DecisionType,
@@ -61,6 +62,16 @@ def handle_request(ai: SkatAI, release_id: str, payload: Mapping[str, Any]) -> d
         source_context=payload.get("source_context"),
         legal_actions=payload.get("legal_actions"),
     )
+    if dtype is DecisionType.PLAY_CARD:
+        rule_set = set(rule_legal_cards(
+            observation.hand,
+            observation.current_trick,
+            game_type_from_contract(observation.contract),
+        ))
+        if set(observation.legal_cards) != rule_set:
+            raise SkatAIInterfaceError("HOST_LEGAL_CARDS_RULE_MISMATCH")
+        if set(request.legal_actions) != rule_set:
+            raise SkatAIInterfaceError("HOST_LEGAL_ACTIONS_RULE_MISMATCH")
     result = decide(ai, request, release_id=release_id)
     return {"schema": RESPONSE_SCHEMA, "ok": True, "result": asdict(result)}
 

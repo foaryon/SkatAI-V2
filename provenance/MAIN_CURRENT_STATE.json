@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:13:15Z",
+  "captured_at": "2026-09-25T12:16:31Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -21,6 +21,12 @@
     "classification": "CONCLUDE_STAGED_SOURCE",
     "evidence": "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
     "host_adapter_status": "PENDING"
+  },
+  "staged_host_legality_gate": {
+    "task_id": "HOST_CARDPLAY_EXACT_LEGAL_SET",
+    "classification": "CONCLUDE_SOURCE_GATE",
+    "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
+    "jskat_runtime_parity": "PENDING"
   },
   "staged_release_gate": {
     "task_id": "B0_SOURCE_BOUND_RELEASE_STAGE",

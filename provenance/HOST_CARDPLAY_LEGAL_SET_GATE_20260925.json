@@ -1,0 +1,37 @@
+{
+  "schema": "skatai.v2.host-cardplay-legal-set-gate.v1",
+  "captured_at": "2026-09-25T12:16:31Z",
+  "task_id": "HOST_CARDPLAY_EXACT_LEGAL_SET",
+  "classification": "CONCLUDE_SOURCE_GATE",
+  "current_evidence": {
+    "source_parent_commit": "1039b6da7e4cdc2900fca6b6e0e79e4be4acf1e5",
+    "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json"
+  },
+  "goal_or_hypothesis": "Host cardplay must reject incomplete legal card lists and action restrictions that disagree with independent V2 follow-suit rules.",
+  "nearest_gate": "Headless JSkat legal action parity and safe host release boundary",
+  "smallest_intervention": "At the existing JSONL host boundary, compare both observation legal_cards and request legal_actions as sets with V2 rule_legal_cards before inference",
+  "invariants_to_preserve": [
+    "ISS bridge and frozen R9 runtime unchanged",
+    "B0 model and policy unchanged",
+    "Host may use any ordering of the same legal cards",
+    "Unsupported JSkat variants remain outside this host service"
+  ],
+  "input_identities": {
+    "host_service_sha256": "6001d73ee42b44acb6de01db948e7c970d16f23743baf2454dadd3f970fa0bc9",
+    "test_file_sha256": "a4c43ac4e06718286aa1db6bc19847f0907842760327dfa5b8de1d4da02347d4"
+  },
+  "resource_bound": "Focused CPU tests only on MAIN",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_host_service.py tests/test_product_interface.py tests/test_release_loader.py tests/test_game_rules.py",
+    "passed": 36,
+    "failed": 0,
+    "git_diff_check": "PASS"
+  },
+  "result": "HOST_EXACT_LEGAL_SET_GUARD_PASS",
+  "limits": [
+    "No live Java JSkat legality parity run occurred",
+    "Current B0 staged v3 package embeds older source; updated guard requires a new source-bound staged package"
+  ],
+  "next_on_success": "Include the guard in the isolated current-source package smoke; compare JSkat runtime legal sets during headless callback tests",
+  "next_on_failure_or_inconclusive": "Retain fail-closed rejection and correct host observation construction"
+}

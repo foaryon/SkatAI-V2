@@ -38,7 +38,7 @@ from tests.test_product_interface import HAND10, HAND12, _ai
             "PLAY_CARD",
             {"hand": HAND10, "seat": 1, "declarer": 1, "contract": "G",
              "winning_bid": 18, "current_trick": (), "played_cards": (),
-             "legal_cards": ("C7", "C8")},
+             "legal_cards": HAND10},
             "C7",
         ),
     ],
@@ -73,11 +73,51 @@ def test_host_rejects_caller_actions_outside_observation():
         "observation": {
             "hand": HAND10, "seat": 1, "declarer": 1, "contract": "G",
             "winning_bid": 18, "current_trick": (), "played_cards": (),
-            "legal_cards": ("C7", "C8"),
+            "legal_cards": HAND10,
         },
         "legal_actions": ("C7", "H7"),
     }
     with pytest.raises(SkatAIInterfaceError, match="LEGAL_ACTION_OUTSIDE_OBSERVATION"):
+        handle_request(_ai(), "release-1", payload)
+
+
+def test_host_rejects_incomplete_rule_legal_set_before_inference():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-1", "sequence_no": 1,
+        "decision_type": "PLAY_CARD",
+        "observation": {
+            "hand": HAND10, "seat": 1, "declarer": 1, "contract": "G",
+            "winning_bid": 18, "current_trick": (), "played_cards": (),
+            "legal_cards": ("C7", "C8"),
+        },
+    }
+    with pytest.raises(SkatAIInterfaceError, match="HOST_LEGAL_CARDS_RULE_MISMATCH"):
+        handle_request(_ai(), "release-1", payload)
+    payload["observation"]["legal_cards"] = HAND10
+    payload["legal_actions"] = ("C7", "C8")
+    with pytest.raises(SkatAIInterfaceError, match="HOST_LEGAL_ACTIONS_RULE_MISMATCH"):
+        handle_request(_ai(), "release-1", payload)
+
+
+def test_host_cardplay_compares_follow_suit_set_with_independent_rules():
+    hand = ("C7", "C8", "S7", "S8", "S9", "ST", "SJ", "SA", "H7", "H8")
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-2", "sequence_no": 4,
+        "decision_type": "PLAY_CARD",
+        "observation": {
+            "hand": hand, "seat": 1, "declarer": 0, "contract": "G",
+            "winning_bid": 18, "current_trick": ((0, "D7"),),
+            "played_cards": ((0, "D7"),),
+            "legal_cards": hand,
+        },
+    }
+    assert handle_request(_ai(), "release-1", payload)["result"]["action"] == "C7"
+    payload["observation"]["current_trick"] = ((0, "C9"),)
+    payload["observation"]["played_cards"] = ((0, "C9"),)
+    payload["observation"]["legal_cards"] = ("C7", "C8")
+    assert handle_request(_ai(), "release-1", payload)["result"]["action"] == "C7"
+    payload["observation"]["legal_cards"] = ("C7",)
+    with pytest.raises(SkatAIInterfaceError, match="HOST_LEGAL_CARDS_RULE_MISMATCH"):
         handle_request(_ai(), "release-1", payload)
 
 
