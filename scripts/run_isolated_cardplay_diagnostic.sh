@@ -44,8 +44,10 @@ status STARTING
 [ "${SKATAI_NODE_ROLE:-}" = ISOLATED_SCIENCE ] || fail ROLE_NOT_ISOLATED_SCIENCE
 [ -n "${SKATAI_DIAGNOSTIC_SOURCE_COMMIT:-}" ] || fail SOURCE_COMMIT_ENV_MISSING
 [ -d "$ROOT" ] || fail PINNED_WORKTREE_MISSING
-[ "$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)" = "$SKATAI_DIAGNOSTIC_SOURCE_COMMIT" ] || fail SOURCE_COMMIT_MISMATCH
-[ -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ] || fail PINNED_WORKTREE_DIRTY
+ACTUAL_SOURCE="$(git -c "safe.directory=$ROOT" -C "$ROOT" rev-parse HEAD 2>"$RUNTIME/git-preflight.log" || true)"
+[ "$ACTUAL_SOURCE" = "$SKATAI_DIAGNOSTIC_SOURCE_COMMIT" ] || fail "SOURCE_COMMIT_MISMATCH:actual=$ACTUAL_SOURCE:expected=$SKATAI_DIAGNOSTIC_SOURCE_COMMIT"
+GIT_STATUS="$(git -c "safe.directory=$ROOT" -C "$ROOT" status --porcelain 2>>"$RUNTIME/git-preflight.log" || true)"
+[ -z "$GIT_STATUS" ] || fail PINNED_WORKTREE_DIRTY
 [ -n "${AWS_ACCESS_KEY_ID:-}" ] || fail S3_ACCESS_KEY_ENV_MISSING
 [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] || fail S3_SECRET_KEY_ENV_MISSING
 status PREFLIGHT_OK
