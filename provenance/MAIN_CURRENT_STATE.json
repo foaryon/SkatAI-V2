@@ -1,0 +1,48 @@
+{
+  "schema": "skatai.v2.main-current-state.v1",
+  "captured_at": "2026-09-25T11:00:07Z",
+  "git": {
+    "repository": "foaryon/SkatAI-V2",
+    "branch": "main",
+    "verified_head_before_this_manifest": "fcba77c",
+    "remote_state": "pushed",
+    "worktree_state": "clean"
+  },
+  "active_work": [
+    {
+      "task_id": "B1_EXTERNAL_ISS_R9",
+      "classification": "CONTINUE",
+      "pinned_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+      "owner": "independent fail-closed supervisor",
+      "main_rule": "Do not poll healthy games, open strength look before 300 scored games per arm, or change frozen runtime"
+    }
+  ],
+  "completed_independent_gate": {
+    "task_id": "CARDPLAY_CAUSAL_GAMEPLAY_PRIMITIVE",
+    "classification": "CONCLUDE",
+    "evidence": "provenance/CARDPLAY_FIXED_POSITION_PAIRED_STAGE_20260925.json",
+    "source_commit": "fcba77c",
+    "verification": "69 focused tests passed",
+    "scientific_status": "capability staged; no B0 or candidate strength estimate"
+  },
+  "nearest_gates": [
+    {
+      "gate": "B1 R9 preregistered external decision",
+      "dependency": "Independent R9 supervisor reaches clean 300 scored games per arm boundary; reconcile outcomes before any cutover"
+    },
+    {
+      "gate": "Weakness-driven cardplay challenger protocol and paired B0 gameplay",
+      "dependency": "Larger split-safe cardplay weakness diagnostic and isolated inference compute; existing 18-event historical agreement smoke does not select a treatment or establish strength"
+    },
+    {
+      "gate": "V5 exploratory train-partition artifact check",
+      "dependency": "Exact V5 learner and split objects plus usable object-store access; current process has no AWS credentials"
+    },
+    {
+      "gate": "Current-source release package and actual Skat host integration",
+      "dependency": "Measured storage headroom, isolated build compute, and actual user host software"
+    }
+  ],
+  "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
+  "next_action": "On a clean R9 gate event, reconcile and decide B1, then stage separate measured 1, 2, 4 table epochs. Independently resume cardplay/data work when exact input and isolated compute become available."
+}
