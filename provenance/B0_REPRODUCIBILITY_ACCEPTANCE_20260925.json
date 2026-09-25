@@ -2,7 +2,7 @@
   "schema": "skatai.v2.b0-reproducibility-acceptance.v1",
   "captured_at": "2026-09-25T22:16:30Z",
   "task_id": "B0_REPRODUCIBILITY_ACCEPTANCE",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Does the existing V2 evidence establish the founding/work-prompt B0 requirement as an immutable, reproducible original SkatZero baseline without relying on V1?",
   "evidence": {
     "baseline": {
@@ -25,6 +25,6 @@
     "B0_ENVIRONMENT.lock.txt pins the reproduced runtime package set.",
     "This gate is evidence reconciliation only; it does not mutate B0, train a challenger, alter R9, or make a strength/promotion claim."
   ],
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": "The controller-bound SHA-256 identities for baseline dc83e73ff77a04bedbd12d64d05647997e2fc7b292860c4a3e08abd52d3f03a1, reproduction d42543e6bc3ded16dfb7c1fde01406436890434625a5ed77b9875f25a75bd2ce, and environment lock e9d27185f17e907b25d600b3aa1f02551aa9100eee306058d71ec3b8c9579d5c were reconciled with their recorded contents. Baseline provenance records upstream commit/tree/archive, dependency manifest, implementation and license hashes, and nine model hashes with frozen status. Reproduction records nine agents loaded, API smoke PASS, cardplay benchmark PASS and determinism recheck PASS under the pinned Python/NumPy/Torch runtime.",
+  "decision": "ACCEPT the immutable, identified original SkatZero V2-B0 control and its recorded deterministic cardplay runtime reproduction. This is an identity/reproducibility acceptance, not evidence of relative strength, full gameplay-phase coverage, deployment validity or promotion. No B0, training, R9, deployment or promotion mutation was made."
 }
