@@ -98,6 +98,16 @@ def test_private_seed_pilot_separates_replay_from_learner(tmp_path):
     prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
     with pytest.raises(ValueError, match="LEARNER_BID_NATIVE_ACTION_MISMATCH"):
         load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
+    altered_role = json.loads(json.dumps(learner_rows))
+    bid = next(d for row in altered_role for d in row["decisions"] if d["phase"] == "BID")
+    bid["observation"]["decision_role"] = (
+        "ANSWERER" if bid["observation"]["decision_role"] == "BIDDER" else "BIDDER"
+    )
+    learner_path.write_text("".join(json.dumps(x) + "\n" for x in altered_role))
+    learner_manifest["learner_sha256"] = hashlib.sha256(learner_path.read_bytes()).hexdigest()
+    prefix.with_suffix(".learner-manifest.json").write_text(json.dumps(learner_manifest))
+    with pytest.raises(ValueError, match="LEARNER_BID_INVALID"):
+        load_bounded_learner_pilot(prefix.with_suffix(".learner-manifest.json"), learner_path)
     altered_points = json.loads(json.dumps(learner_rows))
     cardplay = next(d for row in altered_points for d in row["decisions"] if d["phase"] == "CARDPLAY")
     cardplay["observation"]["points_self"] += 1

@@ -49,6 +49,11 @@ def _validate_decision(item: dict, seat: int, contract: str, threshold: float) -
         )
         action = float(item["action"])
         if (expected.actor != seat or expected.bid_index >= len(BID_VALUES)
+                or expected.bidder == expected.answerer
+                or expected.actor != (
+                    expected.bidder if expected.decision_role == "BIDDER"
+                    else expected.answerer
+                )
                 or not 0 <= action <= 1):
             raise ValueError("LEARNER_BID_INVALID")
         native = (

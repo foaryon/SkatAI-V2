@@ -8,17 +8,17 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:34:21Z",
+  "captured_at": "2026-09-25T12:35:12Z",
   "completed_independent_gate": {
-    "classification": "PASS_SOURCE_ONLY",
-    "evidence": "provenance/HOST_REQUEST_INTEGRITY_GATE_20260925.json",
-    "task_id": "HOST_REQUEST_INTEGRITY_GATE"
+    "classification": "PASS_D1_EXPLORATORY_ONLY",
+    "evidence": "provenance/V5_LEARNER_AUCTION_ROLE_GATE_20260925.json",
+    "task_id": "V5_LEARNER_AUCTION_ROLE_GATE"
   },
   "git": {
     "branch": "main",
-    "remote_state": "f3e7887 on origin/main before host integrity gate commit; verify current Git at resume",
+    "remote_state": "7880f6e pushed to origin/main before V5 reader gate commit; verify current Git at resume",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "f3e7887",
+    "verified_head_before_this_manifest": "7880f6e",
     "worktree_state": "verify with Git at resume"
   },
   "independent_science_diagnostic": {
@@ -57,7 +57,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "R9 remains owned by its independent supervisor. Continue independent source/data/product gates; source-bound host package smoke needs isolated authorized compute, and actual JSkat/host integration needs Java and authoritative host source.",
+  "next_action": "Protect R9 under independent supervisor. At clean 300-per-arm boundary reconcile and decide, then stage separate measured 1->2->4 throughput epochs. In parallel pursue split-safe cardplay research or isolated source-bound host smoke once compute access is available; actual user-host integration needs its source.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -122,5 +122,10 @@
     "evidence": "provenance/B0_SOURCE_BOUND_RELEASE_STAGE_20260925.json",
     "package_smoke_status": "PENDING_ISOLATED_COMPUTE_LAUNCH_ACCESS",
     "task_id": "B0_SOURCE_BOUND_RELEASE_STAGE"
+  },
+  "v5_learner_auction_role_gate": {
+    "classification": "PASS_D1_EXPLORATORY_ONLY",
+    "evidence": "provenance/V5_LEARNER_AUCTION_ROLE_GATE_20260925.json",
+    "verified_train_rows": 72
   }
 }

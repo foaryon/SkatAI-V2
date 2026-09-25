@@ -1,0 +1,36 @@
+{
+  "schema": "skatai.v2.v5-learner-auction-role-gate.v1",
+  "captured_at": "2026-09-25T12:35:12Z",
+  "task_id": "V5_LEARNER_AUCTION_ROLE_GATE",
+  "classification": "PASS_D1_EXPLORATORY_ONLY",
+  "current_evidence": {
+    "prior_verification": "provenance/MAIN_RESUME_RECOVERY_V5_20260925.json",
+    "parent_source_commit": "7880f6e",
+    "learner_sha256": "d84fa232bda8ef1616aec155d02df0890e36ae55b82ac5dfc8d12f46220077d9",
+    "split_sha256": "3f36699118f9d577dbc8e6aea6c87cbe05bf19089a2c2994d082ff67900c9871"
+  },
+  "goal_or_hypothesis": "A learner artifact must not silently admit auction decisions whose acting seat disagrees with bidder/answerer role.",
+  "nearest_gate": "Leakage-safe, semantically valid learner data for bounded cardplay research",
+  "smallest_intervention": "Reject impossible bidder/answerer identities in the bounded learner reader; tamper one role in a focused pilot test.",
+  "invariants_to_preserve": [
+    "Frozen split and artifact hashes unchanged",
+    "Train-only reader returns train partition only",
+    "D1 pilot remains exploratory; no training or promotion approval",
+    "No R9 worker or model inference affected"
+  ],
+  "input_identities": {
+    "reader_sha256": "1b6c367cdd195cb1f6db337f3a7b006a1840ee228a5b5e99940741c98bde7c5d",
+    "test_sha256": "9631c808c7dcbc173cafcb27d3039f92761b630ee9cd4cb2ae1a6c1404d8b157"
+  },
+  "resource_bound": "Two-game synthetic pilot test and one 96-row local verification; no large staging or training",
+  "success_criteria": "Tampered role rejected; exact manifest-listed learner and split still yield 72 train rows.",
+  "failure_or_stop_criteria": "Pilot or exact artifact fails semantic validation; quarantine affected claim and inspect producer.",
+  "verification": {
+    "focused_tests": "5 passed in 1.10s",
+    "exact_train_rows": 72,
+    "git_diff_check": "PASS"
+  },
+  "limits": "This does not establish D3 or D4 trust for the private-seed pilot and does not authorize a strength claim.",
+  "next_on_success": "Continue bounded cardplay research using independently qualified, split-safe data on isolated compute when available.",
+  "next_on_failure_or_inconclusive": "Preserve the pilot and correct producer/reader semantics before further use."
+}
