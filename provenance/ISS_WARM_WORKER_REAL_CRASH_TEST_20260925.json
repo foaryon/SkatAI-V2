@@ -1,0 +1,10 @@
+{
+  "elapsed_s": 1.457,
+  "fault": "SIGKILL warm worker before request",
+  "first_pid": 33228,
+  "replacement_happened": true,
+  "replacement_pid": 33299,
+  "result_action": "DJ",
+  "schema": "skatai.v2.iss-warm-worker-real-crash-test.v1",
+  "status": "PASS"
+}

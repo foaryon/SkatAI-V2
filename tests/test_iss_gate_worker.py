@@ -2068,3 +2068,109 @@ def test_multitable_concurrent_starts_reserve_different_arms(tmp_path):
         ("T1", 1, "B0"),
         ("T2", 2, "B1"),
     ]
+
+
+def test_multitable_backpressure_finishes_active_game_then_retires_idle_tables(tmp_path):
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import (
+        ActiveGame,
+        GameAssignment,
+        MultiTableExternalGateWorker,
+        TableSlot,
+    )
+
+    events = []
+    retire = []
+
+    class Evidence:
+        def scored_rows(self):
+            return []
+        def append_game(self, **kwargs):
+            events.append(("closed", kwargs["table_id"], kwargs["game_sequence"]))
+            return {"result": {"game_id": "g1"}}
+        def enqueue_mirror_game(self, game_id):
+            events.append(("queued", game_id))
+        def _write_mirror_status(self, **kwargs):
+            events.append(("mirror", kwargs["state"]))
+
+    active_table = SimpleNamespace(
+        table_id="T1",
+        game_sequence=1,
+        game_sgf="(;GM[Skat])",
+        viewer_name="SkatAI",
+        in_progress=False,
+    )
+    idle_table = SimpleNamespace(
+        table_id="T2",
+        game_sequence=0,
+        game_sgf=None,
+        viewer_name="SkatAI",
+        in_progress=False,
+    )
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.client = SimpleNamespace(
+        state=SimpleNamespace(tables={"T1": active_table, "T2": idle_table})
+    )
+    w.switch = SimpleNamespace(
+        latency_summary=lambda game_id: (1.0, 2.0),
+        unbind_game=lambda *args: events.append(("unbind", args)),
+    )
+    w.evidence = Evidence()
+    w.assignment_by_game = {
+        ("T1", 1): ActiveGame(
+            GameAssignment("B0", "kermit+zoot", 0, 300, True),
+            0,
+            0,
+        )
+    }
+    w.table_slots = {
+        "T1": TableSlot("T1", "kermit+zoot", "ACTIVE", 0),
+        "T2": TableSlot("T2", "kermit+theCount", "READY_SENT", 0),
+    }
+    w._mirror_pause_requested = False
+    w._campaign_complete_requested = False
+    w._transport_failure_streak = 0
+    w._persist_active_game_authority = lambda: events.append(("authority",))
+    w.mirror_writebehind = SimpleNamespace(backpressure_required=lambda: True)
+    w.campaign_status = lambda: {"next_per_arm_target": 300}
+    w._retire_table = lambda table_id, viewer_name, **kwargs: retire.append(
+        (table_id, kwargs["reason"])
+    )
+    w._create_next_table = lambda: (_ for _ in ()).throw(
+        AssertionError("must not admit new table under backpressure")
+    )
+
+    assert w._on_end(SimpleNamespace(), active_table) is True
+    assert w.assignment_by_game == {}
+    assert w._mirror_pause_requested is True
+    assert ("T1", "BACKPRESSURE") in retire
+    assert ("T2", "BACKPRESSURE") in retire
+    assert ("mirror", "BACKPRESSURE") in events
+
+
+def test_multitable_wait_for_mirror_capacity_clears_pause_after_clean_drain(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from skatai.iss.gate_worker import MultiTableExternalGateWorker
+
+    states = []
+    pending = iter([True, True, False])
+
+    w = object.__new__(MultiTableExternalGateWorker)
+    w.assignment_by_game = {}
+    w.table_slots = {}
+    w._mirror_pause_requested = True
+    w._departure_dir = tmp_path
+    w.mirror_policy = SimpleNamespace(poll_interval_s=0.0)
+    w.mirror_writebehind = SimpleNamespace(
+        backpressure_required=lambda: next(pending)
+    )
+    w.evidence = SimpleNamespace(
+        _write_mirror_status=lambda **kwargs: states.append(kwargs["state"])
+    )
+    monkeypatch.setattr("skatai.iss.gate_worker.time.sleep", lambda _: None)
+
+    w._wait_for_mirror_capacity()
+
+    assert w._mirror_pause_requested is False
+    assert states == ["BACKPRESSURE", "BACKPRESSURE", "RUNNING"]
