@@ -264,6 +264,7 @@ def test_run_retries_recoverable_transport_failure_then_resumes(monkeypatch, tmp
     w.evidence = Evidence()
     w._transport_failure_streak = 0
     w.assignment_by_game = {}
+    w._mirror_pause_requested = False
     w._restore_active_game_authority = lambda: None
     w.mirror_writebehind = type(
         "MirrorWriteBehindStub",
@@ -321,6 +322,7 @@ def test_run_waits_for_background_mirror_after_confirmed_table_destroy(monkeypat
     w.evidence = Evidence()
     w._transport_failure_streak = 0
     w.assignment_by_game = {}
+    w._mirror_pause_requested = False
     w._restore_active_game_authority = lambda: None
     w.mirror_policy = SimpleNamespace(poll_interval_s=0.1)
     w.mirror_writebehind = SimpleNamespace(
@@ -392,6 +394,7 @@ def test_run_does_not_retry_authentication_protocol_failure(monkeypatch, tmp_pat
     w.evidence = Evidence()
     w._transport_failure_streak = 0
     w.assignment_by_game = {}
+    w._mirror_pause_requested = False
     w._restore_active_game_authority = lambda: None
     w.mirror_writebehind = type(
         "MirrorWriteBehindStub",
@@ -788,6 +791,8 @@ def test_mirror_pressure_leaves_only_after_closed_game_and_pauses_on_destroy(tmp
     w._table_password = "ephemeral"
     w._transport_failure_streak = 0
     w._mirror_pause_requested = False
+    w.paths = SimpleNamespace(runtime_root=tmp_path)
+    w.source_commit = "test-source"
     w._persist_active_game_authority = lambda: events.append("authority")
     w.campaign_status = lambda: {"next_per_arm_target": 300}
     w.mirror_writebehind = SimpleNamespace(backpressure_required=lambda: True)
@@ -798,9 +803,60 @@ def test_mirror_pressure_leaves_only_after_closed_game_and_pauses_on_destroy(tmp
     assert sent == ["table T SkatAI leave"]
     assert w.assignment_by_game == {}
     assert w._mirror_pause_requested is True
+    marker = tmp_path / "mirror-departure-pending.json"
+    assert marker.is_file()
     assert w._on_destroy("T") is True
+    assert not marker.exists()
     assert w.table_id is None
     assert w._mirror_pause_requested is False
+
+
+def test_unconfirmed_mirror_departure_fails_closed_on_restart(monkeypatch, tmp_path):
+    import json
+    import pytest
+    from types import SimpleNamespace
+    import skatai.iss.gate_worker as gw
+    from skatai.iss.gate_worker import ExternalGateWorker, ISSGateWorkerError
+
+    marker = tmp_path / "mirror-departure-pending.json"
+    marker.write_text(json.dumps({"table_id": "T", "game_id": "g"}))
+    w = object.__new__(ExternalGateWorker)
+    w.paths = SimpleNamespace(runtime_root=tmp_path)
+    monkeypatch.setattr(gw, "readiness", lambda paths: (_ for _ in ()).throw(AssertionError("must not prepare ISS")))
+    with pytest.raises(ISSGateWorkerError, match="MIRROR_DEPARTURE_OUTCOME_UNKNOWN"):
+        w.run()
+    assert marker.exists()
+
+
+def test_transport_loss_before_departure_confirmation_does_not_reconnect(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import pytest
+    import skatai.iss.gate_worker as gw
+    from skatai.iss.gate_worker import ExternalGateWorker, ISSGateWorkerError
+    from skatai.iss.transport import ISSTransportError
+
+    calls = []
+    w = object.__new__(ExternalGateWorker)
+    w.paths = SimpleNamespace(runtime_root=tmp_path)
+    w.evidence = SimpleNamespace(mirror=SimpleNamespace(probe=lambda: {"ok": True}))
+    w.assignment_by_game = {}
+    w._mirror_pause_requested = True
+    w._transport_failure_streak = 0
+    w._restore_active_game_authority = lambda: None
+    w.mirror_writebehind = SimpleNamespace(
+        start=lambda: None,
+        stop=lambda *, flush: calls.append(("stop", flush)),
+        backpressure_required=lambda: False,
+    )
+    def interrupted_session(*, client_policy):
+        calls.append("session")
+        raise ISSTransportError("REMOTE_EOF")
+    w._run_connected_session = interrupted_session
+    monkeypatch.setattr(gw, "readiness", lambda paths: {"ready": True, "blockers": []})
+
+    with pytest.raises(ISSGateWorkerError, match="MIRROR_DEPARTURE_OUTCOME_UNKNOWN"):
+        w.run()
+    assert calls == ["session", ("stop", False)]
 
 def _terminal_recovery_fixture(tmp_path):
     import json

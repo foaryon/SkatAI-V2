@@ -2077,6 +2077,16 @@ class ExternalGateWorker:
         # on the ISS protocol thread. The destroy event confirms that this
         # table can be retired before the worker pauses between sessions.
         if self.mirror_writebehind.backpressure_required():
+            _atomic_json(
+                self.paths.runtime_root / "mirror-departure-pending.json",
+                {
+                    "schema": "skatai.v2.iss-mirror-departure-pending.v1",
+                    "source_commit": self.source_commit,
+                    "table_id": table.table_id,
+                    "game_sequence": table.game_sequence,
+                    "game_id": stored["result"]["game_id"],
+                },
+            )
             self._mirror_pause_requested = True
             self.evidence._write_mirror_status(state="BACKPRESSURE")
             self.client.send_service_command(
@@ -2156,6 +2166,14 @@ class ExternalGateWorker:
         )
 
     def _on_destroy(self, destroyed_table_id: str) -> bool:
+        if self._mirror_pause_requested:
+            marker = self.paths.runtime_root / "mirror-departure-pending.json"
+            pending = json.loads(marker.read_text(encoding="utf-8"))
+            if pending["table_id"] != destroyed_table_id:
+                raise ISSGateWorkerError("MIRROR_DEPARTURE_TABLE_MISMATCH")
+            # A replayed destroy is the only evidence that resolves this
+            # outbound LEAVE. Keep the marker on any earlier interruption.
+            marker.unlink()
         if self.table_id == destroyed_table_id:
             self.table_id = None
         if self._expected_new_table_id == destroyed_table_id:
@@ -2277,6 +2295,8 @@ class ExternalGateWorker:
             self.client = None
 
     def run(self) -> dict[str, Any]:
+        if (self.paths.runtime_root / "mirror-departure-pending.json").exists():
+            raise ISSGateWorkerError("MIRROR_DEPARTURE_OUTCOME_UNKNOWN")
         ready = readiness(self.paths)
         _atomic_json(self.paths.runtime_root / "readiness.json", ready)
         if not ready["ready"]:
@@ -2320,6 +2340,10 @@ class ExternalGateWorker:
                         self.mirror_writebehind.stop(flush=True)
                         return result
                 except ISSTransportError as exc:
+                    if self._mirror_pause_requested:
+                        raise ISSGateWorkerError(
+                            "MIRROR_DEPARTURE_OUTCOME_UNKNOWN"
+                        ) from exc
                     if not recoverable_transport_error(exc):
                         raise
                     self._transport_failure_streak += 1
