@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
@@ -106,6 +107,12 @@ def main() -> None:
                          "Private seeds, RNG seeds, deal hashes and ranking digests stay outside learner artifacts"],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    for directory in (args.output.parent, *args.output.parent.parents):
+        meta = directory.stat()
+        if (meta.st_mode & 0o022
+                and not (meta.st_mode & stat.S_ISVTX
+                         and meta.st_uid in (0, os.geteuid()))):
+            raise ValueError("SPLIT_OUTPUT_DIRECTORY_UNSAFE")
     if args.output.exists():
         raise ValueError("SPLIT_OUTPUT_EXISTS")
     fd, tmp = tempfile.mkstemp(prefix=args.output.name + ".", dir=args.output.parent)
