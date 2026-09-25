@@ -1,0 +1,34 @@
+{
+  "schema": "skatai.v2.jskat-contract-mapping-static.v1",
+  "captured_at": "2026-09-25T12:25:46Z",
+  "task_id": "JSKAT_CONTRACT_MAPPING_STATIC",
+  "classification": "CONCLUDE_STATIC_MAPPING_RUNTIME_PENDING",
+  "jskat_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+  "input_identities": {
+    "jskat_game_contract_sha256": "ad71b8cb4f525554125ad4c538c01c21223456aa99081ba01083a7abafd313f3",
+    "jskat_game_type_sha256": "0ae0977a92d90bac759457b68256708d07dc60dff2c6eaf989462339e2ef1937",
+    "v2_source_parent_commit": "6378d12ff78a712648dbd290a27b796c49d72e07"
+  },
+  "v2_coverage": {
+    "pickup_contract_count": 7,
+    "hand_contract_count": 22,
+    "total_distinct_contract_tokens": 29,
+    "outside_current_v2_phase_surface": ["RAMSCH", "PASSED_IN", "CONTRA", "RE", "GRAND_HAND_SPECIAL_CALLBACK"]
+  },
+  "mapping": {
+    "base_game_types": {"C": "CLUBS", "S": "SPADES", "H": "HEARTS", "D": "DIAMONDS", "G": "GRAND", "N": "NULL"},
+    "pickup_suit_grand": "C/S/H/D/G: GameContract(base), all modifiers false",
+    "hand_suit_grand": "base+H: hand true; base+HS: hand and schneider true; base+HZ: hand, schneider and schwarz true; base+HO: hand, schneider, schwarz and ouvert true with exactly 10 final declarer cards",
+    "pickup_null": "N: no modifiers; NO: ouvert true, hand false, exactly 10 final declarer cards",
+    "hand_null": "NH: hand true; NHO: hand and ouvert true, exactly 10 final declarer cards",
+    "source_knowledge": "For NO, use the post-discard 10-card declarer hand; for HO/NHO, use the 10-card original hand. Never fill ouvertCards from hidden opponent cards."
+  },
+  "source_constraints": [
+    "JSkat GameContract requires ouvertCards.size()==10 exactly when ouvert is true",
+    "JSkat Suit/Grand ouvert requires hand, schneider and schwarz flags",
+    "JSkat Suit/Grand schwarz requires schneider and hand",
+    "JSkat Null rejects schneider/schwarz modifiers"
+  ],
+  "claims_excluded": ["Runtime JSkat constructor parity", "Rule/scoring parity", "Host adoption"],
+  "next_gate": "Instantiate all 29 mapped contracts in a headless JDK test against pinned JSkat and compare callback legality and scoring with V2"
+}

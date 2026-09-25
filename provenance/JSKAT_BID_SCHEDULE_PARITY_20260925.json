@@ -1,0 +1,29 @@
+{
+  "schema": "skatai.v2.jskat-bid-schedule-parity.v1",
+  "captured_at": "2026-09-25T12:23:13Z",
+  "task_id": "JSKAT_BID_SCHEDULE_PARITY",
+  "classification": "CONCLUDE_STATIC_PASS_WITH_CEILING_GUARD_PENDING",
+  "jskat_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+  "input_identities": {
+    "jskat_constants_sha256": "528839c0dee78e9bf4b7d401758bcd2729e9c343694d9fa95d06996503a5c3d5",
+    "jskat_game_sha256": "95e83be13e70824be59be4668aab03b1aed955d3dc8d42316962fd88e13bfc20",
+    "v2_source_parent_commit": "6378d12ff78a712648dbd290a27b796c49d72e07"
+  },
+  "method": "Parse pinned JSkat SkatConstants.bidOrder List.of and compare every value and order to V2 BID_VALUES; inspect JSkat getNextBidValue and twoPlayerBidding callback paths",
+  "result": {
+    "jskat_count": 63,
+    "v2_count": 63,
+    "exact_order_match": true,
+    "minimum": 18,
+    "maximum": 264,
+    "normal_bid_mapping": "nextBidValue or currBidValue must map by exact value to V2 bid_index; BIDDER CONTINUE returns exactly nextBidValue, PASS 0; ANSWERER CONTINUE true, PASS false"
+  },
+  "source_level_ceiling_hazard": {
+    "jskat_behavior": "getNextBidValue(264) returns 264; twoPlayerBidding may invoke bidMore(264) again after holdBid(264) succeeds",
+    "v2_behavior": "BiddingState rejects ANSWERER hold at final bid index as OFFER_EXHAUSTED",
+    "required_adapter_rule": "Track the accepted offer per game; after 264 has been held, a repeated bidMore(264) must return PASS/0 at a clean callback boundary. Never issue another CONTINUE for the same terminal offer. Verify with a live headless JSkat game.",
+    "limit": "Static source inference, not a reproduced Java runtime loop"
+  },
+  "claims_excluded": ["Live callback parity", "Full auction state parity", "JSkat host adoption"],
+  "next_gate": "Implement fail-closed exact-value mapping and terminal-offer rule in a headless JSkat adapter; test on Java runtime before deployment"
+}

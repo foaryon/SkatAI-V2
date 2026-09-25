@@ -23,6 +23,15 @@
     "evidence": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
     "runtime_turn_rotation": "PENDING"
   },
+  "bid_schedule_static_parity": {
+    "status": "PASS_STATIC_WITH_TERMINAL_OFFER_GUARD_PENDING",
+    "evidence": "provenance/JSKAT_BID_SCHEDULE_PARITY_20260925.json",
+    "runtime_auction_parity": "PENDING"
+  },
+  "contract_mapping_static": {
+    "status": "PASS_STATIC_RUNTIME_PENDING",
+    "evidence": "provenance/JSKAT_CONTRACT_MAPPING_STATIC_20260925.json"
+  },
   "pickup_plan_stage": {
     "source": "src/skatai/runtime/host_service.py",
     "request_schema": "skatai.v2.host-pickup-plan-request.v1",

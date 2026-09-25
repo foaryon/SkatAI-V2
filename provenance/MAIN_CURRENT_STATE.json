@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:20:50Z",
+  "captured_at": "2026-09-25T12:25:46Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -81,7 +81,7 @@
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
-      "evidence": "MAIN shell has no RunPod deployment key in its environment; /proc/1/environ is permission denied; R9 precludes a heavy same-CPU package/inference smoke",
+      "evidence": "MAIN shell has no RunPod deployment key in its environment; /proc/1/environ is permission denied; runpodctl get pod reports API key not found; R9 precludes a heavy same-CPU package/inference smoke",
       "next": "Use an authorized file-backed launch path or schedule the bounded smoke on isolated compute; keep R9 under its supervisor",
       "scope": "Current-source release package smoke only",
       "status": "ACCESS_PATH_UNVERIFIED"
@@ -99,6 +99,8 @@
     "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "card_seat_static_parity": "provenance/JSKAT_CARD_SEAT_PARITY_20260925.json",
+    "bid_schedule_static_parity": "provenance/JSKAT_BID_SCHEDULE_PARITY_20260925.json",
+    "contract_mapping_static": "provenance/JSKAT_CONTRACT_MAPPING_STATIC_20260925.json",
     "asset_triage": "provenance/JSKAT_DISTRIBUTABLE_ASSET_TRIAGE_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
     "next_gate": "Versioned pickup plan staged and focused tests pass; stage package and verify actual JSkat callback lifecycle, then rules/assets/Windows build",
