@@ -6,6 +6,11 @@
       "kind": "canonical_source",
       "object": "s3://skatai-v2/canonical/legacy-v1/full-2024-final/canonical.jsonl",
       "sha256": "f429368a124a5bbd092c3c3d96169fdee909ce4c5a761083cbbf7e53b211d48a",
+      "identity_boundary": {
+        "finding": "15 of 15 bounded train-split HS raw records have different Legacy and clean V2 semantic hashes despite identical parsed gameplay fields",
+        "evidence_sha256": "ca59863fa7692adf49354969d8bdcdeab0d6685cf295649ed3a556d97bf1bced",
+        "cross_source_join_rule": "Use verified raw_sha256 or a clean V2 reparse crosswalk; never assume Legacy semantic_sha256 is a V2 semantic identity"
+      },
       "status": "VERIFIED_CANONICAL",
       "trust": "D3_SOURCE"
     },
