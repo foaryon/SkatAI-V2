@@ -126,9 +126,11 @@
       "id": "BUDGETS_ENFORCED",
       "goal_path_id": "G7_FULL_AFK",
       "criterion": "Budgets are enforced.",
-      "status": "IN_PROGRESS",
-      "reason": "Turn-closure recovery accepted after 21 focused controller tests and validation; three cancelled sessions reconciled to 512351 actual tokens and 750000 stale reserved tokens cleared. Final budget-enforcement acceptance remains a separate gate.",
+      "status": "ACCEPTED",
+      "reason": "Controller-level budget enforcement accepted: hard and autonomous limits, no-idle-submit behavior, actual-usage settlement and conservative fail-closed reservation fallback are verified. The three cancelled sessions reconciled to 512351 actual tokens and cleared 750000 stale reserved tokens. No independent OpenAI account/project billing hard ceiling is verified; this acceptance does not establish sustained FULL-AFK success.",
       "evidence": [
+        "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+        "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
         "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
         "configs/control/MAIN_EXECUTION_GOVERNOR.json"
       ]
