@@ -66,7 +66,15 @@ def encode_decision(row: Mapping[str, Any]) -> EncodedBiddingDecision:
         raise ValueError(f"BAD_BID_INDEX:{bid_index}")
     if role not in {"BIDDER", "ANSWERER"}:
         raise ValueError(f"BAD_ROLE:{role}")
-    if bidder == answerer or actor != (bidder if role == "BIDDER" else answerer):
+    forehand_self_offer = (
+        actor == 0
+        and bidder == 0
+        and answerer == 0
+        and bid_index == 0
+        and role == "BIDDER"
+    )
+    if ((bidder == answerer and not forehand_self_offer)
+            or actor != (bidder if role == "BIDDER" else answerer)):
         raise ValueError("BID_ACTOR_ROLE_MISMATCH")
     if target not in {"PASS", "CONTINUE"}:
         raise ValueError(f"BAD_TARGET:{target}")
