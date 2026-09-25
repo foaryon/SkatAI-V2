@@ -75,5 +75,14 @@
       "trust": "D1_EXPLORATORY_ONLY"
     }
   ],
+  "holdout_exposures": [
+    {
+      "incident_id": "public-dhs-rules-probe-20260925",
+      "manifest": "provenance/DHS_PUBLIC_HOLDOUT_EXPOSURE_20260925.json",
+      "manifest_sha256": "9731d76b3da0303e4a6bcef3676e46f4d726a0b5f1e47f423910b97c2cccdc39",
+      "exposed_external_bot_holdout_identities": 18,
+      "rule": "Preserve frozen split membership; quarantine the entire July-archive DHS outcome stratum from independent rules or model acceptance. The 18 exact selected identities are audit examples, not the complete exposure set. Do not silently redefine the holdout."
+    }
+  ],
   "schema": "skatai.v2.data-registry.v1"
 }

@@ -1,4 +1,4 @@
-"""Stream a frozen public archive for bounded, previously unused DHS rules cases.
+"""Stream a public archive for bounded, train-split DHS rules cases.
 
 This is rules research only. It never adds records to training or opens an ISS
 strength look. The plan fixes selection before any candidate is scored.
@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import urllib.request
 
+from skatai.data.bidding import split_for_game
 from skatai.data.sgf import SGFParseError, parse_properties, parse_sgf_line
 from scripts.validate_announced_hs_corpus import check_record
 
@@ -56,7 +57,8 @@ def scan(plan: dict) -> dict:
         "win": [], "loss": []
     }
     counts = {"raw_lines": 0, "dhs_marker_lines": 0, "eligible_win": 0,
-              "eligible_loss": 0, "excluded": 0, "parse_invalid": 0}
+              "eligible_loss": 0, "excluded": 0, "excluded_split": 0,
+              "parse_invalid": 0}
     req = urllib.request.Request(
         plan["url"], headers={"User-Agent": "SkatAI-V2-rules-research/1"}
     )
@@ -83,6 +85,9 @@ def scan(plan: dict) -> dict:
                         or record.get("game_value") is None
                         or record.get("card_points") is None
                         or record.get("matadors") is None):
+                    continue
+                if split_for_game(record) != "train":
+                    counts["excluded_split"] += 1
                     continue
                 raw_hash = record["raw_sha256"]
                 if (raw_hash in excluded_raw
@@ -133,7 +138,7 @@ def scan(plan: dict) -> dict:
         "counts": counts,
         "results": results,
         "decision": decision,
-        "restriction": "Rules research only; archive may overlap historical corpus. No policy training, release acceptance, or frozen ISS strength look.",
+        "restriction": "Train-split rules research only; archive may overlap historical corpus. No policy training, release acceptance, or frozen ISS strength look.",
     }
 
 
