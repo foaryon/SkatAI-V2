@@ -45,7 +45,8 @@ while true; do
   fi
   claim_args=()
   mode=watch-only
-  if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ]; then
+  AUTOCLAIM_MARKER="$BASE/runpod-cpu-upgrade-hunter/ENABLE_AUTOCLAIM"
+  if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ] && [ -f "$AUTOCLAIM_MARKER" ]; then
     claim_args=(--claim)
     mode=claim-authorized
   fi
