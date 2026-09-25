@@ -664,3 +664,69 @@ def test_stack_rotation_keeps_departing_table_admitted_until_destroy(monkeypatch
     assert worker.desired_stack is None
     assert worker.table_id == "T"
     assert worker._event_is_admitted(parse_service_line("destroy T SkatAI"))
+
+
+def test_game_not_started_without_active_game_rotates_table_without_worker_crash():
+    from types import SimpleNamespace
+
+    from skatai.iss.gate_worker import ExternalGateWorker
+
+    sent = []
+    connection_events = []
+
+    class Evidence:
+        def append_connection_event(self, event, **fields):
+            connection_events.append((event, fields))
+
+    worker = object.__new__(ExternalGateWorker)
+    worker.evidence = Evidence()
+    worker.assignment_by_game = {}
+    worker.client = SimpleNamespace(send_service_command=sent.append)
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+theCount"
+    worker._expected_new_table_id = None
+    worker._table_password = "ephemeral"
+
+    event = SimpleNamespace(fields={"text": "play : _game_not_started"})
+    table = SimpleNamespace(table_id="T", game_sequence=4, viewer_name="SkatAI")
+
+    worker._on_table_error(event, table)
+
+    assert sent == ["table T SkatAI leave"]
+    # Keep the departing table admitted until its destroy event arrives;
+    # the existing destroy handler then creates the next table.
+    assert worker.table_id == "T"
+    assert worker.desired_stack is None
+    assert worker._expected_new_table_id is None
+    assert worker._table_password is None
+    assert connection_events == [
+        (
+            "TABLE_NOT_STARTED_RECOVERY",
+            {
+                "table_id": "T",
+                "game_sequence": 4,
+                "error_text": "play : _game_not_started",
+            },
+        )
+    ]
+
+
+def test_other_table_error_without_active_game_remains_fail_closed():
+    import pytest
+    from types import SimpleNamespace
+
+    from skatai.iss.gate_worker import ExternalGateWorker, ISSGateWorkerError
+
+    worker = object.__new__(ExternalGateWorker)
+    worker.assignment_by_game = {}
+    worker.client = SimpleNamespace(send_service_command=lambda command: None)
+    worker.table_id = "T"
+    worker.desired_stack = "kermit+theCount"
+    worker._expected_new_table_id = None
+    worker._table_password = "ephemeral"
+
+    event = SimpleNamespace(fields={"text": "play : _unexpected_protocol_error"})
+    table = SimpleNamespace(table_id="T", game_sequence=4, viewer_name="SkatAI")
+
+    with pytest.raises(ISSGateWorkerError, match="ISS_TABLE_ERROR_WITHOUT_ACTIVE_GAME"):
+        worker._on_table_error(event, table)

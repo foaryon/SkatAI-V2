@@ -1352,6 +1352,30 @@ class ExternalGateWorker:
         active = self.assignment_by_game.get(key)
         error_text = str(event.fields.get("text") or "").strip()
         if active is None:
+            if (
+                error_text == "play : _game_not_started"
+                and self.table_id == table.table_id
+            ):
+                # ISS can reject READY between games after the previous game
+                # has already reached a terminal state and its active
+                # authority has been removed. This is a table-lifecycle
+                # condition, not a gameplay result. Leave the stale table but
+                # keep it admitted until DESTROY so the existing destroy
+                # handler can create the next table without restarting the
+                # whole worker.
+                self.evidence.append_connection_event(
+                    "TABLE_NOT_STARTED_RECOVERY",
+                    table_id=table.table_id,
+                    game_sequence=table.game_sequence,
+                    error_text=error_text,
+                )
+                self.desired_stack = None
+                self._expected_new_table_id = None
+                self._table_password = None
+                self.client.send_service_command(
+                    command_leave(table.table_id, table.viewer_name)
+                )
+                return
             raise ISSGateWorkerError(
                 f"ISS_TABLE_ERROR_WITHOUT_ACTIVE_GAME:{table.table_id}:"
                 f"{table.game_sequence}:{error_text}"

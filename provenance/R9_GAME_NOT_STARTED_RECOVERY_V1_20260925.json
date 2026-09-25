@@ -1,0 +1,81 @@
+{
+  "schema": "skatai.v2.r9-game-not-started-recovery.v1",
+  "captured_at": "2026-09-25T18:57:10Z",
+  "campaign": "V2-B1-bidding-linearish-full-v1 external ISS gate R9",
+  "parent_source_commit": "a49232c78ca56ff6ce5ce31ca1a8a3f3b3b40095",
+  "classification": "PROTOCOL_ONLY_REFREEZE",
+  "observation": {
+    "scored_total_at_diagnosis": 474,
+    "scored_by_arm": {"B0": 237, "B1": 237},
+    "protocol_failures_in_ledger": 14,
+    "infra_failures_in_ledger": 4,
+    "worker_tracebacks_observed": 16,
+    "exact_game_not_started_worker_crashes": 7,
+    "recent_table_ids": [
+      "AI91a4f9",
+      "AI05fd2b",
+      "AIf225b1",
+      "AIfbf29e",
+      "AIb3b3e1",
+      "AI1c6fdc",
+      "AI6e0ee5"
+    ]
+  },
+  "root_cause": {
+    "condition": "ISS returns table error 'play : _game_not_started' after a prior game has already reached terminal state and its active-game authority has been removed, while the worker is trying to ready the same table for the next game.",
+    "representative_trace": {
+      "table_id": "AI6e0ee5",
+      "terminal": "w TI.1",
+      "terminal_followed_by_end": true,
+      "next_ready_sent": true,
+      "error": "play : _game_not_started",
+      "active_game_authority_at_error": false
+    },
+    "prior_behavior": "Raise ISS_TABLE_ERROR_WITHOUT_ACTIVE_GAME and terminate the whole worker.",
+    "scientific_effect": "No game result is created, changed, recovered, or scored by this correction. The defect is session/table lifecycle only."
+  },
+  "change": {
+    "file": "src/skatai/iss/gate_worker.py",
+    "test_file": "tests/test_iss_gate_worker.py",
+    "recognized_error": "play : _game_not_started",
+    "preconditions": [
+      "no active assignment for the table/game key",
+      "error belongs to the currently admitted table"
+    ],
+    "recovery": [
+      "append TABLE_NOT_STARTED_RECOVERY connection event",
+      "set desired_stack null",
+      "clear expected-new-table and ephemeral table password",
+      "send leave for the stale table",
+      "keep table_id admitted until DESTROY",
+      "reuse existing DESTROY handler to create the next table"
+    ],
+    "fail_closed_preserved": [
+      "all other no-active table errors still raise",
+      "all active-game table errors still persist PROTOCOL_FAILURE and raise"
+    ],
+    "gameplay_decision_generation_changed": false,
+    "model_identity_changed": false,
+    "assignment_policy_changed": false,
+    "scoring_changed": false,
+    "gate_threshold_changed": false
+  },
+  "verification": {
+    "focused_tests": {
+      "status": "PASS",
+      "tests": 3,
+      "cases": [
+        "exact no-active _game_not_started recovers without worker crash",
+        "other no-active error remains fail-closed",
+        "active-game table error remains protocol failure and stops worker"
+      ]
+    },
+    "full_frozen_r9_suite": {
+      "status": "PASS",
+      "tests": 277,
+      "seconds": 8.94
+    }
+  },
+  "deployment_rule": "Do not stop or mutate the current live worker. After commit/push, repoint only the pinned launcher so the refrozen source is used on the next natural worker start. Record and verify the first post-boundary game source identity and B0/B1 balance.",
+  "rollback": "Restore launcher ROOT/EXPECTED to a49232c worktree/commit; current pre-cutover worker is already unchanged."
+}
