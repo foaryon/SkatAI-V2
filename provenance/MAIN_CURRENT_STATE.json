@@ -8,17 +8,17 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:35:12Z",
+  "captured_at": "2026-09-25T12:36:40Z",
   "completed_independent_gate": {
-    "classification": "PASS_D1_EXPLORATORY_ONLY",
-    "evidence": "provenance/V5_LEARNER_AUCTION_ROLE_GATE_20260925.json",
-    "task_id": "V5_LEARNER_AUCTION_ROLE_GATE"
+    "classification": "PASS_SOURCE_ONLY",
+    "evidence": "provenance/HOST_CARDPLAY_REPLAY_GATE_20260925.json",
+    "task_id": "HOST_CARDPLAY_REPLAY_GATE"
   },
   "git": {
     "branch": "main",
-    "remote_state": "7880f6e pushed to origin/main before V5 reader gate commit; verify current Git at resume",
+    "remote_state": "6eee4bc pushed before host replay gate commit; verify current Git at resume",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "7880f6e",
+    "verified_head_before_this_manifest": "6eee4bc",
     "worktree_state": "verify with Git at resume"
   },
   "independent_science_diagnostic": {
@@ -57,7 +57,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Protect R9 under independent supervisor. At clean 300-per-arm boundary reconcile and decide, then stage separate measured 1->2->4 throughput epochs. In parallel pursue split-safe cardplay research or isolated source-bound host smoke once compute access is available; actual user-host integration needs its source.",
+  "next_action": "Keep R9 under independent fail-closed supervisor until 300 scored per arm and clean reconciliation; then run separate 1->2->4 measured throughput epochs. Continue independent split-safe science/product work; isolated package smoke remains blocked by compute access, actual host integration by authoritative host source.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -106,6 +106,7 @@
     "classification": "CONCLUDE_SOURCE_GATE",
     "contract_token_validation": "provenance/HOST_CONTRACT_TOKEN_VALIDATION_20260925.json",
     "evidence": "provenance/HOST_CARDPLAY_LEGAL_SET_GATE_20260925.json",
+    "full_trick_replay": "provenance/HOST_CARDPLAY_REPLAY_GATE_20260925.json",
     "host_request_integrity": "provenance/HOST_REQUEST_INTEGRITY_GATE_20260925.json",
     "jskat_runtime_parity": "PENDING",
     "jskat_static_parity": "provenance/JSKAT_CARDPLAY_STATIC_PARITY_INDEPENDENT_CHECK_20260925.json",

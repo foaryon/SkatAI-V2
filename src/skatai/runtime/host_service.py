@@ -10,7 +10,11 @@ import sys
 from typing import Any, Mapping
 
 from skatai.artifacts.release import validate_release_package
-from skatai.game.rules import game_type_from_contract, legal_cards as rule_legal_cards
+from skatai.game.rules import (
+    game_type_from_contract,
+    legal_cards as rule_legal_cards,
+    replay_tricks,
+)
 from skatai.runtime.decision import (
     DecisionRequest,
     DecisionType,
@@ -87,20 +91,24 @@ def handle_request(ai: SkatAI, release_id: str, payload: Mapping[str, Any]) -> d
     )
     if dtype is DecisionType.PLAY_CARD:
         played = observation.played_cards
-        trick = observation.current_trick
         played_tokens = [card for _, card in played]
         if (len(played) > 29
                 or len(played_tokens) != len(set(played_tokens))
-                or set(played_tokens) & set(observation.hand)
-                or len(played) % 3 != len(trick)
-                or any(
-                    played[i + j][0] != (played[i][0] + j) % 3
-                    for i in range(0, len(played) - len(trick), 3)
-                    for j in (1, 2)
-                )
-                or (trick and tuple(played[-len(trick):]) != trick)
-                or (trick and observation.seat != (trick[-1][0] + 1) % 3)
-                or (len(trick) == 2 and trick[1][0] != (trick[0][0] + 1) % 3)):
+                or set(played_tokens) & set(observation.hand)):
+            raise SkatAIInterfaceError("HOST_CARDPLAY_HISTORY_INCONSISTENT")
+        try:
+            replayed = replay_tricks(
+                played,
+                game_type=game_type_from_contract(observation.contract),
+                declarer=observation.declarer,
+            )
+        except ValueError as exc:
+            raise SkatAIInterfaceError("HOST_CARDPLAY_HISTORY_INCONSISTENT") from exc
+        if (replayed["current_trick"] != observation.current_trick
+                or replayed["expected_actor"] != observation.seat
+                or len(observation.hand) != 10 - sum(
+                    actor == observation.seat for actor, _ in played
+                )):
             raise SkatAIInterfaceError("HOST_CARDPLAY_HISTORY_INCONSISTENT")
         rule_set = set(rule_legal_cards(
             observation.hand,

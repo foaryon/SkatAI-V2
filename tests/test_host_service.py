@@ -36,7 +36,7 @@ from tests.test_product_interface import HAND10, HAND12, _ai
         ),
         (
             "PLAY_CARD",
-            {"hand": HAND10, "seat": 1, "declarer": 1, "contract": "G",
+            {"hand": HAND10, "seat": 0, "declarer": 1, "contract": "G",
              "winning_bid": 18, "current_trick": (), "played_cards": (),
              "legal_cards": HAND10},
             "C7",
@@ -146,7 +146,7 @@ def test_host_rejects_incomplete_rule_legal_set_before_inference():
         "schema": REQUEST_SCHEMA, "game_id": "game-1", "sequence_no": 1,
         "decision_type": "PLAY_CARD",
         "observation": {
-            "hand": HAND10, "seat": 1, "declarer": 1, "contract": "G",
+            "hand": HAND10, "seat": 0, "declarer": 1, "contract": "G",
             "winning_bid": 18, "current_trick": (), "played_cards": (),
             "legal_cards": ("C7", "C8"),
         },
@@ -202,6 +202,33 @@ def test_host_rejects_inconsistent_cardplay_history_before_inference():
         bad = {**payload, "observation": {**payload["observation"], **changes}}
         with pytest.raises(SkatAIInterfaceError, match="HOST_CARDPLAY_HISTORY_INCONSISTENT"):
             handle_request(_ai(), "release-1", bad)
+
+
+def test_host_requires_trick_winner_to_lead_next_trick():
+    payload = {
+        "schema": REQUEST_SCHEMA, "game_id": "game-3", "sequence_no": 8,
+        "decision_type": "PLAY_CARD",
+        "observation": {
+            "hand": HAND10[:9], "seat": 0, "declarer": 0, "contract": "G",
+            "winning_bid": 18, "current_trick": ((2, "DQ"),),
+            "played_cards": ((0, "D7"), (1, "D8"), (2, "D9"), (2, "DQ")),
+            "legal_cards": HAND10[:9],
+        },
+    }
+    assert handle_request(_ai(), "release-1", payload)["ok"]
+    stale_hand = {**payload, "observation": {
+        **payload["observation"], "hand": HAND10, "legal_cards": HAND10,
+    }}
+    with pytest.raises(SkatAIInterfaceError, match="HOST_CARDPLAY_HISTORY_INCONSISTENT"):
+        handle_request(_ai(), "release-1", stale_hand)
+    bad = {**payload, "observation": {
+        **payload["observation"],
+        "seat": 1,
+        "current_trick": ((0, "DQ"),),
+        "played_cards": ((0, "D7"), (1, "D8"), (2, "D9"), (0, "DQ")),
+    }}
+    with pytest.raises(SkatAIInterfaceError, match="HOST_CARDPLAY_HISTORY_INCONSISTENT"):
+        handle_request(_ai(), "release-1", bad)
 
 
 def test_host_accepts_reverse_order_legal_discard():

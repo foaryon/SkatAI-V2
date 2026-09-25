@@ -1,0 +1,34 @@
+{
+  "schema": "skatai.v2.host-cardplay-replay-gate.v1",
+  "captured_at": "2026-09-25T12:36:40Z",
+  "task_id": "HOST_CARDPLAY_REPLAY_GATE",
+  "classification": "PASS_SOURCE_ONLY",
+  "current_evidence": {
+    "parent_source_commit": "6eee4bc",
+    "prior_host_gate": "provenance/HOST_REQUEST_INTEGRITY_GATE_20260925.json",
+    "r9": "Frozen treatment owned by independent fail-closed supervisor; no gate transition established in this task"
+  },
+  "goal_or_hypothesis": "Reject a host cardplay history that uses the wrong next trick leader or stale hand, even when its local seat rotation looks valid.",
+  "nearest_gate": "Stable host cardplay legality and public-state integrity",
+  "smallest_intervention": "Use the existing V2 replay_tricks rule engine at host ingress and compare current trick, expected actor and own hand count before inference.",
+  "invariants_to_preserve": [
+    "Frozen R9 and B0 untouched",
+    "No model inference or live JSkat adoption",
+    "Prior host request and legal-card gates remain active"
+  ],
+  "input_identities": {
+    "host_service_sha256": "e96cbda1b1718eaff65e450b8eceeedc2e90f0ff3dab69b26b36f54e289f199e",
+    "test_sha256": "5d00b8efa82430dde1f80a08d89694392792db10004020aa5f88ab7a054a7d9a"
+  },
+  "resource_bound": "Source-only change and focused subsecond CPU tests",
+  "success_criteria": "Valid complete first trick and next lead accepted; wrong leader and stale own hand rejected before policy invocation.",
+  "failure_or_stop_criteria": "Host or bridge regression; correct source semantics before release packaging.",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_host_service.py tests/test_product_interface.py tests/test_game_rules.py tests/test_release_loader.py tests/test_iss_bridge.py",
+    "result": "55 passed in 0.81s",
+    "git_diff_check": "PASS"
+  },
+  "limits": "Source and synthetic request validation only; Java callback lifecycle, isolated release smoke, and actual host integration remain pending.",
+  "next_on_success": "Validate the staged source-bound release on isolated compute, then run actual host callback parity when Java and authoritative host source are available.",
+  "next_on_failure_or_inconclusive": "Preserve raw failing state and fix replay/host mapping before packaging."
+}
