@@ -18,6 +18,9 @@ from skatai.selfplay.game import GameEpisode
 SCHEMA = "skatai.v2.selfplay.basic-score.v3"
 BASE_VALUES = {"C": 12, "S": 11, "H": 10, "D": 9, "G": 24}
 NULL_VALUES = {"N": 23, "NH": 35, "NO": 46, "NHO": 59}
+DEFAULT_BASIC_CONTRACTS = frozenset(NULL_VALUES) | frozenset(
+    base + suffix for base in BASE_VALUES for suffix in ("", "H")
+)
 JACKS = ("CJ", "SJ", "HJ", "DJ")
 
 

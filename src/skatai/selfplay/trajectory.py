@@ -15,7 +15,7 @@ from skatai.selfplay.bidding import BiddingPolicy
 from skatai.selfplay.cardplay import CardplayPolicy
 from skatai.selfplay.declaration import DeclarationPolicy, DiscardPolicy
 from skatai.selfplay.game import run_game
-from skatai.selfplay.scoring import score_basic_episode
+from skatai.selfplay.scoring import DEFAULT_BASIC_CONTRACTS, score_basic_episode
 
 SCHEMA = "skatai.v2.selfplay.decision-trajectory.v2"
 LEARNER_SCHEMA = "skatai.v2.selfplay.learner-seat.v1"
@@ -117,6 +117,9 @@ def capture_basic_game(
     ids = _policy_ids(policy_ids)
     if any(len(x) != 3 for x in (bidding_policies, declaration_policies, discard_policies, cardplay_policies)):
         raise ValueError("THREE_POLICIES_PER_PHASE_REQUIRED")
+    contracts = tuple(legal_contracts)
+    if not contracts or any(contract not in DEFAULT_BASIC_CONTRACTS for contract in contracts):
+        raise ValueError("CAPTURE_REQUIRES_DEFAULT_SCORABLE_CONTRACTS")
     decisions: list[CapturedDecision] = []
 
     def record(phase: str, seat: int, view: Any, action: Any) -> Any:
@@ -157,7 +160,7 @@ def capture_basic_game(
         declaration_policies=[Declare(seat) for seat in range(3)],
         discard_policies=[Discard(seat) for seat in range(3)],
         cardplay_policies=[Play(seat) for seat in range(3)],
-        legal_contracts=legal_contracts, threshold=threshold,
+        legal_contracts=contracts, threshold=threshold,
     )
     auction_actions = iter(episode.bidding.actions)
     for index, decision in enumerate(decisions):
@@ -174,7 +177,7 @@ def capture_basic_game(
     ).encode()).hexdigest()
     return CapturedTrajectory(
         SCHEMA, source_commit, ids, seed, episode.deal_sha256,
-        float(threshold), tuple(legal_contracts),
+        float(threshold), contracts,
         tuple(decisions), episode.bidding.all_pass,
         episode.bidding.winner,
         None if episode.declaration is None else episode.declaration.contract,

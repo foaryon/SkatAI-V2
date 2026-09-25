@@ -90,6 +90,25 @@ def test_missing_policy_identity_fails_before_game():
         )
 
 
+@pytest.mark.parametrize("contracts", [(), ("GHS",), ("GHZ",), ("G", "GHS")])
+def test_capture_rejects_unscorable_contracts_before_game(monkeypatch, contracts):
+    def unexpected_game(*args, **kwargs):
+        raise AssertionError("game must not start")
+
+    monkeypatch.setattr("skatai.selfplay.trajectory.run_game", unexpected_game)
+    with pytest.raises(ValueError, match="CAPTURE_REQUIRES_DEFAULT_SCORABLE_CONTRACTS"):
+        capture_basic_game(
+            0, source_commit="a" * 40,
+            policy_ids={phase: (phase + "-0", phase + "-1", phase + "-2")
+                        for phase in ("BID", "DECLARATION", "DISCARD", "CARDPLAY")},
+            bidding_policies=[Bid(18)] * 3,
+            declaration_policies=[Declare(False)] * 3,
+            discard_policies=[Discard()] * 3,
+            cardplay_policies=[RandomLegalPolicy(i) for i in range(3)],
+            legal_contracts=contracts,
+        )
+
+
 def test_learner_export_is_single_seat_and_removes_replay_keys():
     raw = captured(1, True)
     public = declarer_learner_view(
