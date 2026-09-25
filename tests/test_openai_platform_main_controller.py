@@ -556,3 +556,38 @@ def test_main_secret_prep_never_manages_iss_password():
     assert "skatai_iss_password" not in text
     assert 'env.get("ISS_PASSWORD")' not in text
     assert "iss_password=unmanaged_by_main" in text
+
+
+def test_terminal_outcome_is_allowed_at_round_cap(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    max_rounds = gov["tool_budget"]["max_tool_rounds_per_turn"]
+    state = {"turn_tool_rounds": max_rounds}
+    session = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "record_turn_outcome",
+            "turn_id": "turn_terminal",
+            "call_id": "call_terminal",
+            "arguments": {},
+        }]
+    }
+
+    class FakeGateway:
+        def dispatch(self, name, args, state):
+            assert name == "record_turn_outcome"
+            return {"status": "RECORDED"}
+
+    monkeypatch.setattr(mod, "tool_gateway", lambda: FakeGateway())
+    monkeypatch.setattr(mod, "api", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        mod, "_tool_result_path",
+        lambda *args: tmp_path / "tool-result.json",
+    )
+    monkeypatch.setattr(mod, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(mod, "LOG", tmp_path / "controller.log")
+
+    result = mod.handle_required_actions("sess_terminal", session, state, gov)
+    assert result["turn_tool_rounds"] == max_rounds
+    assert result["turn_tool_calls"] == 1
+    assert result["turn_side_effect_calls"] == 1

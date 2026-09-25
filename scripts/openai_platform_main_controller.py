@@ -1468,9 +1468,15 @@ def handle_required_actions(session_id, session, state, governor):
     round_count = int(state.get("turn_tool_rounds") or 0)
     effect_count = int(state.get("turn_side_effect_calls") or 0)
     signatures = dict(state.get("turn_tool_signature_counts") or {})
-    if round_count >= max_rounds:
+    terminal_outcome_only = all(
+        action.get("type") == "function_call"
+        and str(action.get("name") or "") == "record_turn_outcome"
+        for action in actions
+    )
+    if round_count >= max_rounds and not terminal_outcome_only:
         raise RuntimeError("TOOL_ROUND_BUDGET_EXCEEDED")
-    round_count += 1
+    if not (round_count >= max_rounds and terminal_outcome_only):
+        round_count += 1
     events = []
     gateway = tool_gateway()
 
