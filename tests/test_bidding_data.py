@@ -1,3 +1,5 @@
+import pytest
+
 from skatai.data.bidding import contains_benchmark_bot, iter_bidding_decisions, split_for_game
 from skatai.game.bidding import replay
 
@@ -68,6 +70,16 @@ def test_bidding_feature_encoder_is_decision_time_only():
     assert encoded.target_continue == 1
 
 
+def test_bidding_feature_encoder_rejects_actor_role_mismatch():
+    from skatai.data.bidding_features import encode_decision
+
+    row = list(iter_bidding_decisions(_game()))[0]
+    with pytest.raises(ValueError, match="BID_ACTOR_ROLE_MISMATCH"):
+        encode_decision({**row, "decision_role": "ANSWERER"})
+    with pytest.raises(ValueError, match="BID_ACTOR_ROLE_MISMATCH"):
+        encode_decision({**row, "answerer": row["bidder"]})
+
+
 def test_bidding_state_exposes_only_public_duel_state():
     row = list(iter_bidding_decisions(_game()))[2]
     assert row["actor"] == 2
@@ -90,6 +102,10 @@ def test_chronological_bidding_split():
     assert split_for_game(g) == "future_holdout"
     g["date"] = ""
     assert split_for_game(g) == "quarantine_date"
+    g["date"] = "2022-02-30"
+    assert split_for_game(g) == "quarantine_date"
+    g["date"] = "2024-02-29"
+    assert split_for_game(g) == "test"
 
 
 def test_benchmark_holdout_overrides_date():

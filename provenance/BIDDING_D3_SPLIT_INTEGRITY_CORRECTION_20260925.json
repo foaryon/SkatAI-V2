@@ -1,0 +1,41 @@
+{
+  "schema": "skatai.v2.bidding-d3-split-integrity-correction.v1",
+  "captured_at": "2026-09-25T12:39:54Z",
+  "task_id": "BIDDING_D3_SPLIT_INTEGRITY_CORRECTION",
+  "classification": "CORRECT_SOURCE_IMPACT_UNKNOWN",
+  "current_evidence": {
+    "parent_source_commit": "88df368",
+    "frozen_dataset": "provenance/BIDDING_DATASET_HISTORICAL_V1.json",
+    "frozen_split": "provenance/BIDDING_SPLIT_V1.json",
+    "published_manifest_sha256": "cd929c3c65ddc35ef4f1eff1748da6b0d409c86d8f7593aba68d2c06fb0840dc",
+    "remote_matching_files_reported": 74,
+    "published_shard_count": "verify from exact manifest"
+  },
+  "goal_or_hypothesis": "Future bidding materialization must quarantine calendar-invalid dates and impossible actor/role observations; assess whether either defect exists in the already published D3 artifact.",
+  "nearest_gate": "Trusted frozen bidding dataset and B1 promotion eligibility",
+  "smallest_intervention": "Validate actual ISO calendar dates and bidder/answerer role at encoding; provide a read-only exact-manifest Parquet audit for isolated compute.",
+  "invariants_to_preserve": [
+    "Published B1 dataset shards, manifest, split identities and model remain unchanged",
+    "Frozen R9 source and external campaign remain untouched",
+    "No holdout content enters fitting or treatment selection",
+    "No large local staging or same-pod scan while R9 runs"
+  ],
+  "input_identities": {
+    "split_source_sha256": "e42986b55e8025b557b223ea042bb505294509507fcc944edbc93836d5c7a90d",
+    "feature_source_sha256": "2c91ae05957fccc77af56862157608c1626f23a65630f61c48235f7a52583791",
+    "audit_script_sha256": "767f62f87871f9f7dda5d006995bb30fd612449c1bc981cd94e53aefd0e879c5"
+  },
+  "resource_bound": "Source and tiny synthetic Parquet tests now; later full audit must run on isolated compute with exact manifest-listed shards and bounded cost",
+  "success_criteria": "New materialization quarantines impossible dates and rejects role mismatches; full published artifact audit later returns zero split and actor/role mismatches before any promotion claim.",
+  "failure_or_stop_criteria": "Any published artifact mismatch requires a documented impact analysis and dataset/candidate disposition before promotion.",
+  "verification": {
+    "focused_tests": "20 passed in 2.08s",
+    "audit_fixture": "Exact manifest and shard hashes verified; four invalid calendar rows stayed in quarantine; deliberate role corruption yielded REVIEW_REQUIRED",
+    "python_compile": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "published_dataset_impact": "UNKNOWN: current pod lacks authorized isolated compute provisioning and network volume is near its reported limit; no scan or reclassification of the frozen manifest-listed shards was performed.",
+  "scientific_decision": "NO_STRENGTH_DECISION; R9 may continue, but B1 promotion requires published-dataset integrity reconciliation in addition to its preregistered gameplay gate.",
+  "next_on_success": "Stage exact manifest-listed shards on isolated compute, run scripts/audit_bidding_artifact.py with the published manifest SHA-256, preserve report and reconcile any nonzero anomaly before B1 promotion.",
+  "next_on_failure_or_inconclusive": "Keep frozen artifact and R9 evidence; quarantine affected training claims and reproduce a corrected versioned dataset/candidate if necessary."
+}

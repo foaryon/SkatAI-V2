@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Iterator, Mapping
+from datetime import date as calendar_date
 from typing import Any
 
 from skatai.game.bidding import replay
@@ -26,6 +27,10 @@ def split_for_game(game: Mapping[str, Any]) -> str:
 
     date = str(game.get("date") or "")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        return "quarantine_date"
+    try:
+        calendar_date.fromisoformat(date)
+    except ValueError:
         return "quarantine_date"
     if date < "2023-01-01":
         return "train"

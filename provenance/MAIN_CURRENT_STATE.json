@@ -8,17 +8,17 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:37:19Z",
+  "captured_at": "2026-09-25T12:39:54Z",
   "completed_independent_gate": {
-    "classification": "PASS_SOURCE_ONLY",
-    "evidence": "provenance/HOST_CARDPLAY_VISIBILITY_GATE_20260925.json",
-    "task_id": "HOST_CARDPLAY_VISIBILITY_GATE"
+    "classification": "CORRECT_SOURCE_IMPACT_UNKNOWN",
+    "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
+    "task_id": "BIDDING_D3_SPLIT_INTEGRITY_CORRECTION"
   },
   "git": {
     "branch": "main",
-    "remote_state": "8a10698 pushed before visibility gate commit; verify current Git at resume",
+    "remote_state": "88df368 pushed before bidding integrity correction commit; verify current Git at resume",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "8a10698",
+    "verified_head_before_this_manifest": "88df368",
     "worktree_state": "verify with Git at resume"
   },
   "independent_science_diagnostic": {
@@ -57,7 +57,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Leave frozen R9 to its independent supervisor until clean 300-per-arm gate, then decide and run separate 1->2->4 measured ISS throughput epochs. Host source gates are staged; package smoke requires isolated compute access, actual host integration requires authoritative host source. Continue independent split-safe science work where bounded.",
+  "next_action": "Keep frozen R9 under independent supervisor and preregistered gate. Before any B1 promotion reconcile exact published bidding dataset calendar/role impact on isolated compute. In parallel continue bounded independent science/product work; package smoke and actual host integration remain separately blocked.",
   "open_blockers": [
     {
       "blocker_id": "ISOLATED_HOST_SMOKE_LAUNCH_ACCESS",
@@ -73,6 +73,13 @@
       "required_input": "Authoritative repository, source archive, build artifact, or accessible path for the user Skat software",
       "scope": "Actual user Skat software integration only",
       "status": "AWAITING_SOURCE_REFERENCE"
+    },
+    {
+      "blocker_id": "BIDDING_D3_PUBLISHED_SPLIT_IMPACT_UNKNOWN",
+      "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
+      "next": "On isolated compute, fetch only exact manifest-listed shards and run scripts/audit_bidding_artifact.py using published manifest SHA-256; preserve report and reconcile anomalies",
+      "scope": "B1 promotion and later use of published historical bidding dataset",
+      "status": "AWAITING_EXACT_ARTIFACT_AUDIT"
     }
   ],
   "product_software_research": {
