@@ -2,7 +2,7 @@
   "schema": "skatai.v2.main-turn-closure-recovery.v1",
   "captured_at": "2026-09-25T22:15:00Z",
   "task_id": "MAIN_TURN_CLOSURE_RECOVERY",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "problem": "A completed useful turn could hit the 12-round ceiling before record_turn_outcome, causing cancellation/hard-disable; aborted turns also left local actual-token accounting at zero despite backend usage.",
   "required_properties": [
     "At the work-round ceiling, one non-material grace response instructs the model to call record_turn_outcome instead of cancelling immediately.",
@@ -11,6 +11,6 @@
     "Abort/failure settlement accounts actual cumulative usage when available and conservatively charges the full reservation otherwise.",
     "No idle-driven model submission or budget bypass is introduced."
   ],
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": "run_main_turn_closure_recovery_tests.py returned 0: 21 focused controller tests passed and validate_main_controller_logic PASS. Live ledger reconciliation retrieved actual OpenAI usage for the three cancelled sessions as 185916, 109757 and 216678 tokens (512351 total), replaced the stale zero actual-token count, and cleared 750000 stale reserved tokens without creating new inference.",
+  "decision": "ACCEPT. Terminal outcome grace, abort/failure token settlement, hard work-round ceiling, no-idle-submit behavior and budget enforcement are verified for deployment. A live B0 evidence-reconciliation turn is the next bounded operational check."
 }
