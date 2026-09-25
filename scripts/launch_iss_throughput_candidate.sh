@@ -41,7 +41,18 @@ head="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
 [ -s "$ISS_PASSWORD_FILE" ] || fail "iss-password-file-unavailable"
 
 export PYTHONPATH="$ROOT/src"
-python3 "$ROOT/scripts/preflight_iss_throughput_cutover.py"   --repo "$ROOT"   --expected-commit "$EXPECTED"   --r9-runtime "$R9_RUNTIME"   --candidate-runtime "$RUNTIME"   --iss-password-file "$ISS_PASSWORD_FILE"   --output "$PREFLIGHT"   || fail "preflight-blocked"
+python3 "$ROOT/scripts/preflight_iss_throughput_cutover.py" \
+  --repo "$ROOT" \
+  --expected-commit "$EXPECTED" \
+  --r9-runtime "$R9_RUNTIME" \
+  --candidate-runtime "$RUNTIME" \
+  --iss-password-file "$ISS_PASSWORD_FILE" \
+  --tables "$TABLES" \
+  --workers "$WORKERS" \
+  --initialize-epoch \
+  --output "$PREFLIGHT" \
+  || fail "preflight-blocked"
+
 
 # Rehydrate immutable local model/runtime assets only after cutover safety is
 # proven. Never mutate the frozen live R9 process to prepare this candidate.
