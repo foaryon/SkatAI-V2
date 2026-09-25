@@ -1,0 +1,32 @@
+{
+  "schema": "skatai.v2.selfplay-exploratory-train-partition-gate.v1",
+  "captured_at": "2026-09-25T10:55:12Z",
+  "task_id": "SELFPLAY_D1_TRAIN_PARTITION_READER",
+  "classification": "CONCLUDE",
+  "source_parent_commit": "f96834dd10ae784750933dea7504f57530a4d651",
+  "input_contract": {
+    "learner_manifest": "skatai.v2.selfplay.learner-seat-pilot-manifest.v1",
+    "split_manifest": "skatai.v2.selfplay.private-seed-split.v1",
+    "frozen_counts": {"train": 72, "validation": 12, "test": 12},
+    "trust": "D1_EXPLORATORY_ONLY"
+  },
+  "change": "Verify expected split content hash, learner manifest lineage, exact partition coverage and frozen counts; expose only train rows through a new exploratory reader.",
+  "implementation": {
+    "path": "src/skatai/selfplay/learner_dataset.py",
+    "sha256": "628a4e3e5186214dc6e73c5051b5c125f5c05d70ce117319c5317424805c02c5"
+  },
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_exploratory_train_partition.py tests/test_private_seed_pilot_split.py tests/test_private_seed_trajectory_pilot.py tests/test_selfplay_trajectory.py",
+    "result": "19 passed in 5.02s",
+    "mismatched_hash_rejected": true,
+    "broken_lineage_rejected": true,
+    "overlapping_partition_rejected": true,
+    "git_diff_check": "pass"
+  },
+  "limits": [
+    "The V5 learner and split files were not locally present together, so this exact V5 artifact was not opened through the new reader.",
+    "D1 exploratory status is unchanged; no policy training, D3/D4 upgrade or strength claim is authorized.",
+    "Frozen R9 worker and supervisor were left independent; no strength look was opened."
+  ],
+  "next_gate": "Stage exact V5 learner and split objects with hash/readback verification in isolated scratch, exercise the reader, then qualify any intended treatment before training."
+}

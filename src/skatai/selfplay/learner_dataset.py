@@ -21,6 +21,8 @@ from skatai.selfplay.trajectory import LEARNER_SCHEMA, PHASES
 
 MANIFEST_SCHEMA = "skatai.v2.selfplay.learner-seat-pilot-manifest.v1"
 MAX_PILOT_BYTES = 32 * 1024 * 1024
+MAX_SPLIT_BYTES = 1024 * 1024
+SPLIT_SCHEMA = "skatai.v2.selfplay.private-seed-split.v1"
 RECORD_KEYS = {
     "schema", "source_commit", "seat", "policy_family_ids", "threshold",
     "legal_contracts", "decisions", "contract", "signed_basic_value",
@@ -189,3 +191,47 @@ def load_bounded_learner_pilot(manifest_path: Path, data_path: Path) -> list[dic
                 previous_play = (played, hand, decision["action"])
                 cardplay_count += 1
     return rows
+
+
+def load_exploratory_train_partition(
+    manifest_path: Path,
+    data_path: Path,
+    split_path: Path,
+    *,
+    expected_split_sha256: str,
+) -> list[dict]:
+    """Return only frozen train rows from a D1 pilot; no training approval."""
+    if Path(split_path).stat().st_size > MAX_SPLIT_BYTES:
+        raise ValueError("LEARNER_SPLIT_TOO_LARGE")
+    split_bytes = Path(split_path).read_bytes()
+    if (len(expected_split_sha256) != 64
+            or any(c not in "0123456789abcdef" for c in expected_split_sha256)
+            or hashlib.sha256(split_bytes).hexdigest() != expected_split_sha256):
+        raise ValueError("LEARNER_SPLIT_HASH_MISMATCH")
+    split = json.loads(split_bytes)
+    manifest_bytes = Path(manifest_path).read_bytes()
+    manifest = json.loads(manifest_bytes)
+    if (split.get("schema") != SPLIT_SCHEMA
+            or split.get("trust_level") != "D1_EXPLORATORY_ONLY"
+            or split.get("learner_manifest_sha256") != hashlib.sha256(manifest_bytes).hexdigest()
+            or split.get("learner_sha256") != manifest.get("learner_sha256")
+            or split.get("producer_source_commit") != manifest.get("source_commit")):
+        raise ValueError("LEARNER_SPLIT_LINEAGE_MISMATCH")
+    parts = split.get("partition")
+    counts = split.get("counts")
+    if (not isinstance(parts, dict)
+            or set(parts) != {"train", "validation", "test"}
+            or not isinstance(counts, dict)
+            or set(counts) != set(parts)
+            or counts != {"train": 72, "validation": 12, "test": 12}
+            or any(not isinstance(indices, list) or not indices
+                   or any(type(i) is not int for i in indices)
+                   or indices != sorted(indices) for indices in parts.values())
+            or any(counts[name] != len(parts[name]) for name in parts)):
+        raise ValueError("LEARNER_SPLIT_PARTITION_INVALID")
+    rows = load_bounded_learner_pilot(manifest_path, data_path)
+    if (len(rows) != 96
+            or sum(len(indices) for indices in parts.values()) != len(rows)
+            or sorted(i for indices in parts.values() for i in indices) != list(range(len(rows)))):
+        raise ValueError("LEARNER_SPLIT_PARTITION_INVALID")
+    return [rows[i] for i in parts["train"]]
