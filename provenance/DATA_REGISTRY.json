@@ -55,7 +55,9 @@
       "private_provenance_prefix": "s3://skatai-v2/provenance/private/selfplay/basic-trajectory-pilot-v4-20260925/",
       "semantic_replay_evidence_sha256": "b8c9d13dbf10684dfd6b43b19a8a08019ba082dab7634e9cc07bf10797f24bc7",
       "split_decision_evidence_sha256": "ce9bac5416ec27de28b57743417b5da59785565813d83691ec97b293460c3ec5",
-      "status": "REPLAY_AND_SPLIT_VERIFIED_NO_TRAINING_APPROVAL",
+      "point_parity_audit_sha256": "d5f4c420f06fb2500a7cdff2f1720621f54ed1854e6e976429ce94cbe96245fe",
+      "point_parity_finding": "42 of 96 learner rows and 420 cardplay decisions fail deployed point-view parity; source replay and split evidence remain historical engineering evidence only",
+      "status": "POINT_PARITY_FAILURE_NO_TRAINING_OR_STRENGTH_USE",
       "trust": "D1_EXPLORATORY_ONLY"
     }
   ],
