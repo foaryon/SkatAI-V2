@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-09-25T21:28:56Z",
+  "captured_at": "2026-09-25T21:35:33Z",
   "external_dependencies": [
     {
       "gate_id": "B1_EXTERNAL_ISS_R9",
@@ -76,7 +76,11 @@
       "The bounded offline bidding Parquet/SGF test command passes.",
       "Provenance records ACCEPT, REJECT, or INCONCLUSIVE with exact verification evidence and no R9/training/promotion effect."
     ],
-    "next_action": "Call get_active_lease, inspect only bidding_parquet.py, the existing bidding Parquet tests, the All-Pass parser fixture, and the gate provenance. Implement the smallest separately versioned schema/materialization path in the existing module; do not alter bidding-parquet-v1 semantics or historical artifacts. Add a focused VERIFIED_ALL_PASS regression, run test_all_pass_parquet_schema, verify the diff, persist the gate decision, record_turn_outcome, and yield."
+    "next_action": "Call get_active_lease first. Do not repeat broad inspection and do not rewrite the preserved candidate unless verification fails. Run test_all_pass_parquet_schema immediately. If it passes, inspect the exact authorized diff once only to confirm v1 semantics remain unchanged and v2 nullability matches the gate, then update ONLY the gate provenance classification/verification/decision to ACCEPT, REJECT, or INCONCLUSIVE as supported, call record_turn_outcome, and yield. If the pinned command fails, fix only the concrete failure within authorized writable files, rerun once, then persist the decision and outcome. Do not touch R9.",
+    "decisive_facts": [
+      "A candidate v2 implementation is already preserved in the worktree; do not rewrite it unless the pinned command fails.",
+      "Independent operator verification after fixing the test fixture import: test_all_pass_parquet_schema equivalent runner PASS, 17 tests passed, and git diff --check PASS."
+    ]
   },
   "reason": "Post-D3 rotation: keep recovered frozen R9 under its independent supervisor and execute the separate future-only All-Pass bidding Parquet schema gate without touching historical B1-v1.",
   "schema": "skatai.v2.main-execution-lock.v2",

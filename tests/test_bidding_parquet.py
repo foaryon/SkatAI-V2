@@ -7,10 +7,14 @@ import pyarrow.parquet as pq
 from scripts.audit_bidding_artifact import audit_artifact
 from skatai.data.bidding_parquet import (
     ANALYSIS_COLUMNS,
+    DATASET_SCHEMA,
+    DATASET_SCHEMA_V2,
     FEATURE_COLUMNS,
     materialize_jsonl,
     sha256_file,
 )
+from skatai.data.sgf import parse_sgf_line
+ALL_PASS = b"(;GM[Skat]PC[ISS]ID[99]DT[2024-07-01/00:00:00/UTC]P0[a]P1[b]P2[c]R0[1]R1[2]R2[3]MV[w C7.C8.C9.CT.CJ.CQ.CK.CA.S7.S8.S9.ST.SJ.SQ.SK.SA.H7.H8.H9.HT.HJ.HQ.HK.HA.D7.D8.D9.DT.DJ.DQ.DK.DA 1 p 2 p 0 p w TI.0 ]R[d:-1 penalty v:0 m:0 bidok p:0 t:0 s:0 z:0 p0:0 p1:0 p2:1 l:-1 to:0 r:0] ;)"
 
 
 def _game():
@@ -49,7 +53,29 @@ def test_parquet_materialization_keeps_feature_boundary(tmp_path):
     table = pq.read_table(files[0])
     assert table.num_rows == 2
     assert table.schema.metadata[b"information_policy"].startswith(b"B1 features")
+    assert table.schema.metadata[b"dataset_schema"] == DATASET_SCHEMA.encode()
+    assert not table.schema.field("declarer").nullable
+    assert not table.schema.field("game_won").nullable
     assert table.column("hand_mask").to_pylist()[0] != 0
+
+
+def test_verified_all_pass_materializes_with_null_analysis_in_v2(tmp_path):
+    game = parse_sgf_line("iss", ALL_PASS)
+    assert game["classification"] == "VERIFIED_ALL_PASS"
+    assert "declarer" not in game and "bid_level" not in game
+    src = tmp_path / "games.jsonl"
+    src.write_text(json.dumps(game) + "\n")
+    root = tmp_path / "out"
+    manifest = materialize_jsonl(src, root, dataset_schema=DATASET_SCHEMA_V2)
+    assert manifest["dataset_schema"] == DATASET_SCHEMA_V2
+    assert manifest["eligible_games"] == 1
+    assert manifest["rows"] == {"test": 3}
+    table = pq.read_table(root / manifest["shards"][0]["path"])
+    assert table.schema.metadata[b"dataset_schema"] == DATASET_SCHEMA_V2.encode()
+    for name in ("declarer", "bid_level", "game_type", "game_won", "game_value", "card_points"):
+        assert table.schema.field(name).nullable
+        assert table.column(name).to_pylist() == [None] * table.num_rows
+    assert table.column("target_continue").to_pylist() == [0, 0, 0]
 
 
 def test_parquet_materialization_quarantines_impossible_calendar_date(tmp_path):

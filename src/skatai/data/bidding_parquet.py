@@ -12,6 +12,7 @@ from skatai.data.bidding import iter_bidding_decisions
 from skatai.data.bidding_features import FEATURE_SCHEMA, encode_decision
 
 DATASET_SCHEMA = "skatai.v2.bidding-parquet.v1"
+DATASET_SCHEMA_V2 = "skatai.v2.bidding-parquet.v2"
 SPLITS = (
     "train",
     "validation",
@@ -57,10 +58,13 @@ def _arrow():
     return pa, pq
 
 
-def arrow_schema():
+def arrow_schema(dataset_schema: str = DATASET_SCHEMA):
+    if dataset_schema not in (DATASET_SCHEMA, DATASET_SCHEMA_V2):
+        raise ValueError(f"UNKNOWN_DATASET_SCHEMA:{dataset_schema}")
     pa, _ = _arrow()
+    nullable_analysis = dataset_schema == DATASET_SCHEMA_V2
     metadata = {
-        b"dataset_schema": DATASET_SCHEMA.encode(),
+        b"dataset_schema": dataset_schema.encode(),
         b"feature_schema": FEATURE_SCHEMA.encode(),
         b"feature_columns": ",".join(FEATURE_COLUMNS).encode(),
         b"target_columns": ",".join(TARGET_COLUMNS).encode(),
@@ -84,13 +88,13 @@ def arrow_schema():
             pa.field("decision_role", pa.uint8(), nullable=False),
             pa.field("current_offer", pa.uint16(), nullable=False),
             pa.field("target_continue", pa.uint8(), nullable=False),
-            pa.field("declarer", pa.uint8(), nullable=False),
-            pa.field("bid_level", pa.uint16(), nullable=False),
-            pa.field("game_type", pa.string(), nullable=False),
+            pa.field("declarer", pa.uint8(), nullable=nullable_analysis),
+            pa.field("bid_level", pa.uint16(), nullable=nullable_analysis),
+            pa.field("game_type", pa.string(), nullable=nullable_analysis),
             pa.field("actor_rating", pa.float32(), nullable=True),
-            pa.field("game_won", pa.bool_(), nullable=False),
-            pa.field("game_value", pa.int16(), nullable=False),
-            pa.field("card_points", pa.int16(), nullable=False),
+            pa.field("game_won", pa.bool_(), nullable=nullable_analysis),
+            pa.field("game_value", pa.int16(), nullable=nullable_analysis),
+            pa.field("card_points", pa.int16(), nullable=nullable_analysis),
         ],
         metadata=metadata,
     )
@@ -107,13 +111,21 @@ def _actor_rating(game: Mapping[str, Any], actor: int) -> float | None:
     return value if math.isfinite(value) else None
 
 
-def parquet_row(game: Mapping[str, Any], decision: Mapping[str, Any]) -> dict[str, Any]:
+def parquet_row(
+    game: Mapping[str, Any], decision: Mapping[str, Any],
+    dataset_schema: str = DATASET_SCHEMA,
+) -> dict[str, Any]:
+    if dataset_schema not in (DATASET_SCHEMA, DATASET_SCHEMA_V2):
+        raise ValueError(f"UNKNOWN_DATASET_SCHEMA:{dataset_schema}")
+    if dataset_schema == DATASET_SCHEMA_V2 and game.get("all_pass"):
+        if game.get("classification") != "VERIFIED_ALL_PASS":
+            raise ValueError("UNVERIFIED_ALL_PASS")
     enc = encode_decision(decision)
     actor = enc.actor
     identity = str(decision["game_identity"])
     if len(identity) != 64:
         raise ValueError("BAD_GAME_IDENTITY")
-    return {
+    row = {
         "game_identity": bytes.fromhex(identity),
         "source": str(game["source"]),
         "date": str(game.get("date") or ""),
@@ -127,14 +139,27 @@ def parquet_row(game: Mapping[str, Any], decision: Mapping[str, Any]) -> dict[st
         "decision_role": enc.decision_role,
         "current_offer": int(decision["current_offer"]),
         "target_continue": enc.target_continue,
-        "declarer": int(game["declarer"]),
-        "bid_level": int(game["bid_level"]),
-        "game_type": str(game.get("game_type") or ""),
         "actor_rating": _actor_rating(game, actor),
-        "game_won": bool(game.get("won")),
-        "game_value": int(game.get("game_value") or 0),
-        "card_points": int(game.get("card_points") or 0),
     }
+    if dataset_schema == DATASET_SCHEMA:
+        row.update(
+            declarer=int(game["declarer"]),
+            bid_level=int(game["bid_level"]),
+            game_type=str(game.get("game_type") or ""),
+            game_won=bool(game.get("won")),
+            game_value=int(game.get("game_value") or 0),
+            card_points=int(game.get("card_points") or 0),
+        )
+    else:
+        row.update(
+            declarer=(int(game["declarer"]) if game.get("declarer") is not None else None),
+            bid_level=(int(game["bid_level"]) if game.get("bid_level") is not None else None),
+            game_type=(str(game["game_type"]) if game.get("game_type") is not None else None),
+            game_won=(bool(game["won"]) if game.get("won") is not None else None),
+            game_value=(int(game["game_value"]) if game.get("game_value") is not None else None),
+            card_points=(int(game["card_points"]) if game.get("card_points") is not None else None),
+        )
+    return row
 
 
 def sha256_file(path: Path) -> str:
@@ -146,21 +171,25 @@ def sha256_file(path: Path) -> str:
 
 
 class Materializer:
-    def __init__(self, output: Path, rows_per_shard: int = 1_000_000) -> None:
+    def __init__(
+        self, output: Path, rows_per_shard: int = 1_000_000,
+        dataset_schema: str = DATASET_SCHEMA,
+    ) -> None:
+        self.dataset_schema = dataset_schema
         self.output = output
         self.rows_per_shard = rows_per_shard
         self.buffers: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.shard_index: dict[str, int] = defaultdict(int)
         self.rows: dict[str, int] = defaultdict(int)
         self.shards: list[dict[str, Any]] = []
-        self.schema = arrow_schema()
+        self.schema = arrow_schema(dataset_schema)
         output.mkdir(parents=True, exist_ok=True)
 
     def add(self, game: Mapping[str, Any], decision: Mapping[str, Any]) -> None:
         split = str(decision["split"])
         if split not in SPLITS:
             raise ValueError(f"UNKNOWN_SPLIT:{split}")
-        self.buffers[split].append(parquet_row(game, decision))
+        self.buffers[split].append(parquet_row(game, decision, self.dataset_schema))
         self.rows[split] += 1
         if len(self.buffers[split]) >= self.rows_per_shard:
             self.flush(split)
@@ -200,7 +229,7 @@ class Materializer:
         for split in SPLITS:
             self.flush(split)
         return {
-            "dataset_schema": DATASET_SCHEMA,
+            "dataset_schema": self.dataset_schema,
             "feature_schema": FEATURE_SCHEMA,
             "rows": dict(sorted(self.rows.items())),
             "rows_per_shard": self.rows_per_shard,
@@ -217,8 +246,9 @@ def materialize_jsonl(
     *,
     rows_per_shard: int = 1_000_000,
     max_games: int | None = None,
+    dataset_schema: str = DATASET_SCHEMA,
 ) -> dict[str, Any]:
-    m = Materializer(output, rows_per_shard=rows_per_shard)
+    m = Materializer(output, rows_per_shard=rows_per_shard, dataset_schema=dataset_schema)
     games = eligible_games = 0
     with input_path.open("r", encoding="utf-8") as f:
         for line in f:
@@ -247,12 +277,14 @@ def main() -> None:
     parser.add_argument("output", type=Path)
     parser.add_argument("--rows-per-shard", type=int, default=1_000_000)
     parser.add_argument("--max-games", type=int)
+    parser.add_argument("--dataset-schema", choices=(DATASET_SCHEMA, DATASET_SCHEMA_V2), default=DATASET_SCHEMA)
     args = parser.parse_args()
     result = materialize_jsonl(
         args.input,
         args.output,
         rows_per_shard=args.rows_per_shard,
         max_games=args.max_games,
+        dataset_schema=args.dataset_schema,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
 
