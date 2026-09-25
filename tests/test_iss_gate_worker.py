@@ -770,6 +770,9 @@ def test_mirror_pressure_leaves_only_after_closed_game_and_pauses_on_destroy(tmp
     sent = []
     events = []
     class Evidence:
+        protocol_journal = tmp_path / "service.jsonl"
+        def _file_size(self, path):
+            return path.stat().st_size if path.exists() else 0
         def append_game(self, **kwargs):
             events.append("closed")
             return {"result": {"game_id": "g"}}
@@ -805,6 +808,9 @@ def test_mirror_pressure_leaves_only_after_closed_game_and_pauses_on_destroy(tmp
     assert w._mirror_pause_requested is True
     marker = tmp_path / "mirror-departure-pending.json"
     assert marker.is_file()
+    import json
+    assert json.loads(marker.read_text())["protocol_offset"] == 0
+    assert json.loads(marker.read_text())["viewer_name"] == "SkatAI"
     assert w._on_destroy("T") is True
     assert not marker.exists()
     assert w.table_id is None
@@ -822,10 +828,99 @@ def test_unconfirmed_mirror_departure_fails_closed_on_restart(monkeypatch, tmp_p
     marker.write_text(json.dumps({"table_id": "T", "game_id": "g"}))
     w = object.__new__(ExternalGateWorker)
     w.paths = SimpleNamespace(runtime_root=tmp_path)
+    w.source_commit = "test-source"
     monkeypatch.setattr(gw, "readiness", lambda paths: (_ for _ in ()).throw(AssertionError("must not prepare ISS")))
     with pytest.raises(ISSGateWorkerError, match="MIRROR_DEPARTURE_OUTCOME_UNKNOWN"):
         w.run()
     assert marker.exists()
+
+
+def test_mirror_departure_reconciles_only_later_matching_leave_and_destroy(tmp_path):
+    import json
+    from skatai.iss.gate_worker import reconcile_mirror_departure
+
+    journal = tmp_path / "service.jsonl"
+    old = {"direction": "in", "line": "destroy T SkatAI"}
+    journal.write_text(json.dumps(old) + "\n")
+    offset = journal.stat().st_size
+    marker = tmp_path / "mirror-departure-pending.json"
+    marker.write_text(json.dumps({
+        "schema": "skatai.v2.iss-mirror-departure-pending.v2",
+        "source_commit": "commit-a", "table_id": "T", "viewer_name": "SkatAI",
+        "game_id": "game-a", "protocol_offset": offset,
+    }))
+    assert not reconcile_mirror_departure(marker, journal, source_commit="commit-a")
+    with journal.open("a") as stream:
+        stream.write(json.dumps({"direction": "out", "line": "table T SkatAI leave"}) + "\n")
+        stream.write(json.dumps({"direction": "in", "line": "destroy U SkatAI"}) + "\n")
+    assert not reconcile_mirror_departure(marker, journal, source_commit="commit-a")
+    assert not reconcile_mirror_departure(marker, journal, source_commit="commit-b")
+    with journal.open("a") as stream:
+        stream.write(json.dumps({"direction": "in", "line": "destroy T SkatAI"}) + "\n")
+    assert reconcile_mirror_departure(marker, journal, source_commit="commit-a")
+    assert not marker.exists()
+    evidence = json.loads((tmp_path / "mirror-departure-reconciliation.json").read_text())
+    assert evidence["outcome"] == "CONFIRMED_DEPARTURE_NO_ACTION_REPLAY"
+    assert evidence["leave_offset"] >= offset
+    assert evidence["destroy_offset"] > evidence["leave_offset"]
+
+
+def test_mirror_departure_rejects_unjournaled_and_ambiguous_effects(tmp_path):
+    import json
+    from skatai.iss.gate_worker import reconcile_mirror_departure
+
+    journal = tmp_path / "service.jsonl"
+    marker = tmp_path / "mirror-departure-pending.json"
+    marker.write_text(json.dumps({
+        "schema": "skatai.v2.iss-mirror-departure-pending.v2",
+        "source_commit": "commit-a", "table_id": "T", "viewer_name": "SkatAI",
+        "game_id": "game-a", "protocol_offset": 0,
+    }))
+    lines = [
+        {"direction": "in", "line": "destroy T SkatAI"},
+        {"direction": "out", "line": "table T SkatAI leave"},
+        {"direction": "out", "line": "table T SkatAI leave"},
+        {"direction": "in", "line": "destroy T SkatAI"},
+    ]
+    journal.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    assert not reconcile_mirror_departure(marker, journal, source_commit="commit-a")
+    assert marker.exists()
+    journal.write_text(json.dumps(lines[0]) + "\n")
+    assert not reconcile_mirror_departure(marker, journal, source_commit="commit-a")
+
+
+def test_restart_resumes_after_durable_mirror_departure_reconciliation(monkeypatch, tmp_path):
+    import json
+    from types import SimpleNamespace
+    import skatai.iss.gate_worker as gw
+    from skatai.iss.gate_worker import ExternalGateWorker
+
+    (tmp_path / "mirror-departure-pending.json").write_text(json.dumps({
+        "schema": "skatai.v2.iss-mirror-departure-pending.v2",
+        "source_commit": "commit-a", "table_id": "T", "viewer_name": "SkatAI",
+        "game_id": "game-a", "protocol_offset": 0,
+    }))
+    (tmp_path / "service.jsonl").write_text(
+        json.dumps({"direction": "out", "line": "table T SkatAI leave"}) + "\n"
+        + json.dumps({"direction": "in", "line": "destroy T SkatAI"}) + "\n"
+    )
+    calls = []
+    w = object.__new__(ExternalGateWorker)
+    w.paths = SimpleNamespace(runtime_root=tmp_path)
+    w.source_commit = "commit-a"
+    w.evidence = SimpleNamespace(mirror=SimpleNamespace(probe=lambda: {"ok": True}))
+    w.assignment_by_game = {}
+    w._restore_active_game_authority = lambda: calls.append("restore")
+    w.mirror_writebehind = SimpleNamespace(
+        start=lambda: calls.append("start"),
+        stop=lambda *, flush: calls.append(("stop", flush)),
+        backpressure_required=lambda: False,
+    )
+    w._run_connected_session = lambda *, client_policy: calls.append("session") or {"finished": True}
+    monkeypatch.setattr(gw, "readiness", lambda paths: {"ready": True, "blockers": []})
+    assert w.run() == {"finished": True}
+    assert calls == ["restore", "start", "session", ("stop", True), ("stop", False)]
+    assert not (tmp_path / "mirror-departure-pending.json").exists()
 
 
 def test_transport_loss_before_departure_confirmation_does_not_reconnect(monkeypatch, tmp_path):

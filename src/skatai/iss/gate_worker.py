@@ -293,6 +293,81 @@ def _atomic_json(path: Path, payload: Mapping[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def reconcile_mirror_departure(
+    marker: Path, protocol_journal: Path, *, source_commit: str
+) -> bool:
+    """Confirm an interrupted LEAVE only from later, fsynced ISS traffic.
+
+    A send return alone cannot prove departure. The marker binds a byte offset
+    before LEAVE, so an older DESTROY for the same table cannot clear it.
+    Unknown or legacy markers remain blocked for explicit reconciliation.
+    """
+    pending = json.loads(marker.read_text(encoding="utf-8"))
+    if pending.get("schema") != "skatai.v2.iss-mirror-departure-pending.v2":
+        return False
+    if pending.get("source_commit") != source_commit:
+        return False
+    table_id = pending.get("table_id")
+    viewer = pending.get("viewer_name")
+    offset = pending.get("protocol_offset")
+    if (
+        not isinstance(table_id, str)
+        or not table_id
+        or not isinstance(viewer, str)
+        or not viewer
+        or type(offset) is not int
+        or offset < 0
+        or not protocol_journal.is_file()
+        or offset > protocol_journal.stat().st_size
+    ):
+        return False
+    leave_line = command_leave(table_id, viewer)
+    leave_offset = None
+    destroy_offset = None
+    try:
+        with protocol_journal.open("rb") as stream:
+            stream.seek(offset)
+            while True:
+                row_offset = stream.tell()
+                raw = stream.readline()
+                if not raw:
+                    break
+                if not raw.endswith(b"\n"):
+                    return False
+                row = json.loads(raw)
+                direction = row["direction"]
+                line = row["line"]
+                if direction == "out" and line == leave_line:
+                    if leave_offset is not None:
+                        return False
+                    leave_offset = row_offset
+                elif direction == "in" and line == f"destroy {table_id} {viewer}":
+                    if leave_offset is None:
+                        return False
+                    destroy_offset = row_offset
+                    break
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+        return False
+    if leave_offset is None or destroy_offset is None:
+        return False
+    _atomic_json(
+        marker.parent / "mirror-departure-reconciliation.json",
+        {
+            "schema": "skatai.v2.iss-mirror-departure-reconciliation.v1",
+            "source_commit": source_commit,
+            "table_id": table_id,
+            "game_id": pending.get("game_id"),
+            "marker_sha256": sha256_file(marker),
+            "protocol_offset": offset,
+            "leave_offset": leave_offset,
+            "destroy_offset": destroy_offset,
+            "outcome": "CONFIRMED_DEPARTURE_NO_ACTION_REPLAY",
+        },
+    )
+    marker.unlink()
+    return True
+
+
 def _group(name: str) -> str:
     return str(name).split(":", 1)[0]
 
@@ -2080,11 +2155,15 @@ class ExternalGateWorker:
             _atomic_json(
                 self.paths.runtime_root / "mirror-departure-pending.json",
                 {
-                    "schema": "skatai.v2.iss-mirror-departure-pending.v1",
+                    "schema": "skatai.v2.iss-mirror-departure-pending.v2",
                     "source_commit": self.source_commit,
                     "table_id": table.table_id,
+                    "viewer_name": table.viewer_name,
                     "game_sequence": table.game_sequence,
                     "game_id": stored["result"]["game_id"],
+                    "protocol_offset": self.evidence._file_size(
+                        self.evidence.protocol_journal
+                    ),
                 },
             )
             self._mirror_pause_requested = True
@@ -2295,7 +2374,12 @@ class ExternalGateWorker:
             self.client = None
 
     def run(self) -> dict[str, Any]:
-        if (self.paths.runtime_root / "mirror-departure-pending.json").exists():
+        departure_marker = self.paths.runtime_root / "mirror-departure-pending.json"
+        if departure_marker.exists() and not reconcile_mirror_departure(
+            departure_marker,
+            self.paths.runtime_root / "service.jsonl",
+            source_commit=self.source_commit,
+        ):
             raise ISSGateWorkerError("MIRROR_DEPARTURE_OUTCOME_UNKNOWN")
         ready = readiness(self.paths)
         _atomic_json(self.paths.runtime_root / "readiness.json", ready)
