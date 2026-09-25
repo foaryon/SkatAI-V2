@@ -29,6 +29,23 @@ def test_deterministic_legal_hand_game_cardplay(contract, seed):
     assert replayed["declarer_trick_points"] == first.declarer_trick_points
 
 
+@pytest.mark.parametrize(
+    "contract,seed,points,tricks",
+    [("GHS", 10, 61, 3), ("GHZ", 10, 61, 3),
+     ("GHO", 10, 61, 3), ("CHO", 9, 84, 5)],
+)
+def test_announced_contract_is_not_won_by_ordinary_sixty_one_points(
+    contract, seed, points, tricks,
+):
+    episode = run_cardplay(
+        make_deal(seed), contract=contract, declarer=1,
+        policies=[RandomLegalPolicy(seed * 3 + seat) for seat in range(3)],
+    )
+    assert episode.declarer_final_points == points
+    assert episode.trick_winners.count(1) == tricks
+    assert episode.declarer_won is False
+
+
 def test_policy_observation_keeps_hidden_deal_private_and_illegal_move_fails():
     class InspectPolicy:
         def __init__(self):

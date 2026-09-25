@@ -1,8 +1,8 @@
 """Deterministic, legal cardplay episodes for controlled V2 self-play.
 
 This supplies a clean V2 self-play primitive. Auction and declaration can be
-passed in as validated inputs. Full contract scoring and strength acceptance
-are outside this episode type.
+passed in as validated inputs. The win flag checks the declared play condition;
+overbids, full contract scoring, and strength acceptance are outside this type.
 """
 
 from __future__ import annotations
@@ -163,9 +163,16 @@ def run_cardplay(
     final_points = declarer_points + skat_points
     if final_points + defender_points != 120:
         raise ValueError("CARD_POINT_CONSERVATION_FAILED")
-    declarer_won = (
-        declarer not in winners if game_type == "NULL" else final_points >= 61
-    )
+    if game_type == "NULL":
+        declarer_won = declarer not in winners
+    else:
+        modifiers = contract.upper()[1:]
+        if "O" in modifiers or "Z" in modifiers:
+            declarer_won = winners.count(declarer) == 10
+        elif "S" in modifiers:
+            declarer_won = final_points >= 90
+        else:
+            declarer_won = final_points >= 61
     return CardplayEpisode(
         schema=PICKUP_SCHEMA if pickup else SCHEMA,
         deal_seed=deal.seed,
