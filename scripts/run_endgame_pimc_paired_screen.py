@@ -24,7 +24,11 @@ def canonical_sha(value: object) -> str:
 def run_screen(task: dict, *, b0_root: Path, b0_python: Path) -> dict:
     if task.get("schema") != "skatai.v2.endgame-pimc-paired-screen-task.v1":
         raise ValueError("PIMC_SCREEN_TASK_SCHEMA")
-    positions = task["positions"]
+    positions = task.get("positions")
+    if positions is None and "deal_seeds" in task:
+        positions = frozen_hand_positions(
+            task["deal_seeds"], winning_bid=int(task["winning_bid"]),
+        )["positions"]
     if not 1 <= len(positions) <= 600 or canonical_sha(positions) != task["positions_sha256"]:
         raise ValueError("PIMC_SCREEN_POSITION_IDENTITY")
     if int(task["max_worlds"]) not in range(1, 257):
