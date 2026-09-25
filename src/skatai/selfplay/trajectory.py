@@ -18,6 +18,7 @@ from skatai.selfplay.game import run_game
 from skatai.selfplay.scoring import score_basic_episode
 
 SCHEMA = "skatai.v2.selfplay.decision-trajectory.v2"
+LEARNER_SCHEMA = "skatai.v2.selfplay.learner-seat.v1"
 PHASES = ("BID", "DECLARATION", "DISCARD", "CARDPLAY")
 
 
@@ -46,6 +47,45 @@ class CapturedTrajectory:
     contract: str | None
     signed_basic_value: int | None
     decision_trace_sha256: str
+
+
+@dataclass(frozen=True)
+class LearnerSeatRecord:
+    schema: str
+    source_commit: str
+    seat: int
+    policy_family_ids: dict[str, str]
+    threshold: float
+    legal_contracts: tuple[str, ...]
+    decisions: tuple[CapturedDecision, ...]
+    contract: str
+    signed_basic_value: int
+
+
+def declarer_learner_view(
+    trajectory: CapturedTrajectory,
+    *,
+    policy_family_ids: Mapping[str, str],
+) -> LearnerSeatRecord:
+    """Export one seat's lawful observations without reproducible deal keys.
+
+    Raw trajectory, seed, deal hash and RNG state stay in privileged provenance.
+    The caller must supply public policy family IDs that contain no RNG seed.
+    """
+    if trajectory.all_pass or trajectory.declarer is None or trajectory.contract is None or trajectory.signed_basic_value is None:
+        raise ValueError("NO_DECLARER_OUTCOME_FOR_LEARNER")
+    if set(policy_family_ids) != set(PHASES) or any(not str(x) for x in policy_family_ids.values()):
+        raise ValueError("BAD_PUBLIC_POLICY_FAMILY_IDS")
+    seat = trajectory.declarer
+    selected = tuple(d for d in trajectory.decisions if d.seat == seat)
+    if not selected or not any(d.phase == "CARDPLAY" for d in selected):
+        raise ValueError("MISSING_DECLARER_DECISIONS")
+    return LearnerSeatRecord(
+        LEARNER_SCHEMA, trajectory.source_commit, seat,
+        {phase: str(policy_family_ids[phase]) for phase in PHASES},
+        trajectory.threshold, trajectory.legal_contracts, selected,
+        trajectory.contract, trajectory.signed_basic_value,
+    )
 
 
 def _policy_ids(ids: Mapping[str, Sequence[str]]) -> dict[str, tuple[str, str, str]]:

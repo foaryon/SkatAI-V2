@@ -5,7 +5,7 @@ import pytest
 
 from skatai.game.bidding import BID_VALUES
 from skatai.selfplay.cardplay import RandomLegalPolicy, make_deal
-from skatai.selfplay.trajectory import capture_basic_game
+from skatai.selfplay.trajectory import capture_basic_game, declarer_learner_view
 
 
 class Bid:
@@ -88,3 +88,18 @@ def test_missing_policy_identity_fails_before_game():
             cardplay_policies=[RandomLegalPolicy(i) for i in range(3)],
             legal_contracts=("G",),
         )
+
+
+def test_learner_export_is_single_seat_and_removes_replay_keys():
+    raw = captured(1, True)
+    public = declarer_learner_view(
+        raw, policy_family_ids={phase: "code-family-" + phase
+                                for phase in ("BID", "DECLARATION", "DISCARD", "CARDPLAY")},
+    )
+    data = asdict(public)
+    assert data["schema"] == "skatai.v2.selfplay.learner-seat.v1"
+    assert "deal_seed" not in data and "deal_sha256" not in data
+    assert "decision_trace_sha256" not in data and "game_id" not in data
+    assert all(d["seat"] == data["seat"] for d in data["decisions"])
+    assert len(data["decisions"]) < len(raw.decisions)
+    assert data["signed_basic_value"] == raw.signed_basic_value
