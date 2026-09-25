@@ -8,6 +8,8 @@ not select deals or authorize promotion from a small local comparison.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Callable
 
 from skatai.selfplay.cardplay import CardplayEpisode, CardplayPolicy, make_deal, run_cardplay
@@ -15,6 +17,10 @@ from skatai.selfplay.scoring import DEFAULT_BASIC_CONTRACTS, score_basic_game
 from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS
 
 PolicyFactory = Callable[[int], CardplayPolicy]
+
+
+def _play_sha256(plays: tuple[tuple[int, str], ...]) -> str:
+    return hashlib.sha256(json.dumps(plays, separators=(",", ":")).encode()).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -72,6 +78,7 @@ def evaluate_cardplay_position(
         deal, policies=[control_factory(seat) for seat in range(3)], **fixed,
     )
     baseline_score = _signed_score(position, baseline)
+    baseline_play_sha256 = _play_sha256(baseline.plays)
     rows = []
     for candidate_seat in range(3):
         policies = [
@@ -93,6 +100,12 @@ def evaluate_cardplay_position(
             "candidate_delta": delta,
             "control_play_count": len(baseline.plays),
             "treatment_play_count": len(treatment.plays),
+            "control_play_sha256": baseline_play_sha256,
+            "treatment_play_sha256": _play_sha256(treatment.plays),
+            "first_divergence_play_index": next(
+                (index for index, (a, b) in enumerate(zip(baseline.plays, treatment.plays))
+                 if a != b), None,
+            ),
         })
     return {
         "schema": "skatai.v2.cardplay-fixed-position-paired.v1",

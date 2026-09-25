@@ -26,6 +26,9 @@ def test_identical_deterministic_cardplay_has_zero_paired_delta(contract):
     assert all(row["candidate_delta"] == 0 for row in result["rows"])
     assert all(row["control_play_count"] == row["treatment_play_count"] == 30
                for row in result["rows"])
+    assert all(row["first_divergence_play_index"] is None and
+               row["control_play_sha256"] == row["treatment_play_sha256"]
+               for row in result["rows"])
 
 
 @pytest.mark.parametrize("contract", ("C", "G", "N"))
@@ -55,6 +58,9 @@ def test_paired_cardplay_scores_pickup_declarer_and_defenders():
     assert result["picked_up_skat"] is True
     assert result["deal_sha256"] == deal.identity_sha256
     assert any(row["candidate_delta"] != 0 for row in result["rows"])
+    assert any(row["first_divergence_play_index"] is not None and
+               row["control_play_sha256"] != row["treatment_play_sha256"]
+               for row in result["rows"])
     for row in result["rows"]:
         signed_change = (
             row["treatment_signed_declarer_score"]

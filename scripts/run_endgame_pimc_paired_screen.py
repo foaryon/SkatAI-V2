@@ -10,6 +10,7 @@ from pathlib import Path
 import time
 
 from skatai.evaluation.cardplay_gameplay_gate import CardplayPosition, evaluate_cardplay_position
+from skatai.evaluation.cardplay_campaign import frozen_hand_positions, summarize_position_results
 from skatai.evaluation.endgame_pimc import PIMCOverridePolicy
 from skatai.runtime.skatzero_backend import FrozenB0CardplayPolicy
 from skatai.runtime.skatzero_pool import PersistentSkatZeroPool
@@ -24,7 +25,7 @@ def run_screen(task: dict, *, b0_root: Path, b0_python: Path) -> dict:
     if task.get("schema") != "skatai.v2.endgame-pimc-paired-screen-task.v1":
         raise ValueError("PIMC_SCREEN_TASK_SCHEMA")
     positions = task["positions"]
-    if not 1 <= len(positions) <= 12 or canonical_sha(positions) != task["positions_sha256"]:
+    if not 1 <= len(positions) <= 600 or canonical_sha(positions) != task["positions_sha256"]:
         raise ValueError("PIMC_SCREEN_POSITION_IDENTITY")
     if int(task["max_worlds"]) not in range(1, 257):
         raise ValueError("PIMC_SCREEN_WORLD_LIMIT")
@@ -48,6 +49,12 @@ def run_screen(task: dict, *, b0_root: Path, b0_python: Path) -> dict:
                              str(row["contract"]), int(row["winning_bid"])),
             control_factory=control, candidate_factory=candidate,
         ) for row in positions]
+    campaign_summary = None
+    if "deal_seeds" in task:
+        position_set = frozen_hand_positions(task["deal_seeds"], winning_bid=int(task["winning_bid"]))
+        if position_set["positions"] != positions or position_set["positions_sha256"] != task["positions_sha256"]:
+            raise ValueError("PIMC_SCREEN_CAMPAIGN_POSITION_MISMATCH")
+        campaign_summary = summarize_position_results(position_set, results)
     return {
         "schema": "skatai.v2.endgame-pimc-paired-screen-result.v1",
         "task_id": task["task_id"],
@@ -57,9 +64,14 @@ def run_screen(task: dict, *, b0_root: Path, b0_python: Path) -> dict:
         "results": results,
         "position_count": len(results),
         "candidate_seat_deltas": [row["candidate_delta"] for result in results for row in result["rows"]],
+        "changed_game_count": sum(
+            row["first_divergence_play_index"] is not None
+            for result in results for row in result["rows"]
+        ),
+        "cluster_summary": campaign_summary,
         "elapsed_seconds": round(time.monotonic() - started, 3),
         "strength_claim_authorized": False,
-        "interpretation": "Bounded paired gameplay screen on six fixed positions; no acceptance or general strength claim.",
+        "interpretation": "Bounded paired gameplay on frozen fixed positions; no acceptance or general strength claim.",
     }
 
 

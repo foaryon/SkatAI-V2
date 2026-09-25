@@ -2,13 +2,16 @@
 set -euo pipefail
 umask 027
 
-JOB_ID=endgame-pimc-screen-20260925-v1
-ROOT=/workspace/skatai-v2-wt-pimc-screen
+JOB_ID="${SKATAI_PIMC_JOB_ID:-endgame-pimc-screen-20260925-v1}"
+ROOT="${SKATAI_PIMC_WORKTREE:-/workspace/skatai-v2-wt-pimc-screen}"
 RUNTIME=/workspace/skatai-v2-runtime/isolated-science/$JOB_ID
-TASK=$ROOT/provenance/ENDGAME_PIMC_PAIRED_SCREEN_TASK_20260925.json
+TASK=$ROOT/provenance/${SKATAI_PIMC_TASK_FILENAME:-ENDGAME_PIMC_PAIRED_SCREEN_TASK_20260925.json}
 OUTPUT=$RUNTIME/result.json
 S3_ARGS=(--s3-provider Other --s3-env-auth --s3-endpoint https://fsn1.your-objectstorage.com --s3-region fsn1)
 mkdir -p "$RUNTIME"
+[[ "$JOB_ID" =~ ^[a-zA-Z0-9._-]+$ ]] || exit 1
+[[ "$ROOT" = /workspace/skatai-v2-wt-* ]] || exit 1
+[[ "$TASK" = "$ROOT"/provenance/*.json ]] || exit 1
 
 status() {
   local state="$1" detail="${2:-}"

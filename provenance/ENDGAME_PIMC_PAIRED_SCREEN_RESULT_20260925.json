@@ -1,0 +1,26 @@
+{
+  "b0_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+  "captured_at": "2026-09-25T11:43:52.198020+00:00",
+  "classification": "CONCLUDE",
+  "decision": "OPERATIONAL_PASS_SCIENTIFICALLY_INCONCLUSIVE",
+  "next": "Run predeclared 30-deal, all-hand-contract, all-seat campaign with play trace hashes; no promotion.",
+  "pod": {
+    "deletion_verified": true,
+    "id": "sw8qmbenz5lnd0"
+  },
+  "positions_sha256": "bbbaedcd964ff909363628130b866159cb37f658e28a4d82a1de9f41db7a3a02",
+  "reason": "Only two independent deals; no play divergence evidence in this result schema; zero score deltas do not establish action equivalence or strength.",
+  "result": {
+    "all_candidate_deltas_zero": true,
+    "candidate_seat_count": 18,
+    "elapsed_seconds": 6.185,
+    "object": "s3://skatai-v2/evidence/endgame-pimc/paired-screen/endgame-pimc-screen-20260925-v1/0cb959ce80055792ec6086410dd7c52b34dc8d755a7fb875ceaf8160c3f25fa3.json",
+    "position_count": 6,
+    "remote_readback_verified": true,
+    "sha256": "0cb959ce80055792ec6086410dd7c52b34dc8d755a7fb875ceaf8160c3f25fa3"
+  },
+  "schema": "skatai.v2.endgame-pimc-paired-screen-evidence.v1",
+  "source_commit": "c4563b6ecbc19aec83a54e291514442eee36d32a",
+  "task_id": "ENDGAME_PIMC_PAIRED_SCREEN_6",
+  "task_sha256": "24a9e23b63d68cf8bacac7f12f45ee121c9bb12fac9e6a36f2e5f37f56b65e7c"
+}
