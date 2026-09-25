@@ -73,8 +73,15 @@ def deterministic_balanced_sample(
             grouped[stratum],
             key=lambda event: _event_rank(event, seed=seed),
         )
-        for event in ranked[:limit]:
+        distinct_games: set[str] = set()
+        for event in ranked:
+            game_id = str(event.game_id)
+            if game_id in distinct_games:
+                continue
+            distinct_games.add(game_id)
             selected.append((stratum, _event_rank(event, seed=seed), event))
+            if len(distinct_games) == limit:
+                break
 
     selected.sort(key=lambda item: (item[0], item[1]))
     return tuple(item[2] for item in selected)

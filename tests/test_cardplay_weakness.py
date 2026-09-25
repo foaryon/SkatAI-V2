@@ -62,6 +62,14 @@ def test_balanced_sample_is_deterministic_and_caps_each_stratum():
     assert max(counts.values()) <= 3
 
 
+def test_balanced_sample_uses_distinct_games_within_stratum():
+    events = [event("repeated", ordinal, "C", 0, 0) for ordinal in range(9)]
+    events += [event(f"other-{index}", index, "C", 0, 0) for index in range(3)]
+    sample = deterministic_balanced_sample(events, per_stratum=3, seed=23)
+    assert len(sample) == 3
+    assert len({item.game_id for item in sample}) == 3
+
+
 
 def test_agreement_summary_reports_overall_and_dimensions():
     from skatai.evaluation.cardplay_weakness import summarize_agreement

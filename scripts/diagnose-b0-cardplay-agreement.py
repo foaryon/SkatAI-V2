@@ -9,6 +9,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from skatai.data.bidding import split_for_game
 from skatai.data.cardplay import CardplayReconstructionError, reconstruct_cardplay_events
 from skatai.evaluation.cardplay_weakness import (
     choice_type,
@@ -58,6 +59,13 @@ def load_events(path: Path, *, max_rows: int) -> tuple[list[Any], dict[str, Any]
             except json.JSONDecodeError:
                 counts["json_error"] += 1
                 errors["JSON_DECODE"] += 1
+                continue
+            # The frozen corpus split is assigned before inspecting a game's
+            # actions. Historical agreement is research feedback, so held-out
+            # actions must not become treatment-selection input.
+            split = split_for_game(game)
+            if split != "train":
+                counts[f"excluded_{split}"] += 1
                 continue
             if not game.get("cardplay_usable"):
                 counts["not_cardplay_usable"] += 1
@@ -173,6 +181,9 @@ def run_diagnostic(
         },
         "selection": {
             "identity_scheme": IDENTITY_SCHEME,
+            "source_split": "train",
+            "split_rule": "skatai.data.bidding.split_for_game",
+            "unit": "one decision per game within each contract-family/role/phase stratum",
             "seed": seed,
             "per_stratum": per_stratum,
             "selected_events": len(selected),
