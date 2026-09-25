@@ -143,6 +143,7 @@ class DiscardObservation:
 
 @dataclass(frozen=True)
 class CardplayObservation:
+    """Decision-time view; point fields are declarer then defenders for every seat."""
     hand: tuple[str, ...]
     seat: int
     declarer: int

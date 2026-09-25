@@ -112,6 +112,7 @@ def run_cardplay(
                 or set((*replacement, *skat)) != original):
             raise ValueError("INVALID_POST_PICKUP_PARTITION")
         hands[declarer] = list(replacement)
+    skat_points = sum(card_points(card) for card in skat)
     plays: list[tuple[int, str]] = []
     winners: list[int] = []
     current: list[tuple[int, str]] = []
@@ -130,8 +131,10 @@ def run_cardplay(
             current_trick=current,
             played_cards=plays,
             legal_cards=legal,
-            points_self=declarer_points if actor == declarer else defender_points,
-            points_other=defender_points if actor == declarer else declarer_points,
+            # Product/B0 point order is declarer, defenders for every seat.
+            # Only the pickup declarer sees points in their own buried cards.
+            points_self=declarer_points + (skat_points if pickup and actor == declarer else 0),
+            points_other=defender_points,
             max_accepted_bids_by_seat=max_accepted_bids_by_seat,
             skat_cards=skat if pickup and actor == declarer else (),
             blind_hand=not pickup,
@@ -156,7 +159,6 @@ def run_cardplay(
 
     if any(hands) or current or len(winners) != 10:
         raise ValueError("INCOMPLETE_CARDPLAY_EPISODE")
-    skat_points = sum(card_points(card) for card in skat)
     final_points = declarer_points + skat_points
     if final_points + defender_points != 120:
         raise ValueError("CARD_POINT_CONSERVATION_FAILED")

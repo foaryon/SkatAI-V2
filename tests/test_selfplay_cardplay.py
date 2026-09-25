@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from skatai.game.rules import game_type_from_contract, legal_cards, replay_tricks
+from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
 from skatai.selfplay.cardplay import RandomLegalPolicy, make_deal, run_cardplay
 
 
@@ -61,3 +61,38 @@ def test_policy_observation_keeps_hidden_deal_private_and_illegal_move_fails():
             replace(make_deal(1), identity_sha256="wrong"),
             contract="G", declarer=0, policies=policies,
         )
+
+
+@pytest.mark.parametrize("pickup", [False, True])
+def test_cardplay_point_fields_match_deployed_declarer_order(pickup):
+    deal = make_deal(42)
+    declarer = 1
+    cards12 = (*deal.hands[declarer], *deal.skat)
+    final_hand = cards12[:10] if pickup else None
+    final_skat = cards12[10:] if pickup else None
+    views = []
+
+    class CaptureFirstLegal:
+        def play_card(self, view):
+            views.append(view)
+            return view.legal_cards[0]
+
+    run_cardplay(
+        deal, contract="G", declarer=declarer,
+        policies=[CaptureFirstLegal() for _ in range(3)],
+        final_hand=final_hand, final_skat=final_skat,
+    )
+    buried_points = sum(card_points(card) for card in final_skat or ())
+    assert len(views) == 30
+    if pickup:
+        assert buried_points > 0
+    assert any(view.seat != declarer and view.points_self != view.points_other for view in views)
+    for view in views:
+        replayed = replay_tricks(
+            view.played_cards, game_type="GRAND", declarer=declarer,
+        )
+        expected_declarer = replayed["declarer_trick_points"]
+        if pickup and view.seat == declarer:
+            expected_declarer += buried_points
+        assert view.points_self == expected_declarer
+        assert view.points_other == replayed["defender_trick_points"]
