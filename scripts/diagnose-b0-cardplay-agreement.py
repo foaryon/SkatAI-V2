@@ -91,12 +91,24 @@ def load_events(path: Path, *, max_rows: int) -> tuple[list[Any], dict[str, Any]
 def run_diagnostic(
     *,
     input_path: Path,
+    expected_input_sha256: str,
+    source_asset_id: str,
     max_rows: int,
     per_stratum: int,
     seed: int,
     skatzero_root: Path,
     skatzero_python: Path,
 ) -> dict[str, Any]:
+    expected = str(expected_input_sha256).lower()
+    if len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected):
+        raise ValueError("BAD_EXPECTED_INPUT_SHA256")
+    if not str(source_asset_id).strip():
+        raise ValueError("EMPTY_SOURCE_ASSET_ID")
+    actual = sha256_file(input_path)
+    if actual != expected:
+        raise ValueError("INPUT_SHA256_MISMATCH")
+    if max_rows < 1 or per_stratum < 1:
+        raise ValueError("DIAGNOSTIC_LIMIT_MUST_BE_POSITIVE")
     events, reconstruction = load_events(input_path, max_rows=max_rows)
     selected = deterministic_balanced_sample(
         events,
@@ -175,7 +187,8 @@ def run_diagnostic(
         "schema": SCHEMA,
         "input": {
             "path": str(input_path),
-            "sha256": sha256_file(input_path),
+            "source_asset_id": source_asset_id,
+            "sha256": actual,
             "bytes": input_path.stat().st_size,
             "max_rows": max_rows,
         },
@@ -213,6 +226,8 @@ def run_diagnostic(
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--input", required=True, type=Path)
+    p.add_argument("--expected-input-sha256", required=True)
+    p.add_argument("--source-asset-id", required=True)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--max-rows", type=int, default=5000)
     p.add_argument("--per-stratum", type=int, default=4)
@@ -227,6 +242,8 @@ def main() -> None:
 
     payload = run_diagnostic(
         input_path=args.input,
+        expected_input_sha256=args.expected_input_sha256,
+        source_asset_id=args.source_asset_id,
         max_rows=args.max_rows,
         per_stratum=args.per_stratum,
         seed=args.seed,

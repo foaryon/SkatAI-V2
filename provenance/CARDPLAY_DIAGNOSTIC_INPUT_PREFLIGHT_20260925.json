@@ -1,0 +1,21 @@
+{
+  "schema": "skatai.v2.cardplay-diagnostic-input-preflight.v1",
+  "captured_at": "2026-09-25T11:00:00Z",
+  "task_id": "CARDPLAY_BOUNDED_INPUT_PREFLIGHT",
+  "classification": "CONCLUDE",
+  "parent_source_commit": "ef48a253dd00a84826f5c3e1c11e9301b9e1676a",
+  "nearest_gate": "Reproducible, train-only cardplay weakness selection on an identified bounded sample",
+  "change": "The diagnostic now requires a source asset ID and expected input SHA-256, validates both before loading records or invoking B0 inference, and rejects nonpositive sample bounds.",
+  "implementation": {
+    "path": "scripts/diagnose-b0-cardplay-agreement.py",
+    "sha256": "b5ed36921abeab890fd0f38ad614cffa87151650d42fc3ad81c0f913c73c8cb1"
+  },
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_cardplay_diagnostic_split.py tests/test_cardplay_weakness.py tests/test_cardplay_data.py tests/test_bidding_data.py",
+    "result": "25 passed in 1.74s",
+    "wrong_input_rejected_before_load": true,
+    "git_diff_check": "pass"
+  },
+  "scientific_limit": "No data was selected and no B0 inference or strength estimate was run. The source asset ID is provenance supplied by the caller; qualification of a new source remains a separate gate.",
+  "next_action": "With isolated compute and a verified bounded train-only input sample, run the preregistered cardplay diagnostic. R9 remains under its own fail-closed supervisor."
+}
