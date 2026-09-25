@@ -73,12 +73,8 @@ if pgrep -f 'scripts/supervise_frozen_r9.py' >/dev/null 2>&1; then
 fi
 
 if [ "$(id -u)" -eq 0 ]; then
-  uid="$(id -u sentinelx)"
-  gid="$(id -g sentinelx)"
-  worker_home="$(getent passwd sentinelx | cut -d: -f6)"
-  setsid nohup env HOME="$worker_home" XDG_CONFIG_HOME="$worker_home/.config" \
-    setpriv --reuid="$uid" --regid="$gid" --init-groups -- \
-    /usr/bin/python3 "$SUPERVISOR" >>"$LOG" 2>&1 </dev/null &
+  setsid nohup /usr/bin/python3 "$ROOT/scripts/launch_frozen_r9_supervisor.py" \
+    >>"$LOG" 2>&1 </dev/null &
 else
   setsid nohup /usr/bin/python3 "$SUPERVISOR" >>"$LOG" 2>&1 </dev/null &
 fi

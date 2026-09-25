@@ -11,6 +11,8 @@
     "correction": "restart only independent supervisor at clean boundary with pod S3 env and sentinelx HOME; correct root boot path HOME",
     "failure": "worker mirror preflight failed because resumed supervisor lacked usable S3 launch environment and inherited root HOME",
     "frozen_treatment_changed": false,
+    "future_bootstrap_verification": "9 focused supervisor/bootstrap tests passed; shell syntax and diff checks passed; healthy frozen worker was not restarted for test",
+    "future_root_bootstrap": "scripts/launch_frozen_r9_supervisor.py reads only allowlisted S3 keys from PID 1 in memory, sets sentinelx HOME, and execs unprivileged supervisor",
     "last_reconciled_boundary": {
       "active_games": 0,
       "pending_effects": 0
@@ -20,6 +22,11 @@
     "scientific_look_opened": false,
     "supervisor_pid": 45085,
     "worker_lifetime_owner": "independent fail-closed supervisor"
+  },
+  "resource_access": {
+    "classification": "BLOCKED_ISOLATED_COMPUTE_PROVISIONING",
+    "retry_policy": "Do not repeatedly retry until key scope/access changes; continue independent work",
+    "runpod_pod_listing": "HTTP 403 from read-only GET /v2/pods using configured pod API key"
   },
   "schema": "skatai.v2.resume-recovery-and-v5-gate.v1",
   "v5": {
