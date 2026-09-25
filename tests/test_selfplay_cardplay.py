@@ -96,3 +96,39 @@ def test_cardplay_point_fields_match_deployed_declarer_order(pickup):
             expected_declarer += buried_points
         assert view.points_self == expected_declarer
         assert view.points_other == replayed["defender_trick_points"]
+
+
+@pytest.mark.parametrize(
+    "contract,pickup", [("NO", True), ("NHO", False), ("CHO", False)]
+)
+@pytest.mark.parametrize("declarer", [0, 1, 2])
+def test_ouvert_public_hand_tracks_unplayed_declarer_cards(contract, pickup, declarer):
+    deal = make_deal(20260925 + declarer)
+    final_hand = deal.hands[declarer]
+    final_skat = deal.skat
+    views = []
+
+    class CaptureFirstLegal:
+        def play_card(self, view):
+            views.append(view)
+            return view.legal_cards[0]
+
+    run_cardplay(
+        deal, contract=contract, declarer=declarer,
+        policies=[CaptureFirstLegal() for _ in range(3)],
+        final_hand=final_hand if pickup else None,
+        final_skat=final_skat if pickup else None,
+    )
+    assert len(views) == 30
+    for view in views:
+        played_by_declarer = {
+            card for seat, card in view.played_cards if seat == declarer
+        }
+        expected_public = tuple(
+            card for card in final_hand if card not in played_by_declarer
+        )
+        assert view.open_hand_cards == expected_public
+        assert view.blind_hand is not pickup
+        if view.seat != declarer:
+            assert view.skat_cards == ()
+            assert view.known_private_cards == ()

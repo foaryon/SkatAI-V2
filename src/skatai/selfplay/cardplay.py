@@ -138,6 +138,7 @@ def run_cardplay(
             max_accepted_bids_by_seat=max_accepted_bids_by_seat,
             skat_cards=skat if pickup and actor == declarer else (),
             blind_hand=not pickup,
+            open_hand_cards=tuple(hands[declarer]) if "O" in contract else (),
         )
         card = str(policies[actor].play_card(view))
         if card not in legal:
