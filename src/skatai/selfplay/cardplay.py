@@ -1,7 +1,8 @@
-"""Deterministic, legal cardplay-only hand-game episodes.
+"""Deterministic, legal cardplay episodes for controlled V2 self-play.
 
-This supplies a clean V2 self-play primitive. Bidding, declaration, discard,
-full contract scoring, and strength acceptance are outside this episode type.
+This supplies a clean V2 self-play primitive. Auction and declaration can be
+passed in as validated inputs. Full contract scoring and strength acceptance
+are outside this episode type.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from skatai.game.rules import (
 from skatai.runtime.interface import CardplayObservation
 
 SCHEMA = "skatai.v2.selfplay.cardplay-hand.v1"
+PICKUP_SCHEMA = "skatai.v2.selfplay.cardplay-pickup.v1"
 DECK = tuple(suit + rank for suit in "CSHD" for rank in "ATKQJ987")
 
 
@@ -78,6 +80,10 @@ def run_cardplay(
     contract: str,
     declarer: int,
     policies: Sequence[CardplayPolicy],
+    final_hand: Sequence[str] | None = None,
+    final_skat: Sequence[str] | None = None,
+    winning_bid: int = 0,
+    max_accepted_bids_by_seat: Sequence[int] = (0, 0, 0),
 ) -> CardplayEpisode:
     """Play 10 legal tricks; policies see only their own cards and public state."""
     if len(policies) != 3:
@@ -93,7 +99,19 @@ def run_cardplay(
     if deal != make_deal(deal.seed):
         raise ValueError("DEAL_IDENTITY_MISMATCH")
 
+    if (final_hand is None) != (final_skat is None):
+        raise ValueError("PICKUP_HAND_AND_SKAT_REQUIRED_TOGETHER")
+    pickup = final_hand is not None
+    skat = tuple(final_skat) if pickup else deal.skat
     hands = [list(hand) for hand in deal.hands]
+    if pickup:
+        replacement = tuple(final_hand)
+        original = set((*deal.hands[declarer], *deal.skat))
+        if (len(replacement) != 10 or len(skat) != 2
+                or len(set((*replacement, *skat))) != 12
+                or set((*replacement, *skat)) != original):
+            raise ValueError("INVALID_POST_PICKUP_PARTITION")
+        hands[declarer] = list(replacement)
     plays: list[tuple[int, str]] = []
     winners: list[int] = []
     current: list[tuple[int, str]] = []
@@ -108,15 +126,15 @@ def run_cardplay(
             seat=actor,
             declarer=declarer,
             contract=contract,
-            winning_bid=0,  # No auction is simulated by this component.
+            winning_bid=winning_bid,
             current_trick=current,
             played_cards=plays,
             legal_cards=legal,
             points_self=declarer_points if actor == declarer else defender_points,
             points_other=defender_points if actor == declarer else declarer_points,
-            max_accepted_bids_by_seat=(0, 0, 0),
-            skat_cards=(),  # Hand game: the two skat cards are hidden.
-            blind_hand=True,
+            max_accepted_bids_by_seat=max_accepted_bids_by_seat,
+            skat_cards=skat if pickup and actor == declarer else (),
+            blind_hand=not pickup,
         )
         card = str(policies[actor].play_card(view))
         if card not in legal:
@@ -138,7 +156,7 @@ def run_cardplay(
 
     if any(hands) or current or len(winners) != 10:
         raise ValueError("INCOMPLETE_CARDPLAY_EPISODE")
-    skat_points = sum(card_points(card) for card in deal.skat)
+    skat_points = sum(card_points(card) for card in skat)
     final_points = declarer_points + skat_points
     if final_points + defender_points != 120:
         raise ValueError("CARD_POINT_CONSERVATION_FAILED")
@@ -146,7 +164,7 @@ def run_cardplay(
         declarer not in winners if game_type == "NULL" else final_points >= 61
     )
     return CardplayEpisode(
-        schema=SCHEMA,
+        schema=PICKUP_SCHEMA if pickup else SCHEMA,
         deal_seed=deal.seed,
         deal_sha256=deal.identity_sha256,
         contract=contract,
