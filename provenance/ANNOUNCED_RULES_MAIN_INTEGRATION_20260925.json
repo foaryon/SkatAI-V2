@@ -1,0 +1,19 @@
+{
+  "schema": "skatai.v2.announced-rules-main-integration.v1",
+  "captured_at": "2026-09-25T11:04:50Z",
+  "task_id": "ANNOUNCED_SCHWARZ_OUVERT_RESEARCH_INTEGRATION",
+  "classification": "CONCLUDE",
+  "source_commit": "06c714b",
+  "research_commit": "ae21928a49aead7c451d12be4a9d235592c651a6",
+  "parent_source_commit": "d5a080fc41c6db247cc0645c7451b2d57ea99724",
+  "basis": "Official ISkO-2022 \u00a7\u00a72.4.1, 2.5.1, 2.5.7\u20132.5.8, 2.5.11, 3.6.3; exact source and train-only oracle evidence in provenance/ANNOUNCED_RULES_RESEARCH_SOURCE_V1.json",
+  "change": "Merged research-gated announced Schwarz and suit/Grand ouvert scoring; default scoring remains fail closed.",
+  "verification": {
+    "command": "PYTHONPATH=src /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_selfplay_*.py tests/test_cardplay_campaign.py tests/test_cardplay_gameplay_gate.py",
+    "result": "100 passed in 1.31s",
+    "git_diff_check": "pass",
+    "remote": "origin/main pushed"
+  },
+  "scientific_limit": "Official examples and bounded synthetic losses support research scoring; independent observed loss/overbid oracle and deployment acceptance remain pending. No policy training or strength claim.",
+  "next_gate": "Seek independent announced-mode loss/overbid source evidence or separately frozen holdout before enabling default product scoring."
+}
