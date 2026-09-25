@@ -29,8 +29,11 @@ def _processes_containing(token: str) -> list[int]:
     proc = Path("/proc")
     if not proc.is_dir():
         return out
+    self_pid = os.getpid()
     for entry in proc.iterdir():
         if not entry.name.isdigit():
+            continue
+        if int(entry.name) == self_pid:
             continue
         try:
             cmd = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode(

@@ -133,3 +133,8 @@ def test_runtime_env_rejects_secret_value_key(tmp_path):
     env.write_text("export ISS_PASSWORD=secret\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="UNEXPECTED_RUNTIME_ENV_KEY"):
         mod.load_runtime_env(env)
+
+
+def test_process_scan_never_counts_the_supervisor_itself():
+    mod = _load()
+    assert mod.os.getpid() not in mod._processes_containing("test_supervise_frozen_r9.py")
