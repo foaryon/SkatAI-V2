@@ -10,6 +10,7 @@ LOG="$BASE/logs/runpod-cpu-hunter-guardian.log"
 LOCK=/run/lock/skatai-runpod-cpu-hunter-guardian.lock
 POLL_SECONDS=60
 TARGETS="16/32,8/16"
+COMPLETE_MARKER="$BASE/runpod-cpu-upgrade-hunter/UPGRADE_COMPLETE.json"
 
 mkdir -p "$BASE/logs" /run/lock "$BASE/runpod-cpu-upgrade-hunter" 2>/dev/null || true
 
@@ -33,6 +34,14 @@ trap 'cleanup; exit 0' INT TERM
 
 failures=0
 while true; do
+  # A successful handoff is terminal for this upgrade campaign. Do not keep
+  # polling RunPod just to rediscover the pod we are already running on.
+  # Removing the durable marker intentionally re-enables a future campaign.
+  if [ -f "$COMPLETE_MARKER" ]; then
+    sleep 3600
+    continue
+  fi
+
   if [ ! -f "$HUNTER" ]; then
     log_event "hunter-missing path=$HUNTER retry_s=30"
     sleep 30
@@ -45,7 +54,8 @@ while true; do
   fi
   claim_args=()
   mode=watch-only
-  if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ]; then
+  AUTOCLAIM_MARKER="$BASE/runpod-cpu-upgrade-hunter/ENABLE_AUTOCLAIM"
+  if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ] && [ -f "$AUTOCLAIM_MARKER" ]; then
     claim_args=(--claim)
     mode=claim-authorized
   fi

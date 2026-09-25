@@ -62,6 +62,12 @@ class GatePaths:
 
     @classmethod
     def defaults(cls) -> "GatePaths":
+        repo_override = os.environ.get("SKATAI_V2_ROOT")
+        runtime_override = os.environ.get("ISS_GATE_RUNTIME_ROOT")
+        if (repo_override is not None
+                and Path(repo_override).resolve() != Path("/workspace/skatai-v2").resolve()
+                and not runtime_override):
+            raise ISSGateWorkerError("PINNED_REPO_REQUIRES_EXPLICIT_GATE_RUNTIME_ROOT")
         return cls(
             repo_root=Path(os.environ.get("SKATAI_V2_ROOT", "/workspace/skatai-v2")),
             runtime_root=Path(

@@ -4,7 +4,7 @@ import pytest
 
 from skatai.game.bidding import BID_VALUES
 from skatai.game.rules import card_points
-from skatai.selfplay.cardplay import RandomLegalPolicy, make_deal, run_cardplay
+from skatai.selfplay.cardplay import PICKUP_SCHEMA, SCHEMA as HAND_SCHEMA, RandomLegalPolicy, make_deal, run_cardplay
 from skatai.selfplay.declaration import run_declaration
 from skatai.selfplay.game import run_game
 from skatai.selfplay.scoring import score_basic_episode
@@ -84,6 +84,31 @@ def test_auction_declaration_and_legal_cardplay(seed, pickup):
     scored = score_basic_episode(result)
     assert scored.signed_game_value != 0
     assert scored.won == (scored.signed_game_value > 0)
+    with pytest.raises(ValueError, match="EPISODE_PLAY_WIN_FLAG_MISMATCH"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, declarer_won=not result.cardplay.declarer_won),
+        ))
+    wrong_schema = HAND_SCHEMA if pickup else PICKUP_SCHEMA
+    with pytest.raises(ValueError, match="EPISODE_PLAY_MODE_MISMATCH"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, schema=wrong_schema),
+        ))
+    with pytest.raises(ValueError, match="EPISODE_IDENTITY_MISMATCH"):
+        score_basic_episode(replace(
+            result, bidding=replace(result.bidding, deal_sha256="0" * 64),
+        ))
+    with pytest.raises(ValueError, match="EPISODE_IDENTITY_MISMATCH"):
+        score_basic_episode(replace(
+            result, cardplay=replace(result.cardplay, deal_seed=seed + 1),
+        ))
+    with pytest.raises(ValueError, match="EPISODE_BIDDING_REPLAY_MISMATCH"):
+        score_basic_episode(replace(
+            result, bidding=replace(result.bidding, actions=result.bidding.actions[:-1]),
+        ))
+    with pytest.raises(ValueError, match="EPISODE_BIDDING_REPLAY_MISMATCH"):
+        score_basic_episode(replace(
+            result, bidding=replace(result.bidding, max_accepted_bids_by_seat=(0, 0, 0)),
+        ))
     with pytest.raises(ValueError, match="EPISODE_REPLAY_OR_POINT_MISMATCH"):
         score_basic_episode(replace(
             result, cardplay=replace(result.cardplay, declarer_final_points=0),
@@ -171,3 +196,36 @@ def test_declaration_rejects_wrong_mode_and_null_bid():
     with pytest.raises(ValueError, match="CONTRACT_NOT_LEGAL_AT_WINNING_BID"):
         run_declaration(**(kwargs | {"winning_bid": 24}), legal_contracts=("N",),
                         declaration_policy=Choose("PICKUP"))
+
+
+@pytest.mark.parametrize(
+    "contract,scorer_gate",
+    [("GHS", "ANNOUNCED_SCHNEIDER_REQUIRES_RESEARCH_GATE"),
+     ("GHZ", "UNSUPPORTED_BASIC_CONTRACT"),
+     ("GHO", "UNSUPPORTED_BASIC_CONTRACT")],
+)
+def test_announced_episode_win_flag_uses_declared_condition(contract, scorer_gate):
+    class Choose:
+        def choose_contract(self, view):
+            return contract
+
+    seed = 10
+    deal = make_deal(seed)
+    episode = run_game(
+        seed,
+        bidding_policies=[BidPolicy(hand, 18) for hand in deal.hands],
+        declaration_policies=[Choose() for _ in range(3)],
+        discard_policies=[DiscardPolicy() for _ in range(3)],
+        cardplay_policies=[RandomLegalPolicy(30 + seat) for seat in range(3)],
+        legal_contracts=(contract,),
+    )
+    assert episode.cardplay is not None
+    assert episode.cardplay.declarer_final_points == 63
+    assert episode.cardplay.trick_winners.count(episode.cardplay.declarer) == 7
+    assert episode.cardplay.declarer_won is False
+    with pytest.raises(ValueError, match=scorer_gate):
+        score_basic_episode(episode)
+    with pytest.raises(ValueError, match="EPISODE_PLAY_WIN_FLAG_MISMATCH"):
+        score_basic_episode(replace(
+            episode, cardplay=replace(episode.cardplay, declarer_won=True),
+        ))

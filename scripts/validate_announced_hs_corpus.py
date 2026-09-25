@@ -80,6 +80,7 @@ def validate_window(source: Path, *, start: int, end: int, plan_sha256: str,
     if not 0 <= start < end <= 400_000:
         raise ValueError("WINDOW_OUT_OF_BOUNDS")
     prefix = hashlib.sha256()
+    full_source = hashlib.sha256()
     counts = Counter()
     results = []
     with source.open("rb") as stream:
@@ -88,6 +89,7 @@ def validate_window(source: Path, *, start: int, end: int, plan_sha256: str,
             if not raw:
                 raise ValueError(f"SOURCE_SHORTER_THAN_WINDOW:{ordinal}")
             prefix.update(raw)
+            full_source.update(raw)
             if ordinal < start:
                 continue
             counts["window_rows"] += 1
@@ -110,6 +112,11 @@ def validate_window(source: Path, *, start: int, end: int, plan_sha256: str,
                            "status": "INVALID", "reason": str(exc)}
             results.append(outcome)
             counts[outcome["status"].lower()] += 1
+        while chunk := stream.read(1024 * 1024):
+            full_source.update(chunk)
+    actual_source_sha256 = full_source.hexdigest()
+    if actual_source_sha256 != registered_source_sha256:
+        raise ValueError("REGISTERED_SOURCE_HASH_MISMATCH")
     return {
         "schema": SCHEMA,
         "captured_at": datetime.now(timezone.utc).isoformat(),
@@ -117,6 +124,7 @@ def validate_window(source: Path, *, start: int, end: int, plan_sha256: str,
             ["git", "rev-parse", "HEAD"], text=True,
         ).strip(),
         "registered_source_sha256": registered_source_sha256,
+        "verified_source_sha256": actual_source_sha256,
         "source_prefix_through_end_sha256": prefix.hexdigest(),
         "plan_sha256": plan_sha256,
         "window_zero_based_lines": [start, end],

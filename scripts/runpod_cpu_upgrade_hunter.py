@@ -609,6 +609,7 @@ def run_iteration(api: RunpodApi, cfg: Config, *, claim: bool) -> dict[str, Any]
                     claim_pending=False,
                     outcome="claim-rejected",
                     claim_http_status=exc.status,
+                    claim_error_message=exc.message[:500],
                 )
                 if exc.looks_like_capacity:
                     log_line(

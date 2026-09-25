@@ -10,10 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence
 
+from skatai.game.bidding import replay as replay_bidding
 from skatai.game.rules import card_points, game_type_from_contract, legal_cards, replay_tricks
-from skatai.selfplay.cardplay import DECK, make_deal
-from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS
-from skatai.selfplay.game import GameEpisode
+from skatai.selfplay.bidding import SCHEMA as BIDDING_SCHEMA
+from skatai.selfplay.cardplay import DECK, PICKUP_SCHEMA, SCHEMA as HAND_SCHEMA, make_deal
+from skatai.selfplay.declaration import HAND_CONTRACTS, PICKUP_CONTRACTS, SCHEMA as DECLARATION_SCHEMA
+from skatai.selfplay.game import SCHEMA as GAME_SCHEMA, GameEpisode
 
 SCHEMA = "skatai.v2.selfplay.basic-score.v3"
 BASE_VALUES = {"C": 12, "S": 11, "H": 10, "D": 9, "G": 24}
@@ -109,7 +111,14 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
     if declaration is None or play is None:
         raise ValueError("NO_PLAYED_GAME_TO_SCORE")
     deal = make_deal(episode.deal_seed)
-    if (episode.deal_sha256 != deal.identity_sha256
+    if (episode.schema != GAME_SCHEMA
+            or episode.bidding.schema != BIDDING_SCHEMA
+            or declaration.schema != DECLARATION_SCHEMA
+            or episode.bidding.deal_seed != deal.seed
+            or declaration.deal_seed != deal.seed
+            or play.deal_seed != deal.seed
+            or episode.bidding.deal_sha256 != deal.identity_sha256
+            or episode.deal_sha256 != deal.identity_sha256
             or declaration.deal_sha256 != deal.identity_sha256
             or play.deal_sha256 != deal.identity_sha256
             or declaration.contract != play.contract
@@ -117,6 +126,24 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or declaration.declarer != episode.bidding.winner
             or declaration.winning_bid != episode.bidding.winning_bid):
         raise ValueError("EPISODE_IDENTITY_MISMATCH")
+    auction = replay_bidding(tuple(
+        token for seat, action in episode.bidding.actions
+        for token in (str(seat), action)
+    ))
+    bid_maxima = [0, 0, 0]
+    for action in auction.actions:
+        if action["native_action"] != "p":
+            seat = action["actor"]
+            bid_maxima[seat] = max(bid_maxima[seat], action["before"]["current_offer"])
+    if (not auction.ok or auction.all_pass
+            or len(auction.actions) != len(episode.bidding.actions)
+            or auction.winner != episode.bidding.winner
+            or auction.winning_bid != episode.bidding.winning_bid
+            or tuple(bid_maxima) != episode.bidding.max_accepted_bids_by_seat):
+        raise ValueError("EPISODE_BIDDING_REPLAY_MISMATCH")
+    expected_play_schema = PICKUP_SCHEMA if declaration.picked_up_skat else HAND_SCHEMA
+    if play.schema != expected_play_schema:
+        raise ValueError("EPISODE_PLAY_MODE_MISMATCH")
     original = set((*deal.hands[declaration.declarer], *deal.skat))
     if declaration.picked_up_skat:
         if (declaration.contract not in PICKUP_CONTRACTS
@@ -165,9 +192,20 @@ def score_basic_episode(episode: GameEpisode) -> BasicScore:
             or play.declarer_final_points != play.declarer_trick_points + skat_points
             or play.declarer_final_points + play.defender_trick_points != 120):
         raise ValueError("EPISODE_REPLAY_OR_POINT_MISMATCH")
+    declarer_tricks = sum(w == play.declarer for w in winners)
+    if game_type == "NULL":
+        expected_play_win = declarer_tricks == 0
+    elif "O" in play.contract[1:] or "Z" in play.contract[1:]:
+        expected_play_win = declarer_tricks == 10
+    elif "S" in play.contract[1:]:
+        expected_play_win = play.declarer_final_points >= 90
+    else:
+        expected_play_win = play.declarer_final_points >= 61
+    if play.declarer_won != expected_play_win:
+        raise ValueError("EPISODE_PLAY_WIN_FLAG_MISMATCH")
     return score_basic_game(
         contract=play.contract, winning_bid=declaration.winning_bid,
         declarer_cards=(*declaration.final_hand, *declaration.final_skat),
         declarer_points=play.declarer_final_points,
-        declarer_tricks=sum(w == play.declarer for w in winners),
+        declarer_tricks=declarer_tricks,
     )

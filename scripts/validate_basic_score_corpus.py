@@ -16,21 +16,65 @@ import sys
 import tempfile
 
 from skatai.data.bidding import split_for_game
-from skatai.game.rules import card_points, replay_tricks
+from skatai.game.rules import card_points, legal_cards, replay_tricks
+from skatai.selfplay.cardplay import DECK
 from skatai.selfplay.scoring import score_basic_game
 
-SCHEMA = "skatai.v2.evidence.basic-score-corpus-oracle.v3"
+SCHEMA = "skatai.v2.evidence.basic-score-corpus-oracle.v4"
+
+
+def _check_play_legality(record: dict) -> None:
+    """Check the source game independently of the SGF parser's legal-play flag."""
+    hands = [list(hand) for hand in record["initial_hands"]]
+    skat = tuple(record["skat_initial"])
+    declarer = int(record["declarer"])
+    if (declarer not in (0, 1, 2) or len(hands) != 3
+            or any(len(hand) != 10 for hand in hands) or len(skat) != 2
+            or len(set((*skat, *(card for hand in hands for card in hand)))) != 32
+            or set((*skat, *(card for hand in hands for card in hand))) != set(DECK)):
+        raise ValueError("INVALID_SOURCE_DEAL")
+    if record["is_hand"]:
+        if record["discards"] is not None:
+            raise ValueError("HAND_WITH_DISCARDS")
+    else:
+        discards = tuple(record["discards"] or ())
+        if len(discards) != 2 or len(set(discards)) != 2:
+            raise ValueError("INVALID_PICKUP_DISCARDS")
+        hands[declarer].extend(skat)
+        for card in discards:
+            if card not in hands[declarer]:
+                raise ValueError("UNOWNED_PICKUP_DISCARD")
+            hands[declarer].remove(card)
+    current = []
+    for actor, card in record["plays"]:
+        if actor not in (0, 1, 2) or card not in legal_cards(
+            hands[actor], current, record["game_type"]
+        ):
+            raise ValueError("ILLEGAL_OR_UNOWNED_SOURCE_PLAY")
+        hands[actor].remove(card)
+        current.append((actor, card))
+        if len(current) == 3:
+            current = []
+    if current or any(hands):
+        raise ValueError("INCOMPLETE_SOURCE_PLAY")
 
 
 def compare_played_record(record: dict) -> dict:
     identity = str(record["semantic_sha256"])
     if not identity or record.get("play_count") != 30:
         return {"identity": identity, "status": "INCOMPLETE"}
+    try:
+        _check_play_legality(record)
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        return {"identity": identity, "status": "INVALID", "reason": str(exc)}
     contract = str(record["contract_base"]) + str(record["contract_modifiers"])
     declarer = int(record["declarer"])
-    replay = replay_tricks(
-        record["plays"], game_type=str(record["game_type"]), declarer=declarer,
-    )
+    try:
+        replay = replay_tricks(
+            record["plays"], game_type=str(record["game_type"]), declarer=declarer,
+        )
+    except (TypeError, ValueError) as exc:
+        return {"identity": identity, "status": "INVALID", "reason": str(exc)}
     final_skat = record["discards"] if record["discards"] is not None else record["skat_initial"]
     reconstructed_points = replay["declarer_trick_points"] + sum(card_points(card) for card in final_skat)
     reported_points = int(record["card_points"])
@@ -63,7 +107,7 @@ def validate_stream(stream, expected_sha256: str) -> dict:
     digest = hashlib.sha256()
     counts = {"total": 0, "played": 0, "match": 0, "mismatch": 0,
               "point_mismatch": 0, "excluded_split": 0,
-              "unsupported": 0, "incomplete": 0}
+              "unsupported": 0, "incomplete": 0, "invalid": 0}
     details = []
     for raw in stream:
         digest.update(raw)
