@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -791,3 +792,34 @@ def test_reconnaissance_budget_soft_denies_extra_reads(tmp_path, monkeypatch):
     event = posted[-1]["events"][0]
     assert event["success"] is False
     assert "RECONNAISSANCE_BUDGET_REACHED" in event["output"]
+
+
+def test_decorated_evidence_reference_verifies_path_and_hash(tmp_path):
+    mod = _load_controller()
+    mod.REPO_ROOT = tmp_path
+    mod.EVIDENCE_ROOTS = (tmp_path,)
+    evidence = tmp_path / "provenance" / "result.json"
+    evidence.parent.mkdir()
+    evidence.write_text('{"classification":"ACCEPT"}\n', encoding="utf-8")
+    digest = hashlib.sha256(evidence.read_bytes()).hexdigest()
+
+    ok, verified = mod.controller_verifiable_evidence(
+        [f"provenance/result.json sha256={digest} classification=ACCEPT"],
+        since=evidence.stat().st_mtime - 1,
+    )
+    assert ok is True
+    assert verified == [str(evidence.resolve())]
+
+    bad, bad_verified = mod.controller_verifiable_evidence(
+        ["provenance/result.json sha256=" + ("0" * 64)],
+        since=evidence.stat().st_mtime - 1,
+    )
+    assert bad is False
+    assert bad_verified == []
+
+    prose, prose_verified = mod.controller_verifiable_evidence(
+        ["git status: clean and synchronized"],
+        since=None,
+    )
+    assert prose is False
+    assert prose_verified == []

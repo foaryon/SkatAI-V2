@@ -1,6 +1,6 @@
 {
   "schema": "skatai.v2.main-gate-queue.v1",
-  "captured_at": "2026-09-26T01:20:00Z",
+  "captured_at": "2026-09-26T01:30:00Z",
   "policy": "ordered_finite_preauthorized_queue",
   "entries": [
     {
@@ -22,7 +22,7 @@
       "gate_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
       "goal_path_id": "G7_FULL_AFK",
       "lock_file": "gates/02-anti_pseudo_v2_acceptance.json",
-      "lock_sha256": "9335df1298db939708869945569340991a0fdf8fc6f70b9e99d2bf339ebb0b77"
+      "lock_sha256": "aa8fe6f1aa1e697808e09604983616f9be4f089f21e5ae312f4eb85c7172ef64"
     }
   ]
 }

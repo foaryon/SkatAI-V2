@@ -54,7 +54,7 @@
     "evidence_identities": {
       "founding_spec_sha256": "d4a4315325f7b16f528c1475c5490c4e6bef31cebcce2dd744d300bd07ebfdee",
       "work_prompt_sha256": "a440b349adbcf9cef547cc19cd1bdea6531686d6a8361b117c7da2b1e25f99ea",
-      "controller_sha256": "9f74a0ccce047e848cc32edd6464a29764b34c95bf18625748b202fcd02c3e17",
+      "controller_sha256": "efc9b158a7b23884206cdaef7ca565b7bfc4bdff8375f662fd38d646442f39cb",
       "gateway_sha256": "406ff0b83be74a0f8004ee0a43f37619e3b26523a0d106f7918bd83a222fc2ef"
     },
     "decisive_facts": [

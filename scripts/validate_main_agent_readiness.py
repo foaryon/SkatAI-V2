@@ -79,8 +79,9 @@ def main() -> int:
     queue = mod.load_gate_queue()
     active_entry = mod.gate_queue_entry_for_lock(queue)
     require(active_entry is not None, "ACTIVE_EXECUTION_LOCK_NOT_IN_GATE_QUEUE")
-    require(int(active_entry["index"]) == 0, "INITIAL_EXECUTION_LOCK_NOT_QUEUE_HEAD")
-    require(mod.sha256_file(active_lock) == queue["entries"][0]["lock_sha256"], "QUEUE_HEAD_LOCK_HASH_MISMATCH")
+    active_index = int(active_entry["index"])
+    require(0 <= active_index < len(queue["entries"]), "ACTIVE_GATE_QUEUE_INDEX_INVALID")
+    require(mod.sha256_file(active_lock) == queue["entries"][active_index]["lock_sha256"], "ACTIVE_QUEUE_LOCK_HASH_MISMATCH")
     lock = mod.load_execution_lock()
     require(lock["secondary"] is None or lock["primary"]["status"] in mod.EXTERNAL_WAIT_CLASSIFICATIONS, "WIP_LOCK_INVALID")
     require(bool(lock["primary"].get("end_state_contribution")), "END_STATE_CONTRIBUTION_MISSING")
@@ -135,11 +136,11 @@ def main() -> int:
                 "permit_id": permit_id,
                 "expires_at_epoch": int(time.time() + 300),
                 "gate_queue_sha256": mod.sha256_file(mod.GATE_QUEUE),
-                "gate_queue_start_index": 0,
-                "max_gate_rotations": len(queue["entries"]) - 1,
+                "gate_queue_start_index": active_index,
+                "max_gate_rotations": len(queue["entries"]) - 1 - active_index,
                 "authorized_gates": [
                     {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
-                    for entry in queue["entries"]
+                    for entry in queue["entries"][active_index:]
                 ],
             }) + "\n",
             encoding="utf-8",

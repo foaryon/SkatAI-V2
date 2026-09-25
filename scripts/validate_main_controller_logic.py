@@ -49,7 +49,9 @@ def main() -> int:
     lock = m.load_execution_lock()
     queue = m.load_gate_queue()
     active_queue_entry = m.gate_queue_entry_for_lock(queue)
-    require(active_queue_entry is not None and int(active_queue_entry["index"]) == 0, "INITIAL_GATE_QUEUE_BINDING_INVALID")
+    require(active_queue_entry is not None, "ACTIVE_GATE_QUEUE_BINDING_INVALID")
+    active_queue_index = int(active_queue_entry["index"])
+    require(0 <= active_queue_index < len(queue["entries"]), "ACTIVE_GATE_QUEUE_INDEX_INVALID")
     results["gate_queue_validation"] = "PASS"
     goal_policy = json.loads(m.GOAL_POLICY.read_text(encoding="utf-8"))
     valid_goal_ids = {row["id"] for row in goal_policy["goal_path"]}
@@ -179,11 +181,11 @@ def main() -> int:
             "max_total_tokens": 500000,
             "allowed_trigger_types": ["PRIMARY_NEXT_STEP"],
             "gate_queue_sha256": m.sha256_file(m.GATE_QUEUE),
-            "gate_queue_start_index": 0,
-            "max_gate_rotations": len(queue["entries"]) - 1,
+            "gate_queue_start_index": active_queue_index,
+            "max_gate_rotations": len(queue["entries"]) - 1 - active_queue_index,
             "authorized_gates": [
                 {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
-                for entry in queue["entries"]
+                for entry in queue["entries"][active_queue_index:]
             ],
         }
         m.WORK_PERMIT.write_text(json.dumps(permit) + "\n", encoding="utf-8")
@@ -265,11 +267,11 @@ def main() -> int:
                 "permit_id": gateway_permit_id,
                 "expires_at_epoch": int(time.time() + 300),
                 "gate_queue_sha256": m.sha256_file(m.GATE_QUEUE),
-                "gate_queue_start_index": 0,
-                "max_gate_rotations": len(queue["entries"]) - 1,
+                "gate_queue_start_index": active_queue_index,
+                "max_gate_rotations": len(queue["entries"]) - 1 - active_queue_index,
                 "authorized_gates": [
                     {k: entry[k] for k in ("index", "gate_id", "goal_path_id", "lock_sha256")}
-                    for entry in queue["entries"]
+                    for entry in queue["entries"][active_queue_index:]
                 ],
             }) + "\n",
             encoding="utf-8",

@@ -71,7 +71,13 @@ EVIDENCE_ROOTS = (REPO_ROOT, RUNTIME)
 def _safe_evidence_path(ref):
     if not isinstance(ref, str) or not ref.strip():
         return None
-    raw = ref.strip()
+    # Outcome evidence may append controller-checkable metadata after a path,
+    # e.g. "provenance/X.json sha256=<64hex> classification=ACCEPT".
+    # Only the first whitespace-delimited token is interpreted as the path;
+    # free-form prose never becomes authority.
+    raw = ref.strip().split(None, 1)[0].strip("`'\"")
+    if not raw:
+        return None
     p = Path(raw)
     if not p.is_absolute():
         p = REPO_ROOT / p
@@ -94,6 +100,13 @@ def controller_verifiable_evidence(refs, since=None):
     for ref in refs:
         p = _safe_evidence_path(ref)
         if p is None or not p.is_file():
+            continue
+        expected = None
+        if isinstance(ref, str):
+            match = re.search(r"\bsha256=([0-9a-fA-F]{64})\b", ref)
+            if match:
+                expected = match.group(1).lower()
+        if expected is not None and sha256_file(p).lower() != expected:
             continue
         if since is not None:
             try:
