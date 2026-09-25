@@ -8,7 +8,7 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T11:53:38.069421+00:00",
+  "captured_at": "2026-09-25T11:54:42.158566+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
@@ -18,10 +18,10 @@
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through 767c5e0; result provenance pending commit",
+    "remote_state": "pushed through d4c4748; host-source blocker pending commit",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "767c5e0e623f1b575c834a4371ff6d212916f875",
-    "worktree_state": "result provenance pending commit"
+    "verified_head_before_this_manifest": "d4c4748ade55df137315e3ad4c313772ecbb2b42",
+    "worktree_state": "host-source blocker pending commit"
   },
   "nearest_gates": [
     {
@@ -49,13 +49,15 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "Find authoritative user Skat host source/access for stable interface integration if available; R9 stays frozen under supervisor until clean 300-per-arm gate, then staged 1->2->4 throughput epochs. Avoid extending inconclusive PIMC without a new weakness hypothesis.",
+  "next_action": "R9 remains under independent fail-closed supervisor until its clean 300-scored-games-per-arm gate; then use staged measured 1->2->4 throughput epochs. Actual host integration awaits authoritative software source. The bounded PIMC treatment is inconclusive and closed.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
-      "evidence": "provenance/MAIN_RESUME_STATE_20260925T1053Z.json",
+      "evidence": "provenance/HOST_SOURCE_DISCOVERY_20260925.json",
       "next": "Integrate through stable host service when authoritative host source/access is available; independent host smoke proceeds now",
-      "scope": "Actual user Skat software integration only"
+      "required_input": "Authoritative repository, source archive, build artifact, or accessible path for the user Skat software",
+      "scope": "Actual user Skat software integration only",
+      "status": "AWAITING_SOURCE_REFERENCE"
     }
   ],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
@@ -63,6 +65,10 @@
     "estimated_unit_price_usd_per_hour": 0.06,
     "isolated_host_pod_id": null,
     "isolated_pod_id": null,
+    "isolated_worktrees_reclaimed": [
+      "/workspace/skatai-v2-wt-pimc-screen",
+      "/workspace/skatai-v2-wt-host-smoke"
+    ],
     "last_pod_deleted": true,
     "last_pod_id": "2afma2v8oqd044"
   },

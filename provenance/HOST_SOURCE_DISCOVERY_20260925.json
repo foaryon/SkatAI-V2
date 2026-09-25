@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-09-25T11:54:42.158566+00:00",
+  "classification": "BLOCKED_EXTERNAL_INPUT",
+  "evidence": [
+    "Public GitHub repositories for foaryon returned SkatAI-V2 only; this does not establish whether private repositories exist",
+    "Prior workspace evidence recorded actual user host software absent: provenance/MAIN_RESUME_STATE_20260925T1053Z.json",
+    "Current-source B0 package passed four-phase JSONL host smoke: provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json"
+  ],
+  "gate": "Actual user Skat software integration",
+  "required_input": "Authoritative repository, source archive, build artifact, or accessible path for the user Skat software",
+  "retry": "Recheck when user supplies source/access; do not repeatedly scan public repositories",
+  "schema": "skatai.v2.host-source-discovery.v1",
+  "scope": "Only actual user host integration; frozen R9 and other science/product work continue independently"
+}
