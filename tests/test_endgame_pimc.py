@@ -2,7 +2,9 @@ from dataclasses import replace
 
 import pytest
 
-from skatai.evaluation.endgame_pimc import choose_endgame_card, sample_legal_worlds
+from skatai.evaluation.endgame_pimc import (
+    PIMCOverridePolicy, choose_endgame_card, sample_legal_worlds,
+)
 from skatai.game.rules import category, game_type_from_contract
 from skatai.selfplay.cardplay import DECK, make_deal, run_cardplay
 
@@ -62,3 +64,18 @@ def test_pimc_rejects_stale_or_privileged_observation():
         sample_legal_worlds(replace(view, current_trick=((0, "CA"),)))
     with pytest.raises(ValueError, match="WORLD_LIMIT"):
         sample_legal_worlds(view, max_worlds=0)
+
+
+def test_pimc_override_changes_only_bounded_late_cardplay():
+    class FirstLegal:
+        def play_card(self, observation):
+            return observation.legal_cards[0]
+
+    policies = [PIMCOverridePolicy(FirstLegal(), max_worlds=16, seed=7)
+                for _ in range(3)]
+    episode = run_cardplay(
+        make_deal(49), contract="GH", declarer=1, policies=policies,
+    )
+    assert len(episode.plays) == 30
+    assert sum(p.override_count for p in policies) == 9
+    assert sum(p.fallback_count for p in policies) == 21

@@ -18,6 +18,7 @@ from skatai.runtime.interface import CardplayObservation
 from skatai.selfplay.cardplay import DECK
 
 SCHEMA = "skatai.v2.observation-endgame-pimc.v1"
+SUPPORTED_CONTRACTS = CONTRACTS | frozenset(base + "H" for base in CONTRACTS)
 
 
 def _void_categories(observation: CardplayObservation, game_type: str) -> tuple[frozenset[str], ...]:
@@ -36,7 +37,7 @@ def sample_legal_worlds(
     """Enumerate bounded compatible allocations, then sample without replacement."""
     if not 1 <= max_worlds <= 256:
         raise ValueError("PIMC_WORLD_LIMIT_INVALID")
-    if (observation.contract not in CONTRACTS
+    if (observation.contract not in SUPPORTED_CONTRACTS
             or observation.known_private_cards or observation.open_hand_cards):
         raise ValueError("PIMC_UNSUPPORTED_OBSERVATION")
     game_type = game_type_from_contract(observation.contract)
@@ -116,7 +117,7 @@ def choose_endgame_card(
     sums = {card: 0 for card in observation.legal_cards}
     for hands in worlds:
         answer = solve_endgame(
-            hands, contract=observation.contract,
+            hands, contract=observation.contract[0],
             declarer=observation.declarer, leader=replay["leader"],
             current_trick=observation.current_trick,
         )
@@ -138,3 +139,32 @@ def choose_endgame_card(
         "observation_selection_sha256": identity,
         "research_only": True,
     }
+
+
+class PIMCOverridePolicy:
+    """Research wrapper that changes only supported late cardplay decisions."""
+
+    def __init__(self, fallback, *, max_worlds: int = 32, seed: int = 0):
+        if not 1 <= max_worlds <= 256:
+            raise ValueError("PIMC_WORLD_LIMIT_INVALID")
+        self.fallback = fallback
+        self.max_worlds = max_worlds
+        self.seed = seed
+        self.override_count = 0
+        self.fallback_count = 0
+
+    def play_card(self, observation: CardplayObservation) -> str:
+        supported = (
+            observation.contract in SUPPORTED_CONTRACTS
+            and len(observation.played_cards) >= 21
+            and not observation.known_private_cards
+            and not observation.open_hand_cards
+        )
+        if not supported:
+            self.fallback_count += 1
+            return self.fallback.play_card(observation)
+        answer = choose_endgame_card(
+            observation, max_worlds=self.max_worlds, seed=self.seed,
+        )
+        self.override_count += 1
+        return answer["card"]

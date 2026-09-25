@@ -1,0 +1,70 @@
+{
+  "b0_upstream_commit": "1fe5cabbd5f9c3e77ab51714b0ac702e5a71e53b",
+  "captured_at": "2026-09-25T11:41:13.916861+00:00",
+  "classification": "CONTINUE",
+  "control": "frozen B0 at all seats",
+  "goal": "Screen observation-only PIMC late cardplay causally against frozen B0 at fixed hand positions",
+  "input_identity": "provenance/B0_SKATZERO_BASELINE.json",
+  "max_worlds": 32,
+  "nearest_gate": "Paired deployment-matched B0 cardplay gameplay",
+  "next_on_failure": "Preserve failure evidence; correct smallest defect without changing treatment or frozen positions",
+  "next_on_success": "Inspect paired deltas and latency; freeze larger seat/deal-balanced campaign only if screen is operationally valid and decision value remains",
+  "positions": [
+    {
+      "contract": "CH",
+      "deal_seed": 20260925,
+      "deal_sha256": "93a6ee53f38e5ddb3867d97e82ae0098ca406311d86a4f3a8829fb428be1b443",
+      "declarer": 0,
+      "winning_bid": 18
+    },
+    {
+      "contract": "GH",
+      "deal_seed": 20260925,
+      "deal_sha256": "93a6ee53f38e5ddb3867d97e82ae0098ca406311d86a4f3a8829fb428be1b443",
+      "declarer": 0,
+      "winning_bid": 18
+    },
+    {
+      "contract": "NH",
+      "deal_seed": 20260925,
+      "deal_sha256": "93a6ee53f38e5ddb3867d97e82ae0098ca406311d86a4f3a8829fb428be1b443",
+      "declarer": 0,
+      "winning_bid": 18
+    },
+    {
+      "contract": "CH",
+      "deal_seed": 20260926,
+      "deal_sha256": "be9f5ad4e44443231f209cca80a28b9065d1ab50e82b886901c9112a267f09ee",
+      "declarer": 1,
+      "winning_bid": 18
+    },
+    {
+      "contract": "GH",
+      "deal_seed": 20260926,
+      "deal_sha256": "be9f5ad4e44443231f209cca80a28b9065d1ab50e82b886901c9112a267f09ee",
+      "declarer": 1,
+      "winning_bid": 18
+    },
+    {
+      "contract": "NH",
+      "deal_seed": 20260926,
+      "deal_sha256": "be9f5ad4e44443231f209cca80a28b9065d1ab50e82b886901c9112a267f09ee",
+      "declarer": 1,
+      "winning_bid": 18
+    }
+  ],
+  "positions_sha256": "bbbaedcd964ff909363628130b866159cb37f658e28a4d82a1de9f41db7a3a02",
+  "resource_bound": {
+    "estimated_max_usd": 0.045,
+    "max_wall_seconds": 2700,
+    "memory_gb": 4,
+    "vcpu": 2
+  },
+  "schema": "skatai.v2.endgame-pimc-paired-screen-task.v1",
+  "seed": 20260925,
+  "stop": "any illegal/stale observation, B0 failure, resource timeout or identity mismatch",
+  "strength_claim_authorized": false,
+  "success": "6 exact positions x 3 candidate seats, all legal full games, position/result identities and Hetzner readback verified",
+  "task_id": "ENDGAME_PIMC_PAIRED_SCREEN_6",
+  "treatment": "PIMC override at one candidate seat only from play 22 onward; B0 otherwise"
+}

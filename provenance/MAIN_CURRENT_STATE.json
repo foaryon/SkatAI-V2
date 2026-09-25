@@ -8,20 +8,20 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T11:35:42.332519Z",
+  "captured_at": "2026-09-25T11:40:35.991446+00:00",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
-    "evidence": "provenance/CARDPLAY_CHOICE_CONFIRM_RESULT_20260925.json",
-    "scientific_status": "Suit-specific historical agreement hypothesis rejected; no strength conclusion",
-    "task_id": "CARDPLAY_CHOICE_AGREEMENT_CONFIRM_216",
-    "verification": "216/216 B0 choices succeeded; selection/result hashes and Hetzner readback verified; isolated pod deleted"
+    "decision": "ADVANCE_TO_BOUNDED_PAIRED_B0_GAMEPLAY_SCREEN",
+    "evidence": "provenance/ENDGAME_PIMC_TRAIN_PILOT_20260925.json",
+    "result_sha256": "31a5ba229f038d94310936bb6b75b78d2470e45d2b7f19cf81eaae896788abb4",
+    "task_id": "ENDGAME_PIMC_TRAIN_LABEL_PILOT_60"
   },
   "git": {
     "branch": "main",
-    "remote_state": "pushed through e901614; confirmation conclusion pending commit",
+    "remote_state": "pushed through 94a893d; PIMC pilot and wrapper pending commit",
     "repository": "foaryon/SkatAI-V2",
-    "verified_head_before_this_manifest": "e901614",
-    "worktree_state": "confirmation conclusion pending commit"
+    "verified_head_before_this_manifest": "94a893d2f3da0fc45c96c6139b419ce6fed612e5",
+    "worktree_state": "PIMC pilot and wrapper pending commit"
   },
   "nearest_gates": [
     {
@@ -29,7 +29,7 @@
       "gate": "B1 R9 preregistered external decision"
     },
     {
-      "dependency": "Train-only range sample and 72-decision balanced selection are hash-bound and durable; run B0 diagnostic on isolated compute, then choose one causal treatment and paired gameplay",
+      "dependency": "Observation-only endgame PIMC train-label proxy recorded; freeze paired B0 positions and run isolated gameplay screen before a strength hypothesis.",
       "gate": "Weakness-driven cardplay challenger protocol and paired B0 gameplay"
     },
     {
@@ -49,7 +49,7 @@
       "gate": "Endgame teacher empirical usefulness"
     }
   ],
-  "next_action": "R9 remains frozen under independent supervisor. Select one causal cardplay treatment from controlled gameplay or another independent weakness signal; failed Suit-specific action-agreement hypothesis cannot drive treatment. Continue product integration/release path independently where source is available.",
+  "next_action": "Freeze a bounded paired B0 endgame PIMC gameplay screen on isolated compute; R9 remains under independent supervisor; do not infer strength from train-label agreement.",
   "open_blockers": [],
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {

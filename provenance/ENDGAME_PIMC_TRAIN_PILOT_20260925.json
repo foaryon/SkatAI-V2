@@ -1,0 +1,39 @@
+{
+  "captured_at": "2026-09-25T11:40:35.991446+00:00",
+  "classification": "CONCLUDE",
+  "decision": "ADVANCE_TO_BOUNDED_PAIRED_B0_GAMEPLAY_SCREEN",
+  "input": {
+    "partition": "train-only",
+    "sha256": "ea93227a0e1805f1bef81d852cb493eac779abace95b63e6e7dd3e38ae1e6d4e",
+    "training_approved": false
+  },
+  "limitations": [
+    "teacher agreement is an offline proxy",
+    "labels are train only",
+    "search has hidden-world approximation and strategy-fusion risk",
+    "no deployment latency or gameplay gate yet"
+  ],
+  "result": {
+    "counts": {
+      "family:GRAND": 24,
+      "family:NULL": 12,
+      "family:SUIT": 24,
+      "first_legal_teacher_agreement": 23,
+      "pimc_teacher_agreement": 49,
+      "rows": 60
+    },
+    "object": "s3://skatai-v2/evidence/endgame-pimc/train-label-pilot/31a5ba229f038d94310936bb6b75b78d2470e45d2b7f19cf81eaae896788abb4.json",
+    "remote_readback_sha256_verified": true,
+    "sha256": "31a5ba229f038d94310936bb6b75b78d2470e45d2b7f19cf81eaae896788abb4"
+  },
+  "schema": "skatai.v2.pimc-train-pilot-evidence.v1",
+  "source_commit": "94a893d2f3da0fc45c96c6139b419ce6fed612e5",
+  "strength_claim_authorized": false,
+  "task_id": "ENDGAME_PIMC_TRAIN_LABEL_PILOT_60",
+  "treatment": {
+    "max_worlds": 32,
+    "method": "observation-only bounded endgame PIMC",
+    "result_prediction_sha256": "fff20757baf16ef6aa6260cf472a9850adafa87459c2a24fa20d73aeb329a97d",
+    "seed": 20260925
+  }
+}
