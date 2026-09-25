@@ -25,6 +25,21 @@ SCHEMA = "skatai.v2.selfplay.private-seed-split.v1"
 DOMAIN = b"skatai.v2.private-pilot-split.v1\0"
 
 
+def output_filesystem_type(parent: Path) -> str:
+    """Resolve the effective Linux mount before publishing learner metadata."""
+    path = str(parent.resolve())
+    match = ("", "")
+    for line in Path("/proc/self/mountinfo").read_text().splitlines():
+        left, right = line.split(" - ", 1)
+        mount = left.split()[4]
+        if ((path == mount or path.startswith(mount.rstrip("/") + "/"))
+                and len(mount) > len(match[0])):
+            match = (mount, right.split()[0])
+    if not match[1]:
+        raise ValueError("SPLIT_OUTPUT_MOUNT_UNKNOWN")
+    return match[1]
+
+
 def assign_split(games: list[dict], rows: list[dict]) -> dict[str, list[int]]:
     """Give each of twelve eight-row contract cells a 6/1/1 split."""
     if len(games) != len(rows) or len(rows) != 96:
@@ -107,6 +122,8 @@ def main() -> None:
                          "Private seeds, RNG seeds, deal hashes and ranking digests stay outside learner artifacts"],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    if output_filesystem_type(args.output.parent).startswith("fuse"):
+        raise ValueError("SPLIT_OUTPUT_FUSE_UNSAFE")
     for directory in (args.output.parent, *args.output.parent.parents):
         meta = directory.stat()
         if (meta.st_mode & 0o022

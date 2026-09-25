@@ -1,6 +1,17 @@
 import pytest
+from pathlib import Path
 
-from scripts.build_private_seed_pilot_split import assign_split
+from scripts.build_private_seed_pilot_split import assign_split, output_filesystem_type
+
+
+def test_output_mount_resolution_uses_longest_mount(monkeypatch):
+    mounts = (
+        "1 0 0:1 / / rw - overlay overlay rw\n"
+        "2 1 0:2 / /workspace rw - fuse mfs rw\n"
+    )
+    monkeypatch.setattr(Path, "read_text", lambda self: mounts)
+    assert output_filesystem_type(Path("/workspace/pilot")) == "fuse"
+    assert output_filesystem_type(Path("/tmp")) == "overlay"
 
 
 def test_private_seed_split_is_disjoint_balanced_and_deterministic():
