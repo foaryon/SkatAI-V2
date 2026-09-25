@@ -15,13 +15,14 @@
     "terminal_marker": "w TI.1",
     "result_timeout_field": "to:1",
     "recorded_failure": "SGF_PARSE_FAILED:PICKUP_GAME_REQUIRES_TWO_DISCARDS",
-    "disposition": "RETAIN_NONSCORING_INFRA_FAILURE_DO_NOT_RETROACTIVELY_SCORE"
+    "disposition": "RETAIN_NONSCORING_PROTOCOL_FAILURE_DO_NOT_RETROACTIVELY_SCORE"
   },
   "attribution": {
-    "root_cause": "ISS emitted a valid terminal timeout after pickup and contract declaration but before the declarer sent the required two-card discard. parse_sgf_line enforced complete pickup-game discard legality before exposing the terminal timeout field, so live_game_result could not reach its existing ISS_TIMEOUT handling.",
+    "root_cause": "ISS emitted a valid terminal timeout after pickup and contract declaration but before the two-card discard was confirmed/recorded in the terminal SGF. parse_sgf_line enforced complete pickup-game discard legality before exposing the terminal timeout field, so live_game_result could not reach its existing ISS_TIMEOUT handling.",
     "not_the_prior_split_discard_bug": true,
     "evidence": "The terminal contains pickup marker '1 s', original skat delivery 'w DA.H7', declaration '1 C', then 'w TI.1'; no discard-only action is present. R contains to:1.",
-    "scientific_effect": "The game is deployment/runtime failure evidence only and is excluded from the primary strength estimator."
+    "protocol_effect": "SkatAI sent discard H8.H7, but no inbound confirmation arrived before world timeout w TI.1; the corresponding DISCARD effect is ABORTED_STALE.",
+    "scientific_effect": "The game is protocol/runtime failure evidence only and is excluded from the primary strength estimator. GateEvidence must retain PROTOCOL_FAILURE precedence because a stale external effect exists at terminal."
   },
   "change_scope": {
     "implementation": "src/skatai/data/sgf.py",
@@ -48,5 +49,5 @@
       "timeout_seat": 1
     }
   },
-  "continuation_rule": "Preserve AI85b833 game 3 as an unscored terminal-present failure, mirror its raw terminal/protocol/effect evidence durably, clear active authority only after ledger/evidence persistence, refreeze R9 on this terminal-evidence-only correction, and resume the unchanged B0/B1 campaign without opening the strength look."
+  "continuation_rule": "Preserve AI85b833 game 3 as an unscored terminal-present PROTOCOL_FAILURE with raw ISS_TIMEOUT context and stale-discard evidence, mirror its raw terminal/protocol/effect evidence durably, clear active authority only after ledger/evidence persistence, refreeze R9 on this terminal-evidence-only correction, and resume the unchanged B0/B1 campaign without opening the strength look."
 }
