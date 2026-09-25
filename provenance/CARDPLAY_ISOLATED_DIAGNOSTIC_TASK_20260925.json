@@ -15,10 +15,17 @@
       "pod_deletion_verified": true,
       "pod_id": "zeheekysca33m1",
       "source_commit": "e739f8645f8689224af353acb83e88fa7de6eb35"
+    },
+    {
+      "diagnostic_inference_run": false,
+      "evidence": "/workspace/skatai-v2-runtime/isolated-science/cardplay-diagnostic-20260925-v1/events.jsonl",
+      "outcome": "PREFLIGHT_OK_BOOTSTRAPPING",
+      "pod_id": "bxii3z4858l5j6",
+      "source_commit": "6c1403e9bc6f427928234a2856968046aae97b05"
     }
   ],
   "captured_at": "2026-09-25T11:19:14.827211Z",
-  "classification": "CORRECT",
+  "classification": "CONTINUE",
   "correction": "Capture observed and expected source identity plus Git preflight error; explicitly trust only the pinned worktree",
   "dispatch_record": "/workspace/skatai-v2-runtime/isolated-science/cardplay-diagnostic-20260925-v1/dispatch.json",
   "dispatched_at": "2026-09-25T11:19:43.826271Z",
@@ -35,8 +42,8 @@
     "Pod delete requested after job; MAIN reconciles unknown delete outcome"
   ],
   "nearest_gate": "Weakness-driven cardplay treatment selection before paired B0 gameplay",
-  "pod_id": "eab9j199p7q0kc",
-  "pod_state": "DELETED_AFTER_SOURCE_PREFLIGHT_FAILURE",
+  "pod_id": "bxii3z4858l5j6",
+  "pod_state": "PREFLIGHT_OK_BOOTSTRAPPING",
   "resource_bound": {
     "cpu_vcpu": 2,
     "estimated_max_compute_usd": 0.045,
@@ -51,7 +58,7 @@
   "schema": "skatai.v2.isolated-cardplay-diagnostic-task.v1",
   "scientific_scope": "Historical agreement diagnostic only, not a strength metric or promotion gate",
   "selection_sha256": "2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a",
-  "source_commit": "PENDING_CORRECTION_COMMIT",
+  "source_commit": "6c1403e9bc6f427928234a2856968046aae97b05",
   "success": "72 selected events yield a durable result and no illegal B0 action",
   "task_id": "CARDPLAY_B0_DIAGNOSTIC_72_ISOLATED"
 }
