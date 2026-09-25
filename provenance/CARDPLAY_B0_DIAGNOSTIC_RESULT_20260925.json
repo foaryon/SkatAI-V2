@@ -1,0 +1,93 @@
+{
+  "agreement_by_family": {
+    "GRAND": {
+      "actor_classes": {
+        "bot": 13,
+        "unknown": 11
+      },
+      "agree": 20,
+      "choice_types": {
+        "CHOICE": 16,
+        "FORCED": 8
+      },
+      "contracts": {
+        "G": 21,
+        "GH": 3
+      },
+      "n": 24
+    },
+    "NULL": {
+      "actor_classes": {
+        "bot": 13,
+        "unknown": 11
+      },
+      "agree": 20,
+      "choice_types": {
+        "CHOICE": 19,
+        "FORCED": 5
+      },
+      "contracts": {
+        "N": 20,
+        "NH": 1,
+        "NO": 3
+      },
+      "n": 24
+    },
+    "SUIT": {
+      "actor_classes": {
+        "bot": 11,
+        "unknown": 13
+      },
+      "agree": 10,
+      "choice_types": {
+        "CHOICE": 19,
+        "FORCED": 5
+      },
+      "contracts": {
+        "C": 8,
+        "D": 1,
+        "DH": 2,
+        "H": 6,
+        "HH": 2,
+        "S": 4,
+        "SH": 1
+      },
+      "n": 24
+    }
+  },
+  "captured_at": "2026-09-25T11:27:45.899983Z",
+  "choice_only_agreement": {
+    "GRAND": {
+      "agree": 12,
+      "n": 16
+    },
+    "NULL": {
+      "agree": 15,
+      "n": 19
+    },
+    "SUIT": {
+      "agree": 5,
+      "n": 19
+    }
+  },
+  "classification": "CONCLUDE",
+  "failed_events": 0,
+  "limits": [
+    "Historical action agreement is not a strength metric",
+    "Four selected actions per family/role/phase stratum are too few for robust weakness ranking",
+    "Systematic byte-range sample is not a population estimate",
+    "Frozen external holdouts were excluded before reconstruction"
+  ],
+  "next_gate": "Predeclare and run disjoint train-only confirmatory B0 agreement diagnostic; only then choose a bounded causal cardplay treatment",
+  "pod_deletion_verified": true,
+  "pod_id": "bxii3z4858l5j6",
+  "result_object": "s3://skatai-v2/evidence/cardplay-diagnostic/cardplay-diagnostic-20260925-v1/fd2b84c76da5b58bfcd717604932a4e1312bb5abb47d11dc1d4f5ba01fb107c9.json",
+  "result_sha256": "fd2b84c76da5b58bfcd717604932a4e1312bb5abb47d11dc1d4f5ba01fb107c9",
+  "sample_sha256": "c27564167395b7775bfa16b3b8e2c1be9fec587f426cd55481832078f33b8805",
+  "schema": "skatai.v2.cardplay-b0-train-agreement-pilot-result.v1",
+  "science_decision": "INCONCLUSIVE_FOR_STRENGTH; SUIT_DISAGREEMENT_HYPOTHESIS_FOR_DISJOINT_TRAIN_CONFIRMATION",
+  "selection_sha256": "2487bf24066f533e0137025e6ddd0592bc899223349de333440cfbf8999d989a",
+  "source_commit": "6c1403e9bc6f427928234a2856968046aae97b05",
+  "successful_events": 72,
+  "task_id": "CARDPLAY_B0_DIAGNOSTIC_72_ISOLATED"
+}
