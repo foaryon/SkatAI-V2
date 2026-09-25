@@ -5,6 +5,7 @@ umask 027
 BASE=/workspace/sentinelx-host
 REPO=/workspace/skatai-v2
 HUNTER="$REPO/scripts/runpod_cpu_upgrade_hunter.py"
+SECRET_PREP=/workspace/openai-agent/prepare-runtime-secrets.py
 LOG="$BASE/logs/runpod-cpu-hunter-guardian.log"
 LOCK=/run/lock/skatai-runpod-cpu-hunter-guardian.lock
 POLL_SECONDS=60
@@ -39,6 +40,9 @@ while true; do
   fi
 
   started="$(date +%s)"
+  if [ -f "$SECRET_PREP" ]; then
+    python3 "$SECRET_PREP" >/dev/null 2>&1 || true
+  fi
   claim_args=()
   mode=watch-only
   if [ -s /run/skatai-v2-secrets/runpod_deploy_api_key ]; then

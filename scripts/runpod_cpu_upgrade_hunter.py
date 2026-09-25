@@ -450,6 +450,13 @@ def build_create_body(
         }
     )
     env = dict(body.get("env") or {})
+    # Never clone a resolved management credential from the source pod.
+    # Persist only the RunPod secret reference so the control plane resolves
+    # the value at replacement-pod startup.
+    env.pop("RUNPOD_DEPLOY_API_KEY", None)
+    env.pop("RUNPOD_SECRET_SkatAI-V2-Deploy", None)
+    env.pop("RUNPOD_SECRET_SkatAI_V2_Deploy", None)
+    env["RUNPOD_DEPLOY_API_KEY"] = "{{ RUNPOD_SECRET_SkatAI-V2-Deploy }}"
     env["SKATAI_UPGRADE_SOURCE_POD_ID"] = cfg.source_pod_id
     env["SKATAI_UPGRADE_WAIT_SECONDS"] = str(cfg.hold_seconds)
     env["SKATAI_RUNPOD_HUNTER_MANAGED"] = "1"
@@ -610,6 +617,7 @@ def run_iteration(api: RunpodApi, cfg: Config, *, claim: bool) -> dict[str, Any]
                         target=target.label,
                         cpu=cpu_id,
                         http=exc.status,
+                        message=exc.message,
                     )
                     continue
                 raise

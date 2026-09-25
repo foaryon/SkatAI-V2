@@ -179,3 +179,25 @@ def test_runtime_environment_keeps_pod_key_without_deploy_key(tmp_path, monkeypa
 
     env = hunter.runtime_environment()
     assert env["RUNPOD_API_KEY"] == "pod-scoped-key"
+
+
+def test_build_create_body_uses_secret_reference_not_resolved_deploy_key(tmp_path):
+    source = {
+        "image": "runpod/base:tag",
+        "disk": 20,
+        "ports": ["22/tcp"],
+        "env": {
+            "KEEP": "yes",
+            "RUNPOD_DEPLOY_API_KEY": "resolved-secret-value",
+        },
+        "startSsh": True,
+    }
+    body = build_create_body(
+        source,
+        cfg=_cfg(tmp_path),
+        target=Target(16, 32),
+        cpu_flavor_id="cpu5c",
+    )
+    assert body["env"]["KEEP"] == "yes"
+    assert body["env"]["RUNPOD_DEPLOY_API_KEY"] == "{{ RUNPOD_SECRET_SkatAI-V2-Deploy }}"
+    assert "resolved-secret-value" not in body["env"].values()
