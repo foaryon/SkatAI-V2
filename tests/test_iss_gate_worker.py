@@ -1358,6 +1358,66 @@ def test_immutable_remote_conflict_stops_before_current_write(tmp_path, monkeypa
     assert "--immutable" in calls[0]
 
 
+def test_partial_immutable_upload_restarts_without_publishing_manifest(tmp_path, monkeypatch):
+    """A failed copy may have written some objects; the outbox must retry them."""
+    import hashlib
+    import json
+    import subprocess
+    import pytest
+    import skatai.iss.gate_worker as gw
+
+    ev = _writebehind_evidence(tmp_path)
+    for game_id in ("g-partial-1", "g-partial-2"):
+        _writebehind_closed_game(ev, game_id)
+        ev.enqueue_mirror_game(game_id)
+    remote = {}
+    partial_once = True
+
+    def fake_rclone(args, **kwargs):
+        nonlocal partial_once
+        selected = (gw.Path(args[args.index("--files-from") + 1])
+                    .read_text().splitlines())
+        stage = gw.Path(args[2])
+        if args[1] == "copy":
+            for remote_rel in selected:
+                data = (stage / remote_rel).read_bytes()
+                if remote_rel in remote and remote[remote_rel] != data:
+                    return subprocess.CompletedProcess(args, 9, stderr="immutable conflict")
+                remote[remote_rel] = data
+                if partial_once:
+                    partial_once = False
+                    return subprocess.CompletedProcess(args, 17, stderr="interrupted")
+        elif args[1] == "check":
+            if any(remote.get(remote_rel) != (stage / remote_rel).read_bytes()
+                   for remote_rel in selected):
+                return subprocess.CompletedProcess(args, 1, stderr="mismatch")
+        return subprocess.CompletedProcess(args, 0, stderr="")
+
+    monkeypatch.setattr(gw.subprocess, "run", fake_rclone)
+    with pytest.raises(gw.ISSGateWorkerError,
+                       match="MIRROR_BATCH_IMMUTABLE_COPY_FAILED:17"):
+        ev.mirror_batch(limit=2)
+    assert len(remote) == 1
+    assert not any(name.startswith("manifests/") for name in remote)
+    assert ev.mirror_backlog_status()["pending_games"] == 2
+    assert not list(ev.mirror_receipts_dir.glob("*.json"))
+
+    restarted = gw.GateEvidence(paths=ev.paths, identities=ev.identities,
+                                source_commit=ev.source_commit)
+    result = restarted.mirror_batch(limit=2)
+    assert result["mirrored_games"] == ["g-partial-1", "g-partial-2"]
+    assert result["pending_games"] == 0
+    assert not list(restarted.mirror_queue_dir.glob("*.json"))
+    for game_id in ("g-partial-1", "g-partial-2"):
+        manifest = json.loads(remote[f"manifests/{game_id}.json"])
+        for artifact in manifest["files"]:
+            rel = artifact["remote"].split(
+                restarted.mirror.remote_root[4:] + "/", 1
+            )[-1]
+            assert hashlib.sha256(remote[rel]).hexdigest() == artifact["sha256"]
+        assert (restarted.mirror_receipts_dir / f"{game_id}.json").exists()
+
+
 def test_mirror_manifest_published_only_after_game_readback(tmp_path, monkeypatch):
     import subprocess
     from pathlib import Path
