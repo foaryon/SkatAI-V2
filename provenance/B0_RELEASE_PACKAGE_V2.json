@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-09-24T21:48:00.767511+00:00",
+  "frozen_source_sha256": "40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d",
+  "limitations": [
+    "Full host software integration is pending.",
+    "Deployment latency, memory, crash behavior, and all-phase replacement are pending.",
+    "ISS B1-vs-B0 external decision remains paused with an unresolved active game."
+  ],
+  "model_count": 9,
+  "model_hashes_bound_to_frozen_baseline": true,
+  "package_bytes": 110776320,
+  "package_manifest_sha256": "dda6d5571e0f5cfe07c42c4c91145992fee321e30a385434d3bac265b4773ddb",
+  "package_sha256": "2dfe0fb45ca073c5796d48181b15030b826279f22d9bab80bab7841d5a63b997",
+  "release_id": "V2-B0-package-v2",
+  "remote_manifest_sha256": "135c71d0ee3ebbabf9dd00421f024a954022c884b091dee110b0077068c47ea1",
+  "remote_readback_verified": true,
+  "schema": "skatai.v2.b0-release-package-validation.v1",
+  "source_commit": "8ca575f8904d35baf04e7a381c65e4b599a29edd",
+  "status": "STAGED_BASELINE_PACKAGE_HOST_ACCEPTANCE_PENDING",
+  "supersedes_staged_package": "V2-B0-package-v1",
+  "validation": {
+    "focused_tests_passed": 16,
+    "independent_builds_identical": 2,
+    "legacy_runtime_dependency": false,
+    "materialize_and_load_pass": true,
+    "real_b0_bidding_decision": "CONTINUE",
+    "release_replacement_same_host_loader": true
+  }
+}
