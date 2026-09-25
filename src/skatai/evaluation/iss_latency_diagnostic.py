@@ -25,31 +25,65 @@ def _nearest_rank(values: list[float], fraction: float) -> float:
     return values[min(rank - 1, len(values) - 1)]
 
 
+def _metrics(samples: list[float]) -> dict:
+    ordered = sorted(samples)
+    return {
+        "count": len(ordered),
+        "p50_ms": _nearest_rank(ordered.copy(), 0.50),
+        "p95_ms": _nearest_rank(ordered.copy(), 0.95),
+        "p99_ms": _nearest_rank(ordered.copy(), 0.99),
+        "max_ms": ordered[-1],
+        "at_or_above_60000_ms": sum(x >= 60000 for x in ordered),
+    }
+
+
 def summarize(states: list[EffectState]) -> dict:
     groups: dict[tuple[str, str], list[float]] = defaultdict(list)
+    per_game: dict[tuple[str, str, str, int], list[EffectState]] = defaultdict(list)
     statuses = Counter(state.status for state in states)
     for state in states:
         if state.status == "CONFIRMED":
             groups[(state.release_id, state.decision_type)].append(
                 float(state.latency_ms)
             )
+            per_game[
+                (state.release_id, state.decision_type, state.table_id, state.game_sequence)
+            ].append(state)
     results = []
     for (release_id, decision_type), samples in sorted(groups.items()):
-        ordered = sorted(samples)
-        n = len(ordered)
         results.append(
             {
                 "release_id": release_id,
                 "decision_type": decision_type,
-                "count": n,
-                "p50_ms": _nearest_rank(ordered.copy(), 0.50),
-                "p95_ms": _nearest_rank(ordered.copy(), 0.95),
-                "p99_ms": _nearest_rank(ordered.copy(), 0.99),
-                "max_ms": ordered[-1],
-                "at_or_above_60000_ms": sum(x >= 60000 for x in ordered),
+                **_metrics(samples),
             }
         )
-    return {"effect_status_counts": dict(sorted(statuses.items())), "groups": results}
+    cold_warm: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(
+        lambda: {"first": [], "later": []}
+    )
+    for (release_id, decision_type, _, _), game_states in per_game.items():
+        ordered = sorted(game_states, key=lambda state: state.protocol_sequence)
+        cold_warm[(release_id, decision_type)]["first"].append(
+            float(ordered[0].latency_ms)
+        )
+        cold_warm[(release_id, decision_type)]["later"].extend(
+            float(state.latency_ms) for state in ordered[1:]
+        )
+    phase_order = []
+    for (release_id, decision_type), split in sorted(cold_warm.items()):
+        phase_order.append(
+            {
+                "release_id": release_id,
+                "decision_type": decision_type,
+                "first": _metrics(split["first"]),
+                "later": _metrics(split["later"]) if split["later"] else None,
+            }
+        )
+    return {
+        "effect_status_counts": dict(sorted(statuses.items())),
+        "groups": results,
+        "first_vs_later_in_game": phase_order,
+    }
 
 
 def analyze(
