@@ -574,6 +574,8 @@ class HetznerEvidenceMirror:
             stage = Path(tmpdir)
             metadata: list[dict[str, Any]] = []
             seen_remote: set[str] = set()
+            immutable_paths: list[str] = []
+            current_paths: list[str] = []
 
             for local, remote_rel in items:
                 if not local.is_file():
@@ -581,11 +583,20 @@ class HetznerEvidenceMirror:
                         f"MIRROR_LOCAL_FILE_MISSING:{local}"
                     )
                 remote_rel = remote_rel.lstrip("/")
+                if ("\n" in remote_rel or ".." in Path(remote_rel).parts
+                        or not remote_rel.startswith(("games/", "manifests/", "current/"))):
+                    raise ISSGateWorkerError(
+                        f"MIRROR_BATCH_REMOTE_SCOPE_INVALID:{remote_rel}"
+                    )
                 if remote_rel in seen_remote:
                     raise ISSGateWorkerError(
                         f"MIRROR_BATCH_DUPLICATE_REMOTE:{remote_rel}"
                     )
                 seen_remote.add(remote_rel)
+                if remote_rel.startswith("current/"):
+                    current_paths.append(remote_rel)
+                else:
+                    immutable_paths.append(remote_rel)
 
                 data = local.read_bytes()
                 expected = hashlib.sha256(data).hexdigest()
@@ -604,45 +615,49 @@ class HetznerEvidenceMirror:
                     }
                 )
 
-            copied = subprocess.run(
-                [
-                    "rclone",
-                    "copy",
-                    str(stage),
-                    self.remote_root,
-                    *RCLONE_S3_ARGS,
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
-                timeout=self.command_timeout_s,
-            )
-            if copied.returncode != 0:
-                raise ISSGateWorkerError(
-                    f"MIRROR_BATCH_COPY_FAILED:{copied.returncode}"
+            for label, paths, immutable in (
+                ("IMMUTABLE", immutable_paths, True),
+                ("CURRENT", current_paths, False),
+            ):
+                if not paths:
+                    continue
+                selection = stage / f".{label.lower()}-files"
+                selection.write_text("".join(path + "\n" for path in paths))
+                flags = ["--files-from", str(selection)]
+                copied = subprocess.run(
+                    [
+                        "rclone", "copy", str(stage), self.remote_root,
+                        *flags, "--checksum", "--no-traverse",
+                        *(["--immutable"] if immutable else []),
+                        *RCLONE_S3_ARGS,
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False,
+                    timeout=self.command_timeout_s,
                 )
+                if copied.returncode != 0:
+                    raise ISSGateWorkerError(
+                        f"MIRROR_BATCH_{label}_COPY_FAILED:{copied.returncode}"
+                    )
 
-            checked = subprocess.run(
-                [
-                    "rclone",
-                    "check",
-                    str(stage),
-                    self.remote_root,
-                    "--download",
-                    "--one-way",
-                    *RCLONE_S3_ARGS,
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
-                timeout=self.command_timeout_s,
-            )
-            if checked.returncode != 0:
-                raise ISSGateWorkerError(
-                    f"MIRROR_BATCH_VERIFY_FAILED:{checked.returncode}"
+                checked = subprocess.run(
+                    [
+                        "rclone", "check", str(stage), self.remote_root,
+                        *flags, "--download", "--one-way",
+                        *RCLONE_S3_ARGS,
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False,
+                    timeout=self.command_timeout_s,
                 )
+                if checked.returncode != 0:
+                    raise ISSGateWorkerError(
+                        f"MIRROR_BATCH_{label}_VERIFY_FAILED:{checked.returncode}"
+                    )
 
             return metadata
 

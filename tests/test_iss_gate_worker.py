@@ -974,7 +974,7 @@ def test_mirror_batch_failure_preserves_durable_queue(tmp_path):
     assert ev.mirror_backlog_status()["pending_games"] == 1
 
 
-def test_upload_batch_verified_uses_one_copy_and_one_download_check(
+def test_upload_batch_verified_protects_games_and_scopes_current_snapshot(
     tmp_path, monkeypatch
 ):
     import subprocess
@@ -988,7 +988,10 @@ def test_upload_batch_verified_uses_one_copy_and_one_download_check(
     calls = []
 
     def fake_run(args, **kwargs):
-        calls.append(list(args))
+        selected = __import__("pathlib").Path(
+            args[args.index("--files-from") + 1]
+        ).read_text().splitlines()
+        calls.append((list(args), selected))
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
     monkeypatch.setattr(gw.subprocess, "run", fake_run)
@@ -998,11 +1001,44 @@ def test_upload_batch_verified_uses_one_copy_and_one_download_check(
     )
 
     assert len(result) == 2
-    assert len(calls) == 2
-    assert calls[0][:2] == ["rclone", "copy"]
-    assert calls[1][:2] == ["rclone", "check"]
-    assert "--download" in calls[1]
-    assert "--one-way" in calls[1]
+    assert [args[:2] for args, _ in calls] == [
+        ["rclone", "copy"], ["rclone", "check"],
+        ["rclone", "copy"], ["rclone", "check"],
+    ]
+    assert [selected for _, selected in calls] == [
+        ["games/a.txt"], ["games/a.txt"],
+        ["current/b.txt"], ["current/b.txt"],
+    ]
+    assert "--immutable" in calls[0][0]
+    assert "--immutable" not in calls[2][0]
+    assert all("--no-traverse" in calls[i][0] for i in (0, 2))
+    assert all("--download" in calls[i][0] for i in (1, 3))
+    assert all("--one-way" in calls[i][0] for i in (1, 3))
+
+
+def test_immutable_remote_conflict_stops_before_current_write(tmp_path, monkeypatch):
+    import subprocess
+    import pytest
+    import skatai.iss.gate_worker as gw
+
+    a = tmp_path / "a.txt"
+    b = tmp_path / "b.txt"
+    a.write_text("alpha\n")
+    b.write_text("beta\n")
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        return subprocess.CompletedProcess(args, 9, stdout="", stderr="conflict")
+
+    monkeypatch.setattr(gw.subprocess, "run", fake_run)
+    mirror = gw.HetznerEvidenceMirror(local_root=tmp_path)
+    with pytest.raises(gw.ISSGateWorkerError, match="MIRROR_BATCH_IMMUTABLE_COPY_FAILED:9"):
+        mirror.upload_batch_verified(
+            [(a, "games/a.txt"), (b, "current/b.txt")]
+        )
+    assert len(calls) == 1
+    assert "--immutable" in calls[0]
 
 
 def test_mirror_policy_environment_is_bounded():
