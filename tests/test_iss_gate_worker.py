@@ -1258,6 +1258,13 @@ def test_mirror_batch_combines_games_and_current_state_in_one_transfer(tmp_path)
     assert result["pending_games"] == 0
     assert not ev.mirror_current_dirty_path.exists()
     assert not list(ev.mirror_queue_dir.glob("*.json"))
+    receipts = [json.loads((ev.mirror_receipts_dir / f"{game_id}.json").read_text())
+                for game_id in ("g1", "g2")]
+    assert all(x["lag_s"] >= 0 and x["verified_unix_ns"] >= x["enqueued_unix_ns"]
+               for x in receipts)
+    ev.enqueue_mirror_game("g1")
+    ev.mirror_batch(limit=1)
+    assert json.loads((ev.mirror_receipts_dir / "g1.json").read_text()) == receipts[0]
 
 
 def test_mirror_batch_failure_preserves_durable_queue(tmp_path):
@@ -1279,6 +1286,7 @@ def test_mirror_batch_failure_preserves_durable_queue(tmp_path):
         ev.mirror_batch(limit=8)
 
     assert marker.is_file()
+    assert not (ev.mirror_receipts_dir / f"{game_id}.json").exists()
     assert ev.mirror_current_dirty_path.is_file()
     assert ev.mirror_backlog_status()["pending_games"] == 1
 

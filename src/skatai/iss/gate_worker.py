@@ -868,6 +868,8 @@ class GateEvidence:
         self.mirror = HetznerEvidenceMirror(local_root=paths.runtime_root)
         self.mirror_queue_dir = paths.runtime_root / "mirror-queue"
         self.mirror_queue_dir.mkdir(parents=True, exist_ok=True)
+        self.mirror_receipts_dir = paths.runtime_root / "mirror-receipts"
+        self.mirror_receipts_dir.mkdir(parents=True, exist_ok=True)
         self.mirror_current_dirty_path = (
             paths.runtime_root / "mirror-current-dirty.json"
         )
@@ -1810,7 +1812,31 @@ class GateEvidence:
 
             uploaded = self.mirror.upload_batch_verified(files)
 
-            for marker, _ in selected:
+            # A receipt measures local close-to-verified-remote lag without a
+            # remote read or listing on the gameplay thread. Keep the first
+            # successful verification timestamp across interrupted retries.
+            for marker, payload in selected:
+                game_id = str(payload["game_id"])
+                manifest_sha = sha256_file(
+                    self.games_dir / f"{game_id}.mirror.json"
+                )
+                receipt_path = self.mirror_receipts_dir / f"{game_id}.json"
+                if receipt_path.exists():
+                    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                    if (receipt.get("source_commit") != payload["source_commit"]
+                            or receipt.get("manifest_sha256") != manifest_sha):
+                        raise ISSGateWorkerError(f"MIRROR_RECEIPT_CONFLICT:{game_id}")
+                else:
+                    verified_ns = time.time_ns()
+                    _atomic_json(receipt_path, {
+                        "schema": "skatai.v2.iss-mirror-verification-receipt.v1",
+                        "game_id": game_id,
+                        "source_commit": payload["source_commit"],
+                        "manifest_sha256": manifest_sha,
+                        "enqueued_unix_ns": payload["enqueued_unix_ns"],
+                        "verified_unix_ns": verified_ns,
+                        "lag_s": max(0.0, (verified_ns - int(payload["enqueued_unix_ns"])) / 1e9),
+                    })
                 marker.unlink(missing_ok=True)
 
             if current_token is not None and self.mirror_current_dirty_path.exists():
