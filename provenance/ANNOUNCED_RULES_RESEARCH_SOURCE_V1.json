@@ -1,0 +1,19 @@
+{
+  "schema": "skatai.v2.announced-rules-research-source.v1",
+  "status": "RESEARCH_ONLY_NO_PRODUCT_SCORER_ENABLEMENT",
+  "primary_source": {
+    "publisher": "Deutscher Skatverband",
+    "title": "Internationale Skatordnung 2022",
+    "url": "https://dskv.de/app/uploads/sites/43/2022/11/ISkO-2022.pdf",
+    "sha256": "1069aa42121170108457fdf4b583ee887dc03d0d4ea8da07e81deb09d60f6f64",
+    "bytes": 2602229,
+    "sections": ["2.4.1", "2.5.1", "2.5.7", "2.5.8", "2.5.11", "3.6.3"]
+  },
+  "observed_train_oracle": {
+    "evidence_sha256": "a250c9124236e903c61e1be4358c68d53a14da6d7130d7cafbc5dc07f90e683a",
+    "complete_matches": 12,
+    "loss_or_overbid_cases": 0,
+    "scope": "Train split only; zero independent external acceptance for loss/overbid cells"
+  },
+  "gate": "Schwarz announced and suit/Grand ouvert scoring is opt-in for controlled rules research. Default self-play scoring remains fail-closed; no policy training, strength, promotion, or release claim follows from these tests."
+}
