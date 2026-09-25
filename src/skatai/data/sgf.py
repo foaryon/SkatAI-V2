@@ -394,14 +394,43 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         plays.append([int(suffix[i]), card])
         i += 2
 
-    _validate_play_legality(
-        initial_hands, skat, declarer, is_hand, discards, plays, game_type
-    )
-
     rf = _result_fields(tags.get("R", ""))
+    timeout_seat = _int_field(rf, "to")
+
+    # ISS can terminate a pickup game after declaration but before the
+    # declarer has sent the two-card discard. Such a timeout is valid
+    # failure evidence, not a complete played game. Accept only the exact
+    # world-timeout representation; ordinary incomplete pickup records
+    # must continue to fail closed.
+    timeout_marker_seat = None
+    unparsed_suffix = suffix[i:]
+    if len(unparsed_suffix) == 2 and unparsed_suffix[0] == "w":
+        marker = unparsed_suffix[1].split(".")
+        if (
+            len(marker) == 2
+            and marker[0] == "TI"
+            and marker[1] in {"0", "1", "2"}
+        ):
+            timeout_marker_seat = int(marker[1])
+
+    interrupted_before_discard = (
+        pickup
+        and discards is None
+        and not plays
+        and timeout_marker_seat is not None
+        and timeout_seat == timeout_marker_seat
+    )
+    if interrupted_before_discard:
+        classification = "PARSED_INCOMPLETE_TERMINAL"
+    else:
+        _validate_play_legality(
+            initial_hands, skat, declarer, is_hand, discards, plays, game_type
+        )
+        classification = "PARSED_PLAYED_GAME"
+
     out = {
         **common,
-        "classification": "PARSED_PLAYED_GAME",
+        "classification": classification,
         "bidding_history": bidding_history,
         "declarer": declarer,
         "bid_level": br.winning_bid,
@@ -416,6 +445,7 @@ def parse_sgf_line(source: str, raw: bytes | str) -> dict[str, Any]:
         "plays": plays,
         "play_count": len(plays),
         "play_complete": len(plays) == 30,
+        "timeout_seat": timeout_seat,
         "won": rf.get("outcome") == "win",
         "game_value": _int_field(rf, "v"),
         "card_points": _int_field(rf, "p"),

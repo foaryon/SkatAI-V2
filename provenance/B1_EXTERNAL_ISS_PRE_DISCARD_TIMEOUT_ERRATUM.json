@@ -1,0 +1,52 @@
+{
+  "schema": "skatai.v2.external-iss-pre-discard-timeout-erratum.v1",
+  "captured_at": "2026-09-25T15:53:54Z",
+  "campaign": "V2-B1-bidding-linearish-full-v1 external ISS gate R9",
+  "prior_source_commit": "c77b401f3665ebd64c7c62491e122d8ccdfd22f1",
+  "patch_origin_commit": "bde5b70",
+  "trigger": {
+    "table_id": "AI85b833",
+    "server_game_num": 3,
+    "arm": "B0",
+    "opponent_stack": "kermit+theCount",
+    "seat": 1,
+    "terminal_capture_sha256": "a3fe297d4a00b03d0258bce4e1e4ec1a3449c4f48e10372b776132b159aa2c5e",
+    "terminal_sgf_sha256": "5f331d8cac976e3692db2f567b309ab8409e4a7412a77a97e263df582d6351c5",
+    "terminal_marker": "w TI.1",
+    "result_timeout_field": "to:1",
+    "recorded_failure": "SGF_PARSE_FAILED:PICKUP_GAME_REQUIRES_TWO_DISCARDS",
+    "disposition": "RETAIN_NONSCORING_INFRA_FAILURE_DO_NOT_RETROACTIVELY_SCORE"
+  },
+  "attribution": {
+    "root_cause": "ISS emitted a valid terminal timeout after pickup and contract declaration but before the declarer sent the required two-card discard. parse_sgf_line enforced complete pickup-game discard legality before exposing the terminal timeout field, so live_game_result could not reach its existing ISS_TIMEOUT handling.",
+    "not_the_prior_split_discard_bug": true,
+    "evidence": "The terminal contains pickup marker '1 s', original skat delivery 'w DA.H7', declaration '1 C', then 'w TI.1'; no discard-only action is present. R contains to:1.",
+    "scientific_effect": "The game is deployment/runtime failure evidence only and is excluded from the primary strength estimator."
+  },
+  "change_scope": {
+    "implementation": "src/skatai/data/sgf.py",
+    "test": "tests/test_iss_result.py::test_live_result_preserves_timeout_before_pickup_discard_as_unscored_failure",
+    "behavior": "Recognize only an exact world timeout marker w TI.<seat> whose seat agrees with R[to] when a pickup game terminates before any discard/play; classify it PARSED_INCOMPLETE_TERMINAL and expose timeout_seat so existing ISS_TIMEOUT handling records score=null.",
+    "decision_generation_changed": false,
+    "bidding_policy_changed": false,
+    "declaration_policy_changed": false,
+    "discard_policy_changed": false,
+    "cardplay_policy_changed": false,
+    "normal_complete_terminal_scoring_changed": false
+  },
+  "verification": {
+    "isolated_patch_branch_full_suite": "603 passed",
+    "c77b401_refreeze_line_full_suite": "275 passed",
+    "real_terminal_replay": {
+      "classification": "PARSED_INCOMPLETE_TERMINAL",
+      "failure_reason": "ISS_TIMEOUT",
+      "score": null,
+      "viewer_seat": 1,
+      "declarer": 1,
+      "winning_bid": 24,
+      "contract": "C",
+      "timeout_seat": 1
+    }
+  },
+  "continuation_rule": "Preserve AI85b833 game 3 as an unscored terminal-present failure, mirror its raw terminal/protocol/effect evidence durably, clear active authority only after ledger/evidence persistence, refreeze R9 on this terminal-evidence-only correction, and resume the unchanged B0/B1 campaign without opening the strength look."
+}
