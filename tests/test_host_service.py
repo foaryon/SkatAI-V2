@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from skatai.runtime.host_service import REQUEST_SCHEMA, RESPONSE_SCHEMA, handle_request
+from skatai.runtime.host_service import (
+    PICKUP_PLAN_REQUEST_SCHEMA,
+    PICKUP_PLAN_RESPONSE_SCHEMA,
+    REQUEST_SCHEMA,
+    RESPONSE_SCHEMA,
+    handle_pickup_plan,
+    handle_request,
+)
 from skatai.runtime.interface import SkatAIInterfaceError
 from tests.test_product_interface import HAND10, HAND12, _ai
 
@@ -84,3 +91,49 @@ def test_host_accepts_reverse_order_legal_discard():
         "observation": {"hand12": HAND12, "seat": 1, "winning_bid": 18},
     })
     assert response["result"]["action"] == "S9.ST"
+
+
+def _pickup_payload():
+    return {
+        "schema": PICKUP_PLAN_REQUEST_SCHEMA,
+        "game_id": "table-7/game-4", "sequence_no": 12,
+        "hand12": HAND12, "seat": 1, "winning_bid": 18,
+        "max_accepted_bids_by_seat": (0, 18, 0),
+        "legal_contracts": ("C", "S", "H", "D", "G", "N", "NO"),
+    }
+
+
+def test_pickup_plan_binds_discard_and_later_declaration_to_one_snapshot():
+    ai = _ai()
+    plan = handle_pickup_plan(ai, "release-1", _pickup_payload())
+    assert plan["schema"] == PICKUP_PLAN_RESPONSE_SCHEMA
+    assert plan["contract"] == "G"
+    assert plan["discard"] == ["S9", "ST"]
+    assert plan["final_hand"] == list(HAND10)
+    assert plan["sequence_no"] == 12
+    assert len(plan["plan_id"]) == 64
+    assert [d["decision_type"] for d in plan["decisions"]] == ["DECLARATION", "DISCARD"]
+    assert all(d["release_id"] == "release-1" for d in plan["decisions"])
+    # Timing varies; identical legal choices retain the same commitment.
+    assert handle_pickup_plan(ai, "release-1", _pickup_payload())["plan_id"] == plan["plan_id"]
+    assert handle_pickup_plan(ai, "release-2", _pickup_payload())["plan_id"] != plan["plan_id"]
+
+
+@pytest.mark.parametrize("change, error", [
+    ({"hand12": HAND10}, "BAD_CARD_COUNT"),
+    ({"legal_contracts": ("GH",)}, "BAD_PICKUP_CONTRACT_SET"),
+    ({"legal_contracts": ("G", "G")}, "BAD_PICKUP_CONTRACT_SET"),
+    ({"winning_bid": 77}, "PICKUP_NULL_BELOW_WINNING_BID"),
+    ({"winning_bid": 0}, "PICKUP_PLAN_BAD_WINNING_BID"),
+    ({"source_context": {"opponent_hand": HAND10}}, "PICKUP_PLAN_UNKNOWN_FIELD"),
+])
+def test_pickup_plan_rejects_bad_host_context(change, error):
+    with pytest.raises(SkatAIInterfaceError, match=error):
+        handle_pickup_plan(_ai(), "release-1", {**_pickup_payload(), **change})
+
+
+def test_pickup_plan_rejects_illegal_policy_choice_before_host_discard():
+    ai = _ai()
+    ai.declaration.choice = "GH"
+    with pytest.raises(SkatAIInterfaceError, match="ILLEGAL_CONTRACT"):
+        handle_pickup_plan(ai, "release-1", _pickup_payload())

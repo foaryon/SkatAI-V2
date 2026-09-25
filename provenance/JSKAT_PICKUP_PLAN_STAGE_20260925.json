@@ -1,0 +1,46 @@
+{
+  "schema": "skatai.v2.jskat-pickup-plan-stage.v1",
+  "captured_at": "2026-09-25T12:09:04Z",
+  "task_id": "JSKAT_PICKUP_PLAN_STAGE",
+  "classification": "CONCLUDE_STAGED_SOURCE",
+  "current_evidence": {
+    "v2_parent_commit": "34cc3304bb2982feb0ddeb1d1f0a24476dff8c62",
+    "jskat_upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+    "jskat_skatgame_sha256": "95e83be13e70824be59be4668aab03b1aed955d3dc8d42316962fd88e13bfc20",
+    "jskat_abstract_player_sha256": "729ddcd1b69e2d787a0ed7c88c74736293e84c905863a3e141a0a8294464cd12",
+    "jskat_immutable_knowledge_sha256": "aeb7e857b85eb5f083e4347738470af39a44bacd094841af2ac4e76d97d10d33",
+    "jskat_source_scope": "Read-only shallow clone on disposable /tmp scratch; no third-party code imported into V2"
+  },
+  "goal_or_hypothesis": "A single V2 host request can bind post-pickup declaration and discard decisions before JSkat removes cards from player knowledge.",
+  "nearest_gate": "Headless JSkat pickup and hand lifecycle integration",
+  "smallest_intervention": "Versioned stateless host pickup-plan request at the existing release service",
+  "invariants_to_preserve": [
+    "Frozen B0 and R9 source/runtime untouched",
+    "Only own 12 cards and public bid context enter the plan",
+    "No JSkat source vendored",
+    "No accepted-release or host-integration claim"
+  ],
+  "input_identities": {
+    "source_file_sha256": "1770c619e5cd1f51239b6019a6678b4666648da52a662176c704b8673f43db8a",
+    "test_file_sha256": "94ba92723b3b0e59ef98ef4881cbc969b4b8357ec0586d6c2ac583e7b8d869ae"
+  },
+  "resource_bound": "Source inspection and focused CPU tests only; no competing cardplay inference on R9 pod",
+  "verification": {
+    "command": "PYTHONPATH=src:. /tmp/skatai-v2-b0-venv/bin/python -m pytest -q tests/test_host_service.py tests/test_product_interface.py tests/test_skatzero_backend.py tests/test_release_loader.py",
+    "passed": 42,
+    "failed": 0,
+    "git_diff_check": "PASS",
+    "jskat_static_order": "pickUpSkat -> takeSkat(12 own cards) -> discardSkat/removal -> announceGame"
+  },
+  "result": "STAGED_PICKUP_PLAN_PASS",
+  "scientific_and_product_limits": [
+    "Current B0 release v3 embeds older host service; a new versioned staged package and clean-worker smoke are required before deployment",
+    "No Java adapter or live JSkat callback execution occurred because the pod lacks a JDK",
+    "The Java adapter must retain the plan by game ID, sequence and release; compare actual post-discard own-card set to final_hand before announceGame; reject stale or duplicate callbacks",
+    "JSkat own cards are stored as a Set; adapter must canonicalize hand12 ordering before requesting the plan and compare post-discard cards as a set",
+    "This binds one snapshot but does not prove the B0 fallback contract is strategically optimized for its discard; accepted-release joint consistency remains a separate gate",
+    "JSkat rules, assets, Windows packaging and actual user-host source remain unqualified"
+  ],
+  "next_on_success": "Stage a source-bound release with the new host operation on isolated compute, then implement and test JSkat adapter callbacks and legal/rule parity",
+  "next_on_failure_or_inconclusive": "Preserve source evidence and revise the bridge contract without altering frozen B0 or R9"
+}

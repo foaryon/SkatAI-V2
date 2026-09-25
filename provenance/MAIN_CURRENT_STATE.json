@@ -8,13 +8,19 @@
       "task_id": "B1_EXTERNAL_ISS_R9"
     }
   ],
-  "captured_at": "2026-09-25T12:06:24.660968+00:00",
+  "captured_at": "2026-09-25T12:09:04Z",
   "completed_independent_gate": {
     "classification": "CONCLUDE",
     "evidence": "provenance/B0_CURRENT_SOURCE_HOST_SMOKE_RESULT_20260925.json",
     "result_sha256": "d4811408007adebdb58dc5a68b22b915af85312324079c5cb619bb1b60322df8",
     "status": "FOUR_PHASE_HOST_SMOKE_PASS_ACTUAL_HOST_PENDING",
     "task_id": "B0_CURRENT_SOURCE_HOST_SMOKE"
+  },
+  "staged_product_gate": {
+    "task_id": "JSKAT_PICKUP_PLAN_STAGE",
+    "classification": "CONCLUDE_STAGED_SOURCE",
+    "evidence": "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
+    "host_adapter_status": "PENDING"
   },
   "git": {
     "branch": "main",
@@ -53,7 +59,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "R9 stays independent until clean gate. Product path: design versioned pickup/hand decision protocol and local JSkat lifecycle/rule smoke; do not vendor/fork before remaining audit gates.",
+  "next_action": "R9 stays independent until clean gate. Stage source-bound host package with pickup plan on isolated compute, then test JSkat adapter callback and rule parity; do not vendor/fork before remaining audit gates.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -68,9 +74,9 @@
     "audit": "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
     "bridge_contract": "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
     "classification": "CONCLUDE_BOUNDED_AUDIT",
-    "next_gate": "Resolve pickup action and joint declaration/discard semantics; verify local lifecycle, then rules/assets/Windows build",
+    "next_gate": "Versioned pickup plan staged and focused tests pass; stage package and verify actual JSkat callback lifecycle, then rules/assets/Windows build",
     "no_vendor_or_fork": true,
-    "status": "CONDITIONAL_JSKAT_PREFERENCE_NO_ADOPTION"
+    "status": "CONDITIONAL_JSKAT_PREFERENCE_PICKUP_PLAN_STAGED_NO_ADOPTION"
   },
   "resource_constraint": "Network-volume UI approximately 119/120 GB; no large local staging until verified headroom",
   "resource_state": {

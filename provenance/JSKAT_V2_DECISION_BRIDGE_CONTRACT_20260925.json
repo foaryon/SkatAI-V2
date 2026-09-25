@@ -18,6 +18,14 @@
     "source_context": "Only provenance and public host metadata; never hidden game state"
   },
   "implementation_authorized": false,
+  "pickup_plan_stage": {
+    "source": "src/skatai/runtime/host_service.py",
+    "request_schema": "skatai.v2.host-pickup-plan-request.v1",
+    "response_schema": "skatai.v2.host-pickup-plan-response.v1",
+    "evidence": "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
+    "host_sequence": "Use initial 10-card DECLARATION with PICKUP plus hand contracts at pickUpSkat. After takeSkat, canonicalize 12 own cards and request one pickup plan at discardSkat. Cache its contract, final_hand and plan_id until announceGame. Compare actual 10-card own set against final_hand before returning the cached contract.",
+    "status": "STAGED_V2_SOURCE_ONLY_JAVA_ADAPTER_PENDING"
+  },
   "phase_mapping": [
     {
       "gap": "nextBidValue must map exactly to V2 bid_index from same auction schedule",
@@ -33,21 +41,21 @@
       "v2_phase": "BID"
     },
     {
-      "gap": "V2 declaration action is a contract, not a pickup decision; post-pickup observation expects 12 cards. Do not infer choice from hidden skat or hard-code it as complete integration.",
+      "gap": "Initial 10-card V2 declaration can return PICKUP when legal_contracts contains PICKUP plus reviewed hand contracts. Java callback implementation and release packaging remain pending; do not infer choice from hidden skat.",
       "jskat_callback": "pickUpSkat()",
-      "mapping": "Requires a declared phase protocol for hand-versus-pickup choice",
+      "mapping": "Initial 10-card DECLARATION: PICKUP means true; reviewed hand contract means false and is cached for announceGame",
       "required_inputs": "10 own cards and bid context",
-      "v2_phase": "NO_DIRECT_ACTION"
+      "v2_phase": "DECLARATION"
     },
     {
-      "gap": "Verify JSkat callback ordering and whether the player internal knowledge still has all 12 cards",
+      "gap": "Pinned source confirms takeSkat before discardSkat and 12 own cards at callback; runtime smoke must verify with a live JSkat game",
       "jskat_callback": "discardSkat()",
       "mapping": "V2 unordered pair action in observation hand12 order -> JSkat two Card values",
       "required_inputs": "12 own cards after pickup, seat, winning bid",
       "v2_phase": "DISCARD"
     },
     {
-      "gap": "CONFIRMED: announceGame follows discard. V2 declaration observation for pickup is pre-discard 12 cards and has no chosen-discard field. Compute/cache declaration while 12 cards are available, then return it at announceGame; require accepted-release consistency between chosen discard and contract. A post-discard call with the stale 12-card snapshot alone hides the chosen pair from a generic policy and is insufficient.",
+      "gap": "CONFIRMED: announceGame follows discard. Versioned pickup plan binds declaration and discard to the same pre-discard 12 cards. Cache it, verify actual 10-card own set against final_hand, then return its contract at announceGame. Accepted-release strategic consistency and runtime callback validation remain pending.",
       "jskat_callback": "announceGame()",
       "mapping": "Map reviewed legal contract set and V2 action to JSkat GameContract",
       "required_inputs": "10 cards for hand or 12 cards for pickup per V2 observation; JSkat may already have discarded to 10",
@@ -96,6 +104,6 @@
     "v2_host_request": "skatai.v2.host-request.v1",
     "v2_interface": "skatai.v2.product-interface.v1"
   },
-  "status": "DESIGN_ONLY_LIFECYCLE_ORDER_CONFIRMED_PICKUP_ACTION_GAP",
+  "status": "PICKUP_PLAN_STAGED_LIFECYCLE_JAVA_ADAPTER_PENDING",
   "third_party_code_imported": false
 }
