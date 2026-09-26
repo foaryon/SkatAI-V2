@@ -469,6 +469,9 @@ def test_readonly_worker_gets_distinct_minimal_contract_and_dispatch(tmp_path, m
     assert task['authority'] == {'read': ['repo:acceptance.json'], 'write': [], 'execute': [],
                                   'forbidden': ['No commands, writes, secrets, promotion, or project-wide decisions.']}
     assert task['execution_profile']['max_cost_class'] == 'very_low'
+    assert task['input_artifacts'] == [{'path': 'repo:acceptance.json',
+                                         'sha256': cp.sha256(tmp_path / 'acceptance.json'),
+                                         'content': '{"status":"PENDING"}'}]
 
 
 def test_idle_dispatch_event_does_not_call_superbrain(monkeypatch):
@@ -640,3 +643,22 @@ def test_repository_revision_wakes_only_for_relevant_new_work(monkeypatch):
     assert state['event_seq'] == 1
     assert state['last_event']['kind'] == 'controller_revision'
     assert state['observed_repository_revision'] == 'c'
+
+
+def test_readonly_package_rejects_oversized_input_before_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'REPO', tmp_path)
+    (tmp_path / 'large.json').write_text('x' * 8001)
+    with pytest.raises(RuntimeError, match='READ_ONLY_PACKAGE_TOO_LARGE'):
+        cp.create_and_dispatch_readonly_task({'read_paths': ['large.json']})
+
+
+def test_repeated_blocked_readonly_audits_pause_reasoning(tmp_path, monkeypatch):
+    cp.atomic_json(cp.TASKS, {'tasks': {
+        f'audit-{i}': {'task_id': f'audit-{i}', 'task_family': 'bounded_readonly_audit',
+                      'created_at': f'2026-09-26T00:00:0{i}Z', 'state': 'BLOCKED',
+                      'integration_decision': {'accepted': False}}
+        for i in range(2)}})
+    for i in range(2):
+        cp.atomic_json(cp.result_file(f'audit-{i}'),
+                       {'status': 'BLOCKED', 'changes': []})
+    assert cp.repeated_placeholder_audit_streak() == 2

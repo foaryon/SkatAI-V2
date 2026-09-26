@@ -568,13 +568,20 @@ def create_and_dispatch_readonly_task(args: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(paths, list) or not 1 <= len(paths) <= 3:
         raise RuntimeError("READ_ONLY_TASK_NEEDS_ONE_TO_THREE_FILES")
     reads = []
+    input_artifacts = []
+    total_bytes = 0
     for raw in paths:
         p, key = safe_path(raw, allow_runtime=False)
         if not p.is_file():
             raise RuntimeError("READ_ONLY_INPUT_MISSING")
         if p in {FOUNDING_SPEC, WORK_PROMPT, ARCHITECTURE}:
             raise RuntimeError("GLOBAL_AUTHORITY_IS_ORCHESTRATOR_CONTEXT; use phase references in the contract")
+        size = p.stat().st_size
+        total_bytes += size
+        if size > 8000 or total_bytes > 16000:
+            raise RuntimeError("READ_ONLY_PACKAGE_TOO_LARGE; choose a narrower input")
         reads.append(key)
+        input_artifacts.append({"path": key, "sha256": sha256(p), "content": p.read_text(encoding="utf-8")})
     contract = {
         "task_id": args["task_id"], "task_family": "bounded_readonly_audit",
         "assigned_agent": args["assigned_agent"], "priority": args["priority"],
@@ -584,6 +591,7 @@ def create_and_dispatch_readonly_task(args: dict[str, Any]) -> dict[str, Any]:
         "rationale": args["rationale"], "scope": ["Read only: " + ", ".join(reads), args["objective"]],
         "non_goals": ["No repository/runtime changes, model promotion, release, or R9 intervention."],
         "dependencies": args.get("dependencies", []), "required_inputs": reads,
+        "input_artifacts": input_artifacts,
         "authority": {"read": reads, "write": [], "execute": [],
                       "forbidden": ["No commands, writes, secrets, promotion, or project-wide decisions."]},
         "evidence_requirements": args["evidence_requirements"],
@@ -1323,7 +1331,7 @@ def launch_ready_workers(state: dict[str, Any]) -> None:
         text = (
             "Execute this task contract exactly. It is your complete authority and context boundary.\n\n"
             + json.dumps(task, indent=2, sort_keys=True)
-            + "\n\nReturn evidence through submit_worker_result. Do not broaden scope."
+            + "\n\nThe input_artifacts contain bounded source text and SHA-256 values when supplied; use them directly. Return evidence through submit_worker_result. Do not broaden scope."
         )
         s = create_session(
             state["worker_agent_ids"][rid], model, cfg["service_tier"], text,
@@ -1494,7 +1502,7 @@ def repeated_placeholder_audit_streak() -> int:
         if task.get("state") != "BLOCKED" or task.get("integration_decision", {}).get("accepted") is not False:
             break
         rp = result_file(task["task_id"])
-        if not rp.is_file() or strict_json(rp).get("status") != "PARTIAL":
+        if not rp.is_file() or strict_json(rp).get("status") not in {"PARTIAL", "BLOCKED"}:
             break
         streak += 1
     return streak
