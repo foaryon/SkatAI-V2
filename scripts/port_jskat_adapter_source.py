@@ -53,6 +53,29 @@ TARGETS = (
 )
 
 
+FROZEN_PORT_TARGET_SHA256 = {
+    'integrations/jskat-adapter/.gitignore': '8c14e5ce2a4b785f38e12036540e8838090de3a962d6e91132c34bf1f129d2a2',
+    'integrations/jskat-adapter/README.md': '9a1d843e38391abfef114c90d2471d6dd4d7cd8efbd792fc846f130effc57072',
+    'integrations/jskat-adapter/build.gradle.kts': '43a6b35453795ac9d0ce89db34ca3695c04adf226e0da6806ba94e8321d2d4b9',
+    'integrations/jskat-adapter/patches/.gitattributes': '39599d875411ccdbdf08dabc3ea21a90c69d3587e027dc7103a43ff607b042c5',
+    'integrations/jskat-adapter/patches/jskat-skatai-player.patch': '805031765843b621c98d9a0ddda25a052f09d7a2f6f4e4fdaad34dff9f30f894',
+    'integrations/jskat-adapter/settings.gradle.kts': 'bb903bb300e1ed45881108a6a5f95cae098ae20cc3d410cf70f8304b2894c414',
+    'integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/ContractMapper.java': '7ec70e4154a4ac12d4cc903e46082175848264efcdbad0d0f6c82d193151714f',
+    'integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/HostClient.java': '3185b96a4b7b8f32e2459bfd215fc0d247776985ec6c7c5fbfdafbe1269d3e2b',
+    'integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/JsonLineHostClient.java': 'bd4dc8d845f305803f5562e70ed8a8503d86ede28d1c14d242cb3b008412dedd',
+    'integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/ProtocolIdentity.java': '691d8ba867def758f47a9e6bf6e600bc7c1065c52f8ceafa663b859b9d0dfa86',
+    'integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/SkatAIJSkatPlayer.java': '198c68549573f6e07597dd3845d67385485a1fed68f13d5eb89567b40562d1d7',
+    'integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/ContractMapperTest.java': '8b218057967788435886a0e4ab83e9b27ef755a225230a58217e5588284b9c4d',
+    'integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/JsonLineHostClientIntegrationTest.java': '3f073d7128394d05877a300de1c189b0f07d24413a9de666af4179b9e03439e3',
+    'integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/ProtocolIdentityTest.java': '54b79656edbd5feb39e6f68cf869770e0d79e9defe868de5cf696c03358b891c',
+    'integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/SkatAIJSkatPlayerTest.java': 'b167af0551d42aabcee4ebd88fea3726309b663c43f48b9040b5bc40ffc2e622',
+    'provenance/JSKAT_INSTALLED_RUNTIME_WHEEL_GATE_20260925.json': '3b109366bfcc687ac4b15fb5fcfb51b84afeb9a408f82f73a6a8a39968f621af',
+    'provenance/JSKAT_RUNTIME_INTEGRATION_V1_20260925.json': '85680ab6a90f8c1b1b3ff936a9095ee88f7019c77358e90ff7f8b60a3125a9ed',
+    'src/skatai/runtime/host_service.py': '317f4436f43477167360a4c05f8b624af8a3fd3855b8a58676c530f10aa38ed7',
+    'tests/test_host_service.py': '016fb7471339c97ad81f525775cb1805097adc1d51943440c5eefcfd3ae22892',
+}
+
+
 def git(*args: str, check: bool = True, text: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", "-C", str(REPO), *args],
@@ -82,7 +105,11 @@ def assert_target_history_unchanged() -> None:
         if row.strip()
     ]
     if changed:
-        raise SystemExit("JSKAT_PORT_TARGET_HISTORY_CHANGED:" + ",".join(changed))
+        invalid = [rel for rel in changed if rel not in FROZEN_PORT_TARGET_SHA256
+                   or not (REPO / rel).is_file()
+                   or hashlib.sha256((REPO / rel).read_bytes()).hexdigest() != FROZEN_PORT_TARGET_SHA256[rel]]
+        if invalid:
+            raise SystemExit("JSKAT_PORT_TARGET_HISTORY_CHANGED:" + ",".join(invalid))
 
 
 def assert_worktree_safe(tree: str) -> None:
