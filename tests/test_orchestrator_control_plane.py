@@ -376,3 +376,35 @@ def test_unsafe_command_rejected_before_worker_session_creation():
 def test_exact_target_status_probe_allowed():
     cp.validate_worker_command(['git', '-C', str(cp.REPO), 'status', '--porcelain=v1', '--',
                                 'src/skatai/evaluation/bidding_gameplay_gate.py'])
+
+
+def test_unchanged_negative_result_is_fail_closed_without_model(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    monkeypatch.setattr(cp, 'STATE_DIR', tmp_path)
+    monkeypatch.setattr(cp, 'DECISIONS', tmp_path / 'decisions.jsonl')
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'controller.json')
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 0})
+    monkeypatch.setattr(cp, 'refresh_project_state', lambda: None)
+    task = base_task()
+    task['state'] = 'VERIFYING'
+    cp.atomic_json(cp.TASKS, {'tasks': {task['task_id']: task}})
+    rp = cp.result_file(task['task_id'])
+    cp.atomic_json(rp, {'task_id': task['task_id'], 'worker_id': task['assigned_agent'],
+                        'status': 'BLOCKED', 'changes': [], 'artifacts': []})
+    assert cp.reconcile_negative_results() == [task['task_id']]
+    assert cp.strict_json(cp.TASKS)['tasks'][task['task_id']]['state'] == 'BLOCKED'
+    assert cp.reconcile_negative_results() == []
+    assert len(cp.DECISIONS.read_text().splitlines()) == 1
+    assert cp.strict_json(cp.CONTROLLER_STATE)['event_seq'] == 1
+
+
+def test_negative_result_with_side_effects_stays_for_review(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    monkeypatch.setattr(cp, 'STATE_DIR', tmp_path)
+    task = base_task()
+    task['state'] = 'VERIFYING'
+    cp.atomic_json(cp.TASKS, {'tasks': {task['task_id']: task}})
+    cp.atomic_json(cp.result_file(task['task_id']), {'task_id': task['task_id'],
+                   'worker_id': task['assigned_agent'], 'status': 'BLOCKED',
+                   'changes': ['repo:source.py'], 'artifacts': []})
+    assert cp.reconcile_negative_results() == []

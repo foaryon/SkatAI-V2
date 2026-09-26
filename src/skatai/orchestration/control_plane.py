@@ -1333,6 +1333,32 @@ def poll_workers(state: dict[str, Any]) -> None:
         refresh_project_state()
 
 
+def reconcile_negative_results() -> list[str]:
+    """Fail closed on unchanged BLOCKED/FAILED results without a model call.
+
+    Completed claims and any partial side effects still require SUPERBRAIN review.
+    """
+    closed = []
+    for tid, task in strict_json(TASKS)["tasks"].items():
+        if task.get("state") != "VERIFYING" or task.get("integration_decision"):
+            continue
+        rp = result_file(tid)
+        if not rp.is_file():
+            continue
+        result = strict_json(rp)
+        if (result.get("status") not in {"BLOCKED", "FAILED"}
+                or result.get("task_id") != tid
+                or result.get("worker_id") != task.get("assigned_agent")
+                or result.get("changes") != []
+                or result.get("artifacts", []) != []):
+            continue
+        accept_worker_result(tid, False, "Deterministic fail-closed integration of unchanged negative worker result; "
+                                       + result["status"] + "; result_sha256=" + sha256(rp))
+        bump_event("negative_worker_result_integrated", tid)
+        closed.append(tid)
+    return closed
+
+
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     sid = state.get("superbrain_session_id")
     if superbrain_budget_status()["exhausted"]:
@@ -1430,6 +1456,7 @@ def run_controller() -> None:
     log("orchestrator_controller_started")
     while True:
         state = strict_json(CONTROLLER_STATE)
+        reconcile_negative_results()
         state = poll_superbrain(state)
         launch_ready_workers(state)
         poll_workers(state)
