@@ -578,6 +578,7 @@ def test_controller_iteration_sees_result_event_after_deterministic_reconcile(mo
         seen.append(state['event_seq'])
         return state
     monkeypatch.setattr(cp, 'reconcile_negative_results', reconcile)
+    monkeypatch.setattr(cp, 'reconcile_repository_revision', lambda: False)
     monkeypatch.setattr(cp, 'poll_superbrain', poll)
     monkeypatch.setattr(cp, 'launch_ready_workers', lambda state: None)
     monkeypatch.setattr(cp, 'poll_workers', lambda state: None)
@@ -618,3 +619,24 @@ def test_stale_controller_write_preserves_newer_external_event():
     assert after['event_seq'] == 2
     assert after['last_event'] == {'kind': 'worker_result', 'subject': 'real'}
     assert after['superbrain_idle'] is True
+
+
+def test_repository_revision_wakes_only_for_relevant_new_work(monkeypatch):
+    heads = iter(['a', 'b', 'c'])
+    def fake_git(*args):
+        if args == ('rev-parse', 'HEAD'):
+            return next(heads)
+        if args == ('diff', '--name-only', 'a', 'b'):
+            return 'provenance/status.json'
+        if args == ('diff', '--name-only', 'b', 'c'):
+            return 'src/skatai/runtime/host_service.py'
+        raise AssertionError(args)
+    monkeypatch.setattr(cp, 'git', fake_git)
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 0, 'last_superbrain_event_seq': 0})
+    assert cp.reconcile_repository_revision() is False
+    assert cp.reconcile_repository_revision() is False
+    assert cp.reconcile_repository_revision() is True
+    state = cp.strict_json(cp.CONTROLLER_STATE)
+    assert state['event_seq'] == 1
+    assert state['last_event']['kind'] == 'controller_revision'
+    assert state['observed_repository_revision'] == 'c'

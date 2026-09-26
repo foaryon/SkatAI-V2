@@ -1636,9 +1636,35 @@ def run_controller() -> None:
         time.sleep(3)
 
 
+def reconcile_repository_revision() -> bool:
+    """Wake reasoning only for a new source/config revision, not idle polling."""
+    state = strict_json(CONTROLLER_STATE)
+    head = git("rev-parse", "HEAD")
+    previous = state.get("observed_repository_revision")
+    if head == previous:
+        return False
+    if previous and int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0)):
+        return False  # preserve the pending worker/recovery event first
+    paths = []
+    if previous:
+        try:
+            paths = git("diff", "--name-only", previous, head).splitlines()
+        except Exception:
+            paths = ["src/unknown"]  # force reconciliation when history cannot be compared
+    state["observed_repository_revision"] = head
+    atomic_json(CONTROLLER_STATE, state)
+    relevant = any(path.startswith(("src/", "scripts/", "configs/", "integrations/", "tests/"))
+                   or path in {"SKATAI_V2_FOUNDING_SPECIFICATION.md", "SKATAI_V2_WORK_PROMPT.md"}
+                   for path in paths)
+    if relevant:
+        bump_event("controller_revision", head)
+    return relevant
+
+
 def controller_iteration() -> None:
     """Reload durable state after each phase that may emit an orchestration event."""
     reconcile_negative_results()
+    reconcile_repository_revision()
     state = poll_superbrain(strict_json(CONTROLLER_STATE))
     launch_ready_workers(state)
     poll_workers(strict_json(CONTROLLER_STATE))
