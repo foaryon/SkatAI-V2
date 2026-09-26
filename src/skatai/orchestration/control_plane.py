@@ -683,6 +683,7 @@ def orchestration_tools() -> list[dict[str, Any]]:
         {"type": "function", "name": "search_text", "description": "Search project/runtime text for a literal string.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "query": {"type": "string"}, "glob": {"type": "string"}, "max_results": {"type": "integer"}}, "required": ["path", "query"], "additionalProperties": False}},
         {"type": "function", "name": "list_paths", "description": "List project/runtime paths.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "depth": {"type": "integer"}, "glob": {"type": "string"}}, "required": ["path"], "additionalProperties": False}},
         {"type": "function", "name": "list_tasks", "description": "Read task registry, optionally filtered by state.", "parameters": {"type": "object", "properties": {"state": {"type": ["string", "null"]}}, "additionalProperties": False}},
+        {"type": "function", "name": "get_task", "description": "Read one full task contract by ID only when details are needed.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "create_task", "description": "Create one bounded worker task contract. Workers never broaden it.", "parameters": {"type": "object", "properties": {"contract": task_contract}, "required": ["contract"], "additionalProperties": False}},
         {"type": "function", "name": "dispatch_task", "description": "Request deterministic controller dispatch of a READY worker task.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "read_worker_result", "description": "Read a persisted worker result for verification.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
@@ -827,7 +828,13 @@ def dispatch_tool(name: str, args: dict[str, Any], *, kind: str, task: dict[str,
         if name == "list_tasks":
             reg = strict_json(TASKS)["tasks"]
             state = args.get("state")
-            return {"tasks": {k: v for k, v in reg.items() if not state or v.get("state") == state}}
+            return {"tasks": {k: {"state": v.get("state"), "objective": v.get("objective", "")[:180],
+                                  "assigned_agent": v.get("assigned_agent"), "priority": v.get("priority"),
+                                  "dependencies": v.get("dependencies", []),
+                                  "result_accepted": v.get("integration_decision", {}).get("accepted")}
+                              for k, v in reg.items() if not state or v.get("state") == state}}
+        if name == "get_task":
+            return strict_json(TASKS)["tasks"].get(args["task_id"], {"missing": True})
         if name == "create_task":
             return create_task(args["contract"])
         if name == "dispatch_task":
@@ -993,7 +1000,7 @@ def resolve_required_actions(session: dict[str, Any], *, kind: str, task: dict[s
 def superbrain_bootstrap_text() -> str:
     return (
         "Bootstrap a single real, bounded V2 work order within at most six tool calls. "
-        "First use get_project_snapshot and list_tasks. Reuse existing READY tasks if valid; "
+        "First use get_project_snapshot and compact list_tasks; get_task only for one relevant task. Reuse existing READY tasks if valid; "
         "reject or revise any contract with a broad write scope. The R9 ISS gate worker is running; do not restart it. "
         "The founding specification requires evidence over claims. The Work Prompt seeks the full V2 product. "
         "Prefer an existing READY task with a valid contract. Never repeat a BLOCKED command set "
@@ -1243,6 +1250,15 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         if state.get("superbrain_paused_reason") != "daily superbrain budget exhausted":
             state["superbrain_paused_reason"] = "daily superbrain budget exhausted"
             atomic_json(CONTROLLER_STATE, state)
+        return state
+    if state.get("superbrain_paused_reason"):
+        event = state.get("last_event") or {}
+        if (int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0))
+                and event.get("kind") == "worker_result"):
+            state.pop("superbrain_paused_reason", None)
+            state["superbrain_session_id"] = None
+            atomic_json(CONTROLLER_STATE, state)
+            return ensure_superbrain_session(state)
         return state
     if not sid:
         return ensure_superbrain_session(state)

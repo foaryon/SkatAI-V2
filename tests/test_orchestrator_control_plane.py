@@ -321,3 +321,14 @@ def test_budget_prevents_creating_another_superbrain_session(tmp_path, monkeypat
     monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('model session created'))
     state = cp.ensure_superbrain_session({'superbrain_agent_id': 'a', 'event_seq': 1})
     assert state['superbrain_paused_reason'] == 'daily superbrain budget exhausted'
+
+
+def test_task_listing_is_compact_and_full_contract_requires_single_id(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    task = base_task()
+    task['state'] = 'READY'
+    cp.atomic_json(cp.TASKS, {'tasks': {'one': task}})
+    listing = cp.dispatch_tool('list_tasks', {}, kind='orchestrator')['tasks']['one']
+    assert 'authority' not in listing
+    assert listing['objective'] == task['objective']
+    assert cp.dispatch_tool('get_task', {'task_id': 'one'}, kind='orchestrator')['authority'] == task['authority']
