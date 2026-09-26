@@ -1,0 +1,270 @@
+{
+  "schema_version": "1.0.0",
+  "architecture_sha256": "7bb87113a1fe936966a0cb859ad2c5f4b611e1e83be675f7ee1fc0a1f672a3d7",
+  "roles": {
+    "planner-tasking": {
+      "id": "planner-tasking",
+      "role": "PLANNER_TASKING_AGENT",
+      "group": "strategic_control",
+      "session_mode": "on_demand",
+      "responsibilities": [
+        "roadmap_slicing",
+        "dependency_analysis",
+        "blocker_identification",
+        "task_graph_generation",
+        "work_order_generation",
+        "priority_sequencing",
+        "session_workload_planning"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "architecture-interface": {
+      "id": "architecture-interface",
+      "role": "ARCHITECTURE_INTERFACE_AGENT",
+      "group": "strategic_control",
+      "session_mode": "on_demand",
+      "responsibilities": [
+        "system_architecture",
+        "module_boundaries",
+        "stable_skatai_interface",
+        "decision_api_contracts",
+        "integration_contracts",
+        "runtime_compatibility",
+        "target_software_integration_architecture"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "scientific-governance": {
+      "id": "scientific-governance",
+      "role": "SCIENTIFIC_GOVERNANCE_AGENT",
+      "group": "strategic_control",
+      "session_mode": "persistent_or_on_demand",
+      "responsibilities": [
+        "experiment_definition_review",
+        "evaluation_rule_review",
+        "train_eval_separation",
+        "leakage_detection",
+        "holdout_protection",
+        "promotion_gate_validation",
+        "provenance_audit",
+        "uncertainty_requirements"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "research-benchmark": {
+      "id": "research-benchmark",
+      "role": "RESEARCH_BENCHMARK_AGENT",
+      "group": "strategic_control",
+      "session_mode": "on_demand",
+      "responsibilities": [
+        "SkatZero_research",
+        "Kermit_research",
+        "theCount_research",
+        "zoot_research",
+        "open_source_skat_ai_research",
+        "open_source_skat_software_research",
+        "literature_review",
+        "benchmark_method_research",
+        "relevant_tool_and_library_research"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "data-pipeline": {
+      "id": "data-pipeline",
+      "role": "DATA_PIPELINE_AGENT",
+      "group": "execution",
+      "session_mode": "persistent_or_job",
+      "responsibilities": [
+        "iss_game_ingestion",
+        "historical_game_ingestion",
+        "validation",
+        "deduplication",
+        "quarantine",
+        "split_generation",
+        "provenance_capture",
+        "dataset_versioning",
+        "dataset_manifest_generation",
+        "storage_lifecycle"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "training": {
+      "id": "training",
+      "role": "TRAINING_AGENT",
+      "group": "execution",
+      "session_mode": "job",
+      "responsibilities": [
+        "training_configuration",
+        "training_runs",
+        "checkpoint_management",
+        "accelerator_usage",
+        "resource_efficiency",
+        "seed_and_config_capture",
+        "training_manifest_generation",
+        "resumable_training"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "evaluation": {
+      "id": "evaluation",
+      "role": "EVALUATION_AGENT",
+      "group": "execution",
+      "session_mode": "job",
+      "responsibilities": [
+        "controlled_matches",
+        "offline_evaluation",
+        "challenger_vs_champion",
+        "benchmark_evaluation",
+        "statistical_analysis",
+        "uncertainty_reporting",
+        "raw_result_persistence",
+        "gate_evidence_generation"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "iss-integration": {
+      "id": "iss-integration",
+      "role": "ISS_INTEGRATION_AGENT",
+      "group": "execution",
+      "session_mode": "persistent",
+      "responsibilities": [
+        "iss_protocol_adapter",
+        "authentication",
+        "session_lifecycle",
+        "table_lifecycle",
+        "multi_table_operation",
+        "bidding_events",
+        "contract_events",
+        "discard_events",
+        "cardplay_events",
+        "reconnect",
+        "deduplication",
+        "live_game_capture",
+        "decision_latency_capture",
+        "game_evidence_persistence"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "autonomy-runtime": {
+      "id": "autonomy-runtime",
+      "role": "AUTONOMY_RUNTIME_AGENT",
+      "group": "execution",
+      "session_mode": "persistent",
+      "responsibilities": [
+        "controller_runtime",
+        "worker_session_lifecycle",
+        "task_queue_execution",
+        "work_conservation",
+        "bounded_recovery",
+        "session_rotation",
+        "fault_recovery",
+        "idempotency",
+        "lease_management",
+        "restart_recovery",
+        "persistent_state_recovery",
+        "orphan_prevention",
+        "duplicate_effect_prevention"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "infrastructure-storage": {
+      "id": "infrastructure-storage",
+      "role": "INFRASTRUCTURE_STORAGE_AGENT",
+      "group": "execution",
+      "session_mode": "persistent_or_on_demand",
+      "responsibilities": [
+        "runpod_compute",
+        "cpu_capacity",
+        "gpu_capacity",
+        "deployment_hunting",
+        "hetzner_object_storage",
+        "network_storage",
+        "artifact_persistence",
+        "capacity_monitoring",
+        "throughput_measurement",
+        "latency_measurement",
+        "cost_efficiency",
+        "storage_migration"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "qa-validation": {
+      "id": "qa-validation",
+      "role": "QA_VALIDATION_AGENT",
+      "group": "reliability_delivery",
+      "session_mode": "on_demand_or_gate",
+      "responsibilities": [
+        "unit_tests",
+        "integration_tests",
+        "regression_tests",
+        "contract_tests",
+        "reproducibility_checks",
+        "scientific_consistency_checks",
+        "deployment_validation",
+        "correctness_audits",
+        "release_acceptance_checks"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "observability-recovery": {
+      "id": "observability-recovery",
+      "role": "OBSERVABILITY_RECOVERY_AGENT",
+      "group": "reliability_delivery",
+      "session_mode": "persistent",
+      "responsibilities": [
+        "logging",
+        "telemetry",
+        "metrics",
+        "throughput_monitoring",
+        "latency_analysis",
+        "queueing_analysis",
+        "cpu_gpu_memory_io_analysis",
+        "anomaly_detection",
+        "failure_classification",
+        "incident_evidence_capture",
+        "rollback_validation",
+        "recovery_verification"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "release-packaging": {
+      "id": "release-packaging",
+      "role": "RELEASE_PACKAGING_AGENT",
+      "group": "reliability_delivery",
+      "session_mode": "gate",
+      "responsibilities": [
+        "release_manifest",
+        "accepted_model_packaging",
+        "runtime_packaging",
+        "version_identity",
+        "checksums",
+        "dependency_capture",
+        "deployment_bundle",
+        "rollback_bundle",
+        "compatibility_validation",
+        "reproducible_build_validation"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    },
+    "documentation-project-state": {
+      "id": "documentation-project-state",
+      "role": "DOCUMENTATION_PROJECT_STATE_AGENT",
+      "group": "reliability_delivery",
+      "session_mode": "persistent_or_event_driven",
+      "responsibilities": [
+        "current_state_document",
+        "decision_records",
+        "experiment_records",
+        "negative_results",
+        "release_history",
+        "blocker_registry",
+        "continuation_state",
+        "evidence_indexes",
+        "architecture_records",
+        "handoff_records",
+        "latest_verified_state_summary"
+      ],
+      "reports_to": "orchestrator-superbrain"
+    }
+  }
+}

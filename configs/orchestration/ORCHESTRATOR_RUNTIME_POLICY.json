@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "project_id": "skatai-v2",
+  "architecture_file": "configs/orchestration/SKATAI_V2_ORCHESTRATOR_SUPERBRAIN_ARCHITECTURE_v1.1.yaml",
+  "superbrain": {
+    "name": "SkatAI V2 ORCHESTRATOR SUPERBRAIN",
+    "model": "gpt-6-sol",
+    "reasoning_effort": "medium",
+    "text_verbosity": "low",
+    "service_tier": "flex",
+    "persistent_session": true
+  },
+  "workers": {
+    "default_model": "gpt-4.1-nano",
+    "default_reasoning_effort": null,
+    "text_verbosity": "low",
+    "service_tier": "default",
+    "saved_agents_per_role": true,
+    "sessions": "ephemeral_bounded",
+    "max_concurrent_sessions": 4,
+    "max_task_runtime_seconds": 1800,
+    "max_task_tool_calls": 40,
+    "max_task_total_tokens": 50000,
+    "may_spawn_subworkers": false,
+    "may_self_escalate": false,
+    "authorized_escalation_tiers": {
+      "very_low": {"model": "gpt-4.1-nano", "reasoning_effort": null},
+      "low_reasoning": {"model": "gpt-5-nano", "reasoning_effort": "low"},
+      "mid_local": {"model": "gpt-5.4-mini", "reasoning_effort": "low"}
+    }
+  },
+  "cost_invariants": {
+    "idle_llm_spend": false,
+    "monitoring_llm_spend": false,
+    "deterministic_first": true,
+    "worker_escalation_requires_superbrain": true,
+    "superbrain_only_global_reasoning": true
+  },
+  "protected_paths": [
+    "/run",
+    "/opt",
+    "/var/lib/skatai-orchestrator",
+    "/workspace/skatai-v2-runtime/orchestrator"
+  ]
+}

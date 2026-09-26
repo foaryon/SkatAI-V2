@@ -1,0 +1,1534 @@
+schema_version: 1.1.0
+kind: SkatAIOrchestratorArchitecture
+metadata:
+  project_id: skatai-v2
+  project_name: SkatAI V2
+  architecture_name: Orchestrator Superbrain + Coordinated Worker Agents
+  status: implementation_blueprint_cost_optimized
+  canonical_format: yaml
+  description: 'Machine-readable control-plane architecture for SkatAI V2. One persistent Orchestrator Superbrain
+    owns global project context, strategy, coordination, and progress toward the complete end state. Specialized
+    worker agents/sessions receive bounded work contracts, execute partial tasks, and return evidence-backed results
+    for verification and integration.
+
+    '
+project:
+  mission: 'Build SkatAI V2 into a clean, reproducible, deployment-valid and continuously improving Skat AI system
+    that autonomously acquires and validates data, trains challengers, evaluates them scientifically, rejects or
+    promotes them by predefined evidence, recovers from failures, competes externally where useful, preserves useful
+    evidence, feeds weaknesses back into development, packages and validates releases reproducibly, and exposes
+    them through one stable SkatAI interface integrated into real Skat software.
+
+    '
+  final_goal:
+    id: strong_integrated_skat_ai
+    statement: 'A strong, reproducible, deployment-valid Skat AI integrated through one stable SkatAI interface
+      into real Skat software, with continuous evidence-driven improvement and autonomous recovery.
+
+      '
+    required_capabilities:
+    - autonomous_data_acquisition
+    - validated_versioned_datasets
+    - reproducible_training
+    - controlled_scientific_evaluation
+    - predefined_reject_promote_gates
+    - accepted_model_registry
+    - reproducible_release_packaging
+    - deployment_validation
+    - stable_skatai_runtime_interface
+    - iss_live_play_and_evidence
+    - weakness_feedback_loop
+    - autonomous_recovery
+    - durable_project_state
+    - final_skat_software_integration
+authoritative_context:
+  sources:
+  - id: founding_specification
+    path: SKATAI_V2_FOUNDING_SPECIFICATION.md
+    role: binding_project_constitution
+    required: true
+    refresh_policy: read_before_substantive_strategy_or_architecture_changes
+    authority_rank: 1
+  - id: verified_current_state
+    role: freshest_verified_reality
+    required: true
+    includes:
+    - repository_state
+    - repository_revision
+    - dirty_worktree
+    - runtime_processes
+    - controller_state
+    - infrastructure_state
+    - storage_state
+    - datasets
+    - models
+    - checkpoints
+    - experiment_manifests
+    - evaluation_results
+    - release_manifests
+    - deployment_validation
+    - iss_game_evidence
+    - logs
+    - metrics
+    - blockers
+    - persisted_project_state
+    authority_rank: 2
+  - id: scientific_and_safety_constraints
+    role: non_bypassable_constraints
+    required: true
+    authority_rank: 3
+  - id: work_prompt
+    path: SKATAI_V2_WORK_PROMPT.md
+    role: strategic_execution_framework_and_complete_capability_map
+    required: true
+    refresh_policy: read_when_strategy_gap_analysis_or_major_transition_requires_it
+    authority_rank: 4
+  - id: historical_context
+    role: recovery_context_only
+    required: false
+    authority_rank: 5
+  precedence_rule: 'Founding Specification and non-bypassable scientific constraints define project intent and validity.
+    Fresh verified state determines reality. The Work Prompt guides future work and completeness analysis but must
+    never cause verified completed work to be repeated. Historical conversation state is subordinate to direct evidence.
+
+    '
+global_invariants:
+- id: ONE_GLOBAL_COORDINATOR
+  rule: 'Only the Orchestrator Superbrain owns global project strategy, global prioritization, dependency resolution,
+    and final integration decisions.
+
+    '
+- id: WORKERS_ARE_BOUNDED
+  rule: 'Worker agents operate only within explicit task contracts. They do not own, redefine, or independently
+    reprioritize the complete SkatAI V2 project.
+
+    '
+- id: WORK_PROMPT_ALIGNMENT
+  rule: 'Every substantial autonomous task must map to at least one remaining capability, dependency, blocker, verification
+    requirement, or end-state requirement derived from the Founding Specification or Work Prompt.
+
+    '
+- id: NO_BLIND_WORK_PROMPT_REPLAY
+  rule: 'The Work Prompt is a strategic map, not a linear checklist. The Orchestrator must compare it against verified
+    current state and must not redo already verified or superseded work.
+
+    '
+- id: EVIDENCE_OVER_CLAIMS
+  rule: 'Worker conclusions are not authoritative until supported by inspectable evidence and accepted by the Orchestrator
+    or an assigned independent validator where required.
+
+    '
+- id: SCIENTIFIC_INTEGRITY
+  rule: 'Training and evaluation are controlled experiments. Dataset provenance, split definitions, seeds where
+    relevant, model/config identity, code revision, evaluation rules, raw results, summaries, and material runtime
+    context must be preserved.
+
+    '
+- id: NO_ANECDOTAL_PROMOTION
+  rule: 'A checkpoint, isolated ISS win, small favorable sample, or worker recommendation can never alone authorize
+    model promotion.
+
+    '
+- id: PERSIST_BEFORE_SESSION_END
+  rule: 'Critical state, evidence, manifests, results, and decisions must be durably persisted before a worker or
+    Orchestrator session is considered complete.
+
+    '
+- id: CONVERSATION_IS_NOT_AUTHORITY
+  rule: 'Chat/session memory is not canonical project state. Repository, manifests, persisted state, runtime evidence,
+    and durable artifacts take precedence.
+
+    '
+- id: MINIMUM_NECESSARY_CHANGE
+  rule: 'Changes should be minimal, reversible, observable, and verified. Destructive or lockout-prone actions require
+    explicit justification and safeguards.
+
+    '
+- id: DEPLOYMENT_REALITY
+  rule: 'Accepted model quality is insufficient by itself. An accepted release must also be reproducibly packageable,
+    version-identifiable, compatible with the target runtime, and deployment-valid.
+
+    '
+orchestrator:
+  id: orchestrator-superbrain
+  role: ORCHESTRATOR_SUPERBRAIN
+  type: persistent_global_coordinator
+  persistent: true
+  singleton: true
+  purpose: 'Maintain the complete SkatAI V2 project model and continuously coordinate bounded worker agents/sessions
+    so that verified current reality advances toward the full final project goal.
+
+    '
+  owns:
+  - complete_project_context
+  - project_goal_model
+  - work_prompt_capability_map
+  - capability_gap_graph
+  - dependency_graph
+  - blocker_graph
+  - priority_queue
+  - active_task_registry
+  - worker_session_registry
+  - evidence_registry
+  - decision_registry
+  - accepted_model_registry
+  - release_registry
+  - global_project_state
+  - continuity_and_recovery_state
+  does_not_own_exclusively:
+  - raw_domain_research
+  - code_implementation
+  - training_execution
+  - evaluation_execution
+  - iss_protocol_execution
+  - infrastructure_operation
+  - release_packaging_execution
+  - test_execution
+  authority:
+    may:
+    - inspect_all_authorized_project_state
+    - refresh_authoritative_context
+    - decompose_global_goals
+    - create_task_graphs
+    - create_worker_sessions
+    - assign_worker_tasks
+    - set_priorities
+    - change_task_priority
+    - pause_tasks
+    - cancel_superseded_tasks
+    - request_more_evidence
+    - request_independent_validation
+    - reject_incomplete_results
+    - integrate_verified_results
+    - resolve_task_dependencies
+    - resolve_cross_worker_conflicts
+    - update_persisted_project_state
+    - create_followup_tasks
+    - trigger_recovery_work
+    - initiate_release_candidate_flow
+    may_not:
+    - bypass_founding_specification
+    - bypass_scientific_gates
+    - fabricate_or_rewrite_experiment_evidence
+    - redefine_experiment_variables_to_improve_results_in_place
+    - promote_model_without_required_gate_evidence
+    - treat_worker_assertion_as_verified_fact
+    - destroy_useful_negative_results
+    - expose_unnecessary_secrets
+    - infer_current_state_from_stale_chat_when_direct_evidence_is_available
+    - declare_project_complete_without_completion_definition_satisfied
+  responsibilities:
+  - understand_complete_project
+  - maintain_global_project_model
+  - strategically_use_work_prompt
+  - compare_desired_state_to_verified_reality
+  - identify_capability_gaps
+  - identify_true_blockers
+  - maintain_dependency_graph
+  - prioritize_high_value_work
+  - issue_bounded_work_orders
+  - coordinate_parallel_independent_work
+  - monitor_task_and_worker_progress
+  - inspect_worker_evidence
+  - ensure_scientific_validity
+  - detect_cross_worker_conflicts
+  - integrate_verified_outputs
+  - maintain_persistent_state
+  - recover_after_session_or_runtime_loss
+  - verify_progress_toward_final_goal
+  - stop_or_supersede_nonvaluable_work
+  - maintain_project_continuity
+  context_requirements:
+    always_available:
+    - founding_specification_summary_and_hash
+    - current_project_state
+    - capability_gap_graph
+    - dependency_graph
+    - active_tasks
+    - accepted_decisions
+    - known_blockers
+    - accepted_model_and_release_identity
+    load_on_demand:
+    - full_work_prompt
+    - full_repository_history
+    - raw_logs
+    - raw_experiment_results
+    - raw_iss_game_records
+    - external_research_corpus
+work_prompt_integration:
+  mode: strategic_adaptive
+  principle: 'SKATAI_V2_WORK_PROMPT.md describes the intended complete operating system and lifecycle. The Orchestrator
+    uses it to identify missing capabilities, plan major transitions, generate worker work orders, and detect drift
+    from the final goal. It is not blindly replayed.
+
+    '
+  invoke_when:
+  - selecting_next_major_project_direction
+  - starting_or_finishing_a_major_phase
+  - performing_capability_gap_analysis
+  - recovering_after_loss_of_session_or_runtime_context
+  - planning_cross_component_work
+  - resolving_ambiguous_project_priority
+  - determining_if_a_capability_is_missing
+  - generating_new_worker_task_families
+  - checking_end_to_end_completeness
+  - auditing_alignment_with_final_goal
+  avoid_when:
+  - narrow_worker_task_is_already_well_defined
+  - required_information_is_available_from_fresher_direct_evidence
+  - action_would_only_repeat_verified_completed_work
+  forbidden_behavior:
+  - blindly_execute_work_prompt_top_to_bottom
+  - copy_entire_work_prompt_into_every_worker
+  - restart_completed_phases
+  - prefer_prompt_narrative_over_current_direct_evidence
+  - create_busywork_only_because_a_topic_is_mentioned
+  strategic_reasoning_cycle:
+  - refresh_latest_verified_state
+  - compare_state_to_founding_specification
+  - compare_state_to_work_prompt_end_state
+  - update_capability_gap_graph
+  - identify_blockers_and_dependencies
+  - generate_candidate_high_value_work
+  - rank_candidate_work
+  - select_next_workset
+  - assign_bounded_worker_tasks
+  - monitor_results_and_evidence
+  - independently_verify_where_required
+  - integrate_verified_results
+  - persist_project_state
+  - reassess_against_end_state
+  worker_context_policy:
+    mode: minimum_sufficient_context
+    include:
+    - task_objective
+    - global_goal_reference
+    - relevant_work_prompt_capability_reference
+    - relevant_founding_spec_constraints
+    - freshest_verified_local_state
+    - dependencies
+    - required_inputs
+    - authority
+    - forbidden_actions
+    - evidence_requirements
+    - success_criteria
+    - result_contract
+    exclude_unless_needed:
+    - unrelated_work_prompt_sections
+    - unrelated_project_history
+    - obsolete_state
+    - unrelated_worker_tasks
+    - unnecessary_secrets
+    - large_raw_logs
+capability_gap_model:
+  allowed_states:
+  - NOT_STARTED
+  - PARTIAL
+  - IMPLEMENTED
+  - VERIFIED
+  - BLOCKED
+  - SUPERSEDED
+  - NOT_REQUIRED
+  required_fields:
+  - capability_id
+  - desired_state_reference
+  - current_state
+  - evidence
+  - dependencies
+  - blockers
+  - next_verification
+  - last_updated
+  capabilities:
+  - id: data_acquisition
+    state: PARTIAL
+  - id: dataset_validation
+    state: PARTIAL
+  - id: dataset_versioning_and_provenance
+    state: PARTIAL
+  - id: challenger_training
+    state: PARTIAL
+  - id: controlled_scientific_evaluation
+    state: PARTIAL
+  - id: promotion_rejection_gates
+    state: PARTIAL
+  - id: iss_external_validation
+    state: PARTIAL
+  - id: iss_evidence_capture
+    state: PARTIAL
+  - id: autonomous_runtime
+    state: PARTIAL
+  - id: release_packaging
+    state: PARTIAL
+  - id: deployment_validation
+    state: PARTIAL
+  - id: stable_skatai_interface
+    state: NOT_STARTED
+  - id: skat_software_integration
+    state: NOT_STARTED
+  - id: continuous_improvement_loop
+    state: PARTIAL
+  - id: full_recovery_and_persistence
+    state: PARTIAL
+priority_policy:
+  order:
+  - correctness_and_scientific_validity
+  - preservation_of_valuable_evidence
+  - removal_of_genuine_blockers
+  - reproducibility_and_recoverability
+  - deployment_validity
+  - throughput_and_project_velocity
+  - maintainability
+  - cost
+  scoring_dimensions:
+    impact_on_final_goal: 1.0
+    blocker_removal: 1.0
+    scientific_risk_reduction: 1.0
+    evidence_preservation: 0.9
+    dependency_unlock_value: 0.9
+    deployment_value: 0.8
+    reproducibility_value: 0.8
+    execution_cost: -0.4
+    operational_risk: -0.8
+    duplication_penalty: -1.0
+  reject_candidate_if:
+  - duplicate_of_verified_work
+  - no_traceable_project_goal_contribution
+  - based_only_on_stale_context
+  - missing_required_authority
+  - creates_scientific_contamination
+  - lower_value_than_unblocked_critical_dependency_without_justification
+worker_groups:
+  strategic_control:
+    purpose: Translate global project intent into correct bounded work and constraints.
+    agents:
+    - id: planner-tasking
+      role: PLANNER_TASKING_AGENT
+      session_mode: on_demand
+      responsibilities:
+      - roadmap_slicing
+      - dependency_analysis
+      - blocker_identification
+      - task_graph_generation
+      - work_order_generation
+      - priority_sequencing
+      - session_workload_planning
+      reports_to: orchestrator-superbrain
+    - id: architecture-interface
+      role: ARCHITECTURE_INTERFACE_AGENT
+      session_mode: on_demand
+      responsibilities:
+      - system_architecture
+      - module_boundaries
+      - stable_skatai_interface
+      - decision_api_contracts
+      - integration_contracts
+      - runtime_compatibility
+      - target_software_integration_architecture
+      reports_to: orchestrator-superbrain
+    - id: scientific-governance
+      role: SCIENTIFIC_GOVERNANCE_AGENT
+      session_mode: persistent_or_on_demand
+      responsibilities:
+      - experiment_definition_review
+      - evaluation_rule_review
+      - train_eval_separation
+      - leakage_detection
+      - holdout_protection
+      - promotion_gate_validation
+      - provenance_audit
+      - uncertainty_requirements
+      reports_to: orchestrator-superbrain
+    - id: research-benchmark
+      role: RESEARCH_BENCHMARK_AGENT
+      session_mode: on_demand
+      responsibilities:
+      - SkatZero_research
+      - Kermit_research
+      - theCount_research
+      - zoot_research
+      - open_source_skat_ai_research
+      - open_source_skat_software_research
+      - literature_review
+      - benchmark_method_research
+      - relevant_tool_and_library_research
+      reports_to: orchestrator-superbrain
+  execution:
+    purpose: Perform substantive data, model, external-play, runtime, and infrastructure work.
+    agents:
+    - id: data-pipeline
+      role: DATA_PIPELINE_AGENT
+      session_mode: persistent_or_job
+      responsibilities:
+      - iss_game_ingestion
+      - historical_game_ingestion
+      - validation
+      - deduplication
+      - quarantine
+      - split_generation
+      - provenance_capture
+      - dataset_versioning
+      - dataset_manifest_generation
+      - storage_lifecycle
+      reports_to: orchestrator-superbrain
+    - id: training
+      role: TRAINING_AGENT
+      session_mode: job
+      responsibilities:
+      - training_configuration
+      - training_runs
+      - checkpoint_management
+      - accelerator_usage
+      - resource_efficiency
+      - seed_and_config_capture
+      - training_manifest_generation
+      - resumable_training
+      reports_to: orchestrator-superbrain
+    - id: evaluation
+      role: EVALUATION_AGENT
+      session_mode: job
+      responsibilities:
+      - controlled_matches
+      - offline_evaluation
+      - challenger_vs_champion
+      - benchmark_evaluation
+      - statistical_analysis
+      - uncertainty_reporting
+      - raw_result_persistence
+      - gate_evidence_generation
+      reports_to: orchestrator-superbrain
+    - id: iss-integration
+      role: ISS_INTEGRATION_AGENT
+      session_mode: persistent
+      responsibilities:
+      - iss_protocol_adapter
+      - authentication
+      - session_lifecycle
+      - table_lifecycle
+      - multi_table_operation
+      - bidding_events
+      - contract_events
+      - discard_events
+      - cardplay_events
+      - reconnect
+      - deduplication
+      - live_game_capture
+      - decision_latency_capture
+      - game_evidence_persistence
+      reports_to: orchestrator-superbrain
+      interfaces:
+        iss:
+          host: skatgame.net
+          port: 7000
+          client_id: SkatAI
+          password_source: secret_reference_only
+    - id: autonomy-runtime
+      role: AUTONOMY_RUNTIME_AGENT
+      session_mode: persistent
+      responsibilities:
+      - controller_runtime
+      - worker_session_lifecycle
+      - task_queue_execution
+      - work_conservation
+      - bounded_recovery
+      - session_rotation
+      - fault_recovery
+      - idempotency
+      - lease_management
+      - restart_recovery
+      - persistent_state_recovery
+      - orphan_prevention
+      - duplicate_effect_prevention
+      reports_to: orchestrator-superbrain
+    - id: infrastructure-storage
+      role: INFRASTRUCTURE_STORAGE_AGENT
+      session_mode: persistent_or_on_demand
+      responsibilities:
+      - runpod_compute
+      - cpu_capacity
+      - gpu_capacity
+      - deployment_hunting
+      - hetzner_object_storage
+      - network_storage
+      - artifact_persistence
+      - capacity_monitoring
+      - throughput_measurement
+      - latency_measurement
+      - cost_efficiency
+      - storage_migration
+      reports_to: orchestrator-superbrain
+  reliability_delivery:
+    purpose: Independently verify, observe, preserve, package, and deliver project progress.
+    agents:
+    - id: qa-validation
+      role: QA_VALIDATION_AGENT
+      session_mode: on_demand_or_gate
+      responsibilities:
+      - unit_tests
+      - integration_tests
+      - regression_tests
+      - contract_tests
+      - reproducibility_checks
+      - scientific_consistency_checks
+      - deployment_validation
+      - correctness_audits
+      - release_acceptance_checks
+      reports_to: orchestrator-superbrain
+    - id: observability-recovery
+      role: OBSERVABILITY_RECOVERY_AGENT
+      session_mode: persistent
+      responsibilities:
+      - logging
+      - telemetry
+      - metrics
+      - throughput_monitoring
+      - latency_analysis
+      - queueing_analysis
+      - cpu_gpu_memory_io_analysis
+      - anomaly_detection
+      - failure_classification
+      - incident_evidence_capture
+      - rollback_validation
+      - recovery_verification
+      reports_to: orchestrator-superbrain
+    - id: release-packaging
+      role: RELEASE_PACKAGING_AGENT
+      session_mode: gate
+      responsibilities:
+      - release_manifest
+      - accepted_model_packaging
+      - runtime_packaging
+      - version_identity
+      - checksums
+      - dependency_capture
+      - deployment_bundle
+      - rollback_bundle
+      - compatibility_validation
+      - reproducible_build_validation
+      reports_to: orchestrator-superbrain
+    - id: documentation-project-state
+      role: DOCUMENTATION_PROJECT_STATE_AGENT
+      session_mode: persistent_or_event_driven
+      responsibilities:
+      - current_state_document
+      - decision_records
+      - experiment_records
+      - negative_results
+      - release_history
+      - blocker_registry
+      - continuation_state
+      - evidence_indexes
+      - architecture_records
+      - handoff_records
+      - latest_verified_state_summary
+      reports_to: orchestrator-superbrain
+agent_count:
+  orchestrators: 1
+  strategic_control_workers: 4
+  execution_workers: 6
+  reliability_delivery_workers: 4
+  total_roles: 15
+  permanent_llm_sessions_required: false
+  note: 'Roles are logical responsibilities, not a requirement for 15 continuously running LLM sessions. The Orchestrator
+    should instantiate worker sessions only when justified by active work.
+
+    '
+session_model:
+  orchestrator:
+    lifecycle: persistent
+    recovery_source:
+    - persisted_project_state
+    - repository
+    - task_registry
+    - decision_registry
+    - evidence_registry
+    - runtime_inspection
+  workers:
+    default_lifecycle: ephemeral_bounded
+    reusable_role_context: true
+    global_strategy_authority: false
+    may_spawn_subworkers: false
+    may_request_followup_context: true
+    intelligence_profile: low_cost_bounded_executor
+    default_reasoning_effort: low
+    default_model_policy: cheapest_reliably_capable
+    deterministic_first: true
+    may_self_escalate_model_tier: false
+    must_escalate_global_reasoning_to_orchestrator: true
+  concurrency:
+    enabled: true
+    requirements:
+    - tasks_are_dependency_independent
+    - write_sets_do_not_conflict_or_are_explicitly_coordinated
+    - evaluation_independence_is_preserved
+    - shared_resource_capacity_is_sufficient
+    repository_write_policy:
+      default: serialize_conflicting_writes
+      independent_changes: parallel_allowed_with_isolation
+    experiment_policy:
+      independent_experiments: parallel_allowed
+      shared_holdout_or_gate_state: controlled_access
+task_contract:
+  schema:
+    task_id:
+      type: string
+      required: true
+    parent_task_id:
+      type:
+      - string
+      - 'null'
+      required: false
+    task_family:
+      type: string
+      required: true
+    assigned_agent:
+      type: string
+      required: true
+    priority:
+      type: string
+      enum:
+      - P0
+      - P1
+      - P2
+      - P3
+      required: true
+    global_goal_reference:
+      type: array
+      items: string
+      required: true
+    work_prompt_capability_reference:
+      type: array
+      items: string
+      required: true
+    current_gap:
+      type: string
+      required: true
+    objective:
+      type: string
+      required: true
+    rationale:
+      type: string
+      required: true
+    scope:
+      type: array
+      items: string
+      required: true
+    non_goals:
+      type: array
+      items: string
+      required: false
+    dependencies:
+      type: array
+      items: string
+      required: false
+    required_inputs:
+      type: array
+      items: artifact_reference
+      required: false
+    authority:
+      type: object
+      required: true
+      fields:
+        read:
+          type: array
+        write:
+          type: array
+        execute:
+          type: array
+        forbidden:
+          type: array
+    evidence_requirements:
+      type: array
+      items: string
+      required: true
+    success_criteria:
+      type: array
+      items: string
+      required: true
+    rollback_requirements:
+      type: array
+      items: string
+      required: false
+    state:
+      type: string
+      enum:
+      - READY
+      - RUNNING
+      - BLOCKED
+      - VERIFYING
+      - COMPLETE
+      - FAILED
+      - SUPERSEDED
+      required: true
+    created_at:
+      type: timestamp
+      required: true
+    updated_at:
+      type: timestamp
+      required: true
+    execution_profile:
+      type: object
+      required: true
+      fields:
+        preferred_execution_mode:
+          type: string
+          enum:
+          - deterministic
+          - very_low_cost_model
+          - low_cost_model
+          - mid_cost_model
+          - orchestrator_only
+        reasoning_effort:
+          type: string
+          enum:
+          - minimal
+          - low
+          - medium
+        max_cost_class:
+          type: string
+          enum:
+          - deterministic
+          - very_low
+          - low
+          - mid
+          - superbrain
+        model_escalation_requires_orchestrator:
+          type: boolean
+  validation_rules:
+  - global_goal_reference must not be empty
+  - work_prompt_capability_reference must not be empty unless explicitly exempted
+  - success_criteria must be externally verifiable
+  - authority.write must not exceed agent role authority
+  - forbidden actions must be explicit for risky tasks
+  - duplicate verified work must be rejected
+  - scientific tasks must reference experiment identity
+  - worker execution profile must use the lowest sufficient cost class
+  - worker model escalation requires orchestrator authorization
+  - deterministic execution must be preferred when reliable
+worker_result_contract:
+  schema:
+    task_id:
+      type: string
+      required: true
+    worker_id:
+      type: string
+      required: true
+    worker_session_id:
+      type: string
+      required: true
+    status:
+      type: string
+      enum:
+      - COMPLETE
+      - PARTIAL
+      - BLOCKED
+      - FAILED
+      required: true
+    observations:
+      type: array
+      required: true
+    hypotheses:
+      type: array
+      required: false
+    confirmed_causes:
+      type: array
+      required: false
+    changes:
+      type: array
+      required: true
+    evidence:
+      type: array
+      required: true
+    verification:
+      type: array
+      required: true
+    unresolved:
+      type: array
+      required: true
+    risks:
+      type: array
+      required: false
+    artifacts:
+      type: array
+      required: false
+    repository_revision:
+      type:
+      - string
+      - 'null'
+      required: false
+    dirty_worktree:
+      type:
+      - boolean
+      - 'null'
+      required: false
+    experiment_ids:
+      type: array
+      required: false
+    recommended_followups:
+      type: array
+      required: false
+    completed_at:
+      type: timestamp
+      required: true
+    execution_telemetry:
+      type: object
+      required: true
+      fields:
+        execution_mode:
+          type: string
+        model_class:
+          type:
+          - string
+          - 'null'
+        reasoning_effort:
+          type:
+          - string
+          - 'null'
+        input_tokens:
+          type:
+          - integer
+          - 'null'
+        output_tokens:
+          type:
+          - integer
+          - 'null'
+        estimated_cost:
+          type:
+          - number
+          - 'null'
+        tool_calls:
+          type:
+          - integer
+          - 'null'
+        escalated:
+          type: boolean
+  rules:
+  - observations_must_be_separated_from_inference
+  - confirmed_causes_require_evidence
+  - changed_files_and_artifacts_must_be_reported
+  - failed_attempts_must_not_be_hidden
+  - unresolved_risks_must_be_reported
+  - worker_cannot_self_promote_model
+  - worker_cannot_mark_global_project_complete
+  - worker_cannot_modify_global_priority_without_orchestrator
+  - scientific_results_require_raw_result_reference
+orchestrator_result_processing:
+  on_worker_result:
+  - validate_result_schema
+  - validate_worker_authority
+  - verify_evidence_references_exist
+  - compare_against_success_criteria
+  - detect_conflicts_with_current_state
+  - detect_conflicts_with_other_worker_changes
+  - request_independent_validation_if_gate_requires_it
+  - integrate_only_verified_results
+  - persist_decision_and_evidence
+  - update_dependency_graph
+  - update_capability_gap_graph
+  - update_global_project_state
+  - create_followup_tasks_if_needed
+  - select_next_high_value_work
+  independent_validation_required_for:
+  - model_promotion
+  - dataset_split_changes
+  - evaluation_methodology_changes
+  - release_acceptance
+  - deployment_acceptance
+  - security_sensitive_controller_changes
+  - destructive_storage_changes
+  - major_interface_contract_changes
+shared_systems:
+  repository:
+    id: github
+    project: foaryon/SkatAI-V2
+    authority: versioned_source_code_and_configuration
+  compute:
+    id: runpod
+    responsibilities:
+    - cpu_runtime
+    - gpu_training
+    - evaluation_compute
+    - iss_runtime_where_applicable
+  durable_storage:
+    id: hetzner_object_storage
+    responsibilities:
+    - datasets
+    - models
+    - checkpoints
+    - artifacts
+    - logs_where_required
+    - experiment_outputs
+    - release_assets
+    - recovery_state
+  iss:
+    id: international_skat_server
+    endpoint: skatgame.net:7000
+    purpose:
+    - live_play
+    - external_validation
+    - evidence_generation
+  datasets:
+    classes:
+    - raw_game_records
+    - validated_records
+    - quarantined_records
+    - train_splits
+    - validation_splits
+    - holdout_splits
+    - benchmark_sets
+  model_assets:
+    classes:
+    - training_checkpoints
+    - challengers
+    - champions
+    - accepted_models
+    - packaged_releases
+  evidence:
+    classes:
+    - dataset_manifests
+    - training_manifests
+    - experiment_manifests
+    - raw_evaluation_results
+    - evaluation_summaries
+    - statistical_gate_results
+    - iss_game_records
+    - logs
+    - telemetry
+    - deployment_validation
+    - promotion_decisions
+    - rejection_decisions
+    - release_manifests
+project_state:
+  canonical_state_file: state/skatai_v2_project_state.json
+  task_registry: state/task_registry.json
+  capability_gap_registry: state/capability_gap_registry.json
+  decision_registry: state/decision_registry.jsonl
+  evidence_registry: state/evidence_registry.jsonl
+  worker_registry: state/worker_registry.json
+  experiment_registry: state/experiment_registry.json
+  release_registry: state/release_registry.json
+  required_global_fields:
+  - schema_version
+  - project_id
+  - repository_revision
+  - accepted_model
+  - accepted_release
+  - active_tasks
+  - blocked_tasks
+  - completed_tasks
+  - capability_states
+  - current_blockers
+  - active_experiments
+  - active_iss_sessions
+  - infrastructure_state
+  - storage_state
+  - last_verified_at
+  - next_high_value_actions
+  persistence:
+    atomic_writes: true
+    durable_before_completion: true
+    append_only_for_decisions: true
+    append_only_for_evidence_index: true
+    backup_before_schema_migration: true
+scientific_model_lifecycle:
+  stages:
+  - id: raw_data
+    next: validated_dataset
+  - id: validated_dataset
+    next: training
+  - id: training
+    next: checkpoint
+  - id: checkpoint
+    next: challenger
+  - id: challenger
+    next: controlled_evaluation
+  - id: controlled_evaluation
+    next:
+    - reject
+    - promote
+  - id: reject
+    next: weakness_feedback
+  - id: promote
+    next: accepted_model
+  - id: accepted_model
+    next: reproducible_release
+  - id: reproducible_release
+    next: deployment_validation
+  - id: deployment_validation
+    next:
+    - release_reject
+    - iss_live_evidence
+  - id: iss_live_evidence
+    next: weakness_feedback
+  - id: weakness_feedback
+    next:
+    - data_acquisition
+    - training
+    - architecture_or_runtime_improvement
+  mandatory_metadata:
+  - dataset_identity
+  - dataset_provenance
+  - split_identity
+  - code_revision
+  - config_identity
+  - seed_where_relevant
+  - runtime_environment
+  - model_identity
+  - raw_results
+  - summary_results
+  - evaluation_rules
+  - statistical_decision
+  - promotion_or_rejection_decision
+  promotion_gate:
+    authority: scientific_governance_plus_orchestrator
+    requires:
+    - controlled_evaluation_complete
+    - predefined_gate_satisfied
+    - uncertainty_reported
+    - no_known_holdout_contamination
+    - model_identity_frozen
+    - code_revision_known
+    - dataset_identity_known
+    - raw_results_persisted
+    - independent_validation_passed
+    forbids:
+    - anecdotal_promotion
+    - cherry_picked_games
+    - undocumented_method_change
+    - posthoc_gate_change
+    - hidden_failed_results
+release_lifecycle:
+  stages:
+  - accepted_model
+  - package_candidate
+  - reproducible_build
+  - target_environment_validation
+  - stable_interface_validation
+  - release_acceptance
+  - deployed_release
+  - iss_or_real_software_validation
+  - feedback
+  acceptance_requires:
+  - version_identity
+  - model_identity
+  - config_identity
+  - checksums
+  - dependency_manifest
+  - runtime_contract
+  - legality_enforcement
+  - diagnostics
+  - rollback_path
+  - acceptable_latency
+  - target_environment_compatibility
+  - reproducible_packaging
+  - deployment_validation
+iss_evidence_contract:
+  preserve_when_practical:
+  - game_id
+  - table_id
+  - timestamps
+  - seat
+  - role
+  - game_state
+  - actions
+  - model_identity
+  - release_identity
+  - decision_outputs
+  - decision_latency
+  - final_result
+  - persistence_status
+  - reconnect_events
+  - anomalies
+  use_policy: 'ISS is deployment validation and evidence generation, not a replacement for controlled scientific
+    evaluation.
+
+    '
+observability_contract:
+  metrics:
+  - tasks_completed_per_time
+  - task_failure_rate
+  - orphan_worker_count
+  - duplicate_effect_count
+  - controller_recovery_count
+  - dataset_ingest_rate
+  - training_throughput
+  - evaluation_games_per_hour
+  - inference_latency_median
+  - inference_latency_p95
+  - inference_latency_p99
+  - queue_wait_time
+  - cpu_utilization
+  - gpu_utilization
+  - memory_headroom
+  - io_pressure
+  - storage_latency
+  - network_latency
+  - iss_games_per_hour
+  - iss_reconnect_rate
+  - release_validation_pass_rate
+  - llm_cost_per_task
+  - llm_cost_per_verified_outcome
+  - worker_cost_by_role
+  - orchestrator_cost
+  - tokens_per_task
+  - model_tier_usage_distribution
+  - deterministic_execution_ratio
+  - worker_escalation_rate
+  - no_progress_spend
+  rule: 'High utilization alone is not evidence of a bottleneck. Performance diagnosis must correlate compute, memory,
+    I/O, network, queueing, synchronization, feature generation, inference/search, and persistence timing.
+
+    '
+recovery:
+  principles:
+  - reconstruct_from_persisted_evidence
+  - do_not_repeat_completed_work_without_reason
+  - resume_idempotently_where_possible
+  - preserve_partial_valid_results
+  - distinguish_transient_from_scientific_failure
+  - validate_state_before_restart
+  - avoid_unnecessary_restart_of_healthy_long_running_workloads
+  orchestrator_recovery_sequence:
+  - load_project_state
+  - verify_repository_revision
+  - inspect_dirty_worktree
+  - inspect_controller_runtime
+  - inspect_active_workers
+  - inspect_active_experiments
+  - inspect_persistent_storage
+  - inspect_latest_evidence
+  - reconcile_task_registry
+  - mark_stale_or_orphaned_sessions
+  - recover_or_supersede_tasks
+  - update_capability_gap_graph
+  - resume_highest_value_safe_work
+  worker_failure_policy:
+    transient_failure:
+      action: retry_bounded_or_reassign
+    deterministic_failure:
+      action: persist_failure_and_escalate
+    evidence_corruption:
+      action: quarantine_and_stop_related_promotion
+    authority_violation:
+      action: terminate_worker_task_and_audit_effects
+    repeated_failure:
+      action: root_cause_analysis_before_more_changes
+security_and_secrets:
+  principles:
+  - least_privilege
+  - secret_references_not_secret_values
+  - no_secret_in_repository
+  - no_secret_in_worker_result
+  - minimize_secret_scope
+  - audit_sensitive_actions
+  workers:
+    receive_only_required_secrets: true
+    may_persist_secret_values: false
+    may_echo_secret_values: false
+coordination_rules:
+- orchestrator_is_only_global_coordinator
+- worker_sessions_are_not_global_authority
+- worker_tasks_must_be_bounded
+- workers_receive_minimum_sufficient_context
+- workers_return_evidence_not_only_summaries
+- independent_tasks_may_run_in_parallel
+- conflicting_repository_writes_must_be_coordinated
+- scientific_evaluation_must_preserve_independence
+- accepted_results_must_be_persisted_before_session_end
+- worker_session_loss_must_not_lose_project_state
+- new_sessions_reconstruct_from_authoritative_state
+- stale_chat_context_must_not_override_direct_evidence
+- completed_verified_work_must_not_be_redone_without_new_reason
+- negative_results_are_project_evidence
+- no_pseudo_work_or_artificial_progress
+- resource_usage_must_serve_real_project_value
+- only_orchestrator_requires_high_capacity_reasoning_by_default
+- workers_use_cheapest_reliably_capable_execution_tier
+- workers_do_not_silently_upgrade_model_class
+- deterministic_tools_precede_llm_for_mechanical_work
+- worker_global_reasoning_escalates_to_orchestrator
+- idle_state_does_not_authorize_llm_spend
+orchestrator_control_loop:
+  mode: continuous_bounded
+  cycle:
+  - step: observe
+    actions:
+    - inspect_changed_state
+    - ingest_worker_results
+    - ingest_runtime_events
+    - ingest_new_evidence
+  - step: reconcile
+    actions:
+    - compare_runtime_with_persisted_state
+    - reconcile_task_states
+    - reconcile_experiment_states
+    - reconcile_release_states
+  - step: reason
+    actions:
+    - update_capability_gap_graph
+    - update_dependency_graph
+    - identify_blockers
+    - identify_high_value_ready_work
+  - step: plan
+    actions:
+    - rank_candidate_tasks
+    - build_bounded_workset
+    - select_worker_roles
+    - ensure_nonconflicting_parallelism
+    - select_lowest_sufficient_execution_tier
+    - prefer_deterministic_execution
+    - assign_bounded_task_budget
+  - step: dispatch
+    actions:
+    - create_task_contracts
+    - create_or_reuse_worker_sessions
+    - provide_minimum_sufficient_context
+  - step: monitor
+    actions:
+    - monitor_task_liveness
+    - monitor_evidence_generation
+    - monitor_resource_use
+    - detect_stalls
+    - detect_authority_violations
+    - monitor_task_cost
+    - detect_no_progress_spend
+    - detect_unapproved_model_escalation
+  - step: verify
+    actions:
+    - validate_results
+    - run_independent_checks_where_required
+    - reject_unsupported_claims
+  - step: integrate
+    actions:
+    - merge_verified_state
+    - persist_artifacts
+    - record_decisions
+    - update_registries
+  - step: continue
+    actions:
+    - select_next_high_value_work
+    - stop_if_external_blocker_leaves_no_useful_safe_work
+completion_definition:
+  project_complete_when:
+  - autonomous_data_pipeline_operational
+  - validated_versioned_dataset_pipeline_operational
+  - reproducible_training_pipeline_operational
+  - controlled_evaluation_pipeline_operational
+  - predefined_promotion_gates_operational
+  - accepted_model_registry_operational
+  - reproducible_release_pipeline_operational
+  - deployment_validation_operational
+  - stable_skatai_interface_operational
+  - iss_integration_operational
+  - iss_evidence_capture_operational
+  - weakness_feedback_loop_operational
+  - autonomous_recovery_validated
+  - persistent_state_recovery_validated
+  - final_skat_software_integration_operational
+  - final_release_meets_defined_strength_and_runtime_acceptance
+  not_complete_if:
+  - only_checkpoint_exists
+  - only_iss_games_work
+  - only_training_pipeline_works
+  - evaluation_is_not_scientifically_controlled
+  - accepted_model_is_not_packageable
+  - release_is_not_deployment_valid
+  - stable_interface_is_missing
+  - critical_state_is_not_durable
+  - controller_cannot_recover
+  - final_skat_software_integration_is_missing
+model_and_cost_strategy:
+  principle: Concentrate expensive intelligence in the Orchestrator Superbrain. Workers are bounded executors and
+    should use deterministic tools or the lowest-cost AI model/reasoning level that can reliably execute the assigned
+    contract.
+  economic_goal: Maximize verified project progress per unit cost while preserving correctness, scientific validity,
+    recoverability, and deployment quality.
+  orchestrator_superbrain:
+    model_role: high_capacity_global_reasoning_model
+    target_class: current_main_agent_class
+    configured_ceiling: GPT-6-SOL-equivalent-or-lower
+    default_reasoning_effort: medium
+    higher_reasoning_by_default: false
+    optimize_for:
+    - global_project_understanding
+    - strategic_planning
+    - task_decomposition
+    - dependency_reasoning
+    - cross_worker_coordination
+    - scientific_judgment
+    - evidence_synthesis
+    - conflict_resolution
+    - recovery_decisions
+    - release_and_promotion_decisions
+    must_not_be_used_for:
+    - routine_monitoring
+    - mechanical_state_collection
+    - simple_log_parsing
+    - ordinary_test_execution
+    - simple_file_transforms
+    - routine_packaging_steps
+    - repetitive_worker_execution
+    reasoning_escalation:
+      enabled: true
+      default: false
+      allowed_when:
+      - major_architecture_conflict
+      - difficult_root_cause_analysis
+      - ambiguous_scientific_methodology
+      - cross_agent_evidence_conflict
+      - high_consequence_release_decision
+      - high_consequence_model_promotion_decision
+      rule: Escalate reasoning effort only when the expected value of additional reasoning materially exceeds its
+        latency and cost.
+  workers:
+    role: bounded_order_following_executors
+    default_reasoning_effort: low
+    default_model_policy: cheapest_reliably_capable
+    global_project_understanding_required: false
+    global_strategy_authority: false
+    independent_priority_authority: false
+    may_self_upgrade_to_superbrain_class: false
+    preferred_execution_order:
+    - deterministic_code_or_tool
+    - very_low_cost_model
+    - low_cost_model
+    - mid_cost_model_only_if_contract_requires_it
+    - escalate_to_orchestrator_superbrain
+    worker_design_rule: A worker should not need broad intelligence. The Orchestrator supplies the objective, context
+      slice, authority, constraints, evidence requirements, success criteria, and expected result schema.
+    escalate_instead_of_improvise_when:
+    - task_contract_is_ambiguous
+    - unexpected_state_materially_changes_scope
+    - evidence_conflicts
+    - required_authority_is_missing
+    - scientific_validity_is_uncertain
+    - destructive_or_high_risk_action_is_required
+    - repeated_failure_occurs
+    - global_priority_tradeoff_is_required
+    - architecture_decision_is_required
+    - promotion_or_release_judgment_is_required
+  deterministic_first_policy:
+    rule: If a task can be completed reliably by deterministic software, scripts, validators, schedulers, parsers,
+      tests, or infrastructure APIs, use them before invoking an LLM.
+    preferred_for:
+    - schema_validation
+    - hashing_and_checksums
+    - file_and_manifest_validation
+    - repository_state_collection
+    - process_health_checks
+    - metrics_collection
+    - test_execution
+    - artifact_copy_and_packaging
+    - simple_data_transforms
+    - queue_and_state_transitions
+    - budget_accounting
+    - duplicate_detection
+    - basic_threshold_checks
+  task_model_router:
+    selection_factors:
+    - task_complexity
+    - ambiguity
+    - error_consequence
+    - reasoning_depth
+    - tool_complexity
+    - context_size
+    - evidence_interpretation_need
+    - prior_failure_history
+    routing_examples:
+      state_collection:
+        preferred: deterministic_code_or_tool
+        fallback: very_low_cost_model
+        reasoning: minimal
+      log_parsing:
+        preferred: very_low_cost_model
+        reasoning: low
+      run_tests_and_report:
+        preferred: deterministic_code_or_tool
+        fallback: very_low_cost_model
+        reasoning: minimal
+      dataset_validation:
+        preferred: deterministic_plus_low_cost_model
+        reasoning: low
+      training_job_control:
+        preferred: low_cost_model
+        reasoning: low
+      iss_runtime_operation:
+        preferred: deterministic_runtime_plus_low_cost_model
+        reasoning: low
+      documentation_update:
+        preferred: low_cost_model
+        reasoning: low
+      ordinary_bounded_code_change:
+        preferred: low_cost_model
+        fallback: mid_cost_model
+        reasoning: low_to_medium
+      difficult_local_debugging:
+        preferred: mid_cost_model
+        fallback: orchestrator_superbrain
+        reasoning: medium
+      architecture_decision:
+        preferred: orchestrator_superbrain
+        reasoning: medium
+      scientific_methodology_decision:
+        preferred: orchestrator_superbrain
+        reasoning: medium
+      model_promotion_decision:
+        preferred: orchestrator_superbrain
+        reasoning: medium
+      cross_worker_conflict_resolution:
+        preferred: orchestrator_superbrain
+        reasoning: medium
+      roadmap_prioritization:
+        preferred: orchestrator_superbrain
+        reasoning: medium
+  worker_escalation_packet:
+    required_fields:
+    - task_id
+    - worker_id
+    - observed_state
+    - completed_work
+    - blocking_issue
+    - evidence
+    - attempted_actions
+    - reason_for_escalation
+    - options_if_known
+    rule: Escalation is preferable to speculative reasoning. Workers preserve evidence and return control to the
+      Orchestrator when bounded execution stops being safe or sufficiently deterministic.
+  context_and_token_efficiency:
+    worker_context_policy: minimum_sufficient_context
+    send_full_work_prompt_to_workers: false
+    send_full_project_history_to_workers: false
+    send_only_relevant_spec_sections: true
+    summarize_large_evidence_before_llm_when_safe: true
+    cache_stable_context: true
+    reuse_prior_verified_results: true
+    batch_simple_independent_operations: true
+    avoid_repeated_reasoning: true
+    avoid_repeated_repository_reads_without_state_change: true
+    avoid_repeated_log_scans_without_new_hypothesis: true
+    superbrain_prefers_structured_worker_summaries: true
+    raw_evidence_remains_available_on_demand: true
+  cost_controls:
+    track_cost_per_task: true
+    track_cost_per_worker: true
+    track_cost_per_verified_outcome: true
+    track_tokens_per_task: true
+    track_model_tier_usage: true
+    worker_budget_required: true
+    default_worker_budget_policy: small_bounded_budget
+    orchestrator_budget_policy: larger_but_bounded
+    budget_exhaustion_behavior: pause_and_escalate_not_silently_upgrade
+    cost_anomaly_detection: true
+    repeated_no_progress_spend_detection: true
+    prohibit_idle_llm_spend: true
+    prohibit_monitoring_only_llm_loops: true
+    prohibit_unbounded_retry_spend: true
+    optimize_metric: verified_progress_per_cost
+  cost_invariants:
+  - Only the Orchestrator requires high-capacity global reasoning by default.
+  - Workers must not receive expensive models merely because they are available.
+  - Workers must not compensate for unclear task contracts with broader autonomous reasoning.
+  - Routine observation and execution should be deterministic whenever practical.
+  - Model escalation requires an explicit reason and must be visible in task telemetry.
+  - No worker may silently switch to a higher-cost model tier.
+  - No autonomous LLM call is justified by idleness alone.
+  - Repeated no-progress calls must be stopped and escalated.
