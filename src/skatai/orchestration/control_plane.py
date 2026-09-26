@@ -531,6 +531,11 @@ def integrated_since_session_start(state: dict[str, Any]) -> bool:
     return decision_file_size() > int(state.get("session_start_decision_bytes", 0))
 
 
+def evidence_since_session_start(state: dict[str, Any]) -> bool:
+    size = EVIDENCE.stat().st_size if EVIDENCE.exists() else 0
+    return size > int(state.get("session_start_evidence_bytes", 0))
+
+
 def persist_usage(session: dict[str, Any], role: str, tool_calls: int, outcome: str) -> None:
     if session.get("usage") is None:
         for _ in range(3):
@@ -922,6 +927,7 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
     state["bootstrap_sent"] = True
     state["superbrain_tool_calls"] = 0
     state["session_start_decision_bytes"] = decision_file_size()
+    state["session_start_evidence_bytes"] = EVIDENCE.stat().st_size if EVIDENCE.exists() else 0
     state["last_superbrain_event_seq"] = int(state.get("event_seq", 0))
     atomic_json(CONTROLLER_STATE, state)
     log(f"superbrain_session_created id={s['id']} model={cfg['model']} reasoning={cfg['reasoning_effort']}")
@@ -1129,12 +1135,12 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         initial_scan = not strict_json(TASKS)["tasks"]
         limit = 8 if initial_scan else 16
         if count + len(actions) > limit:
-            progress = integrated_since_session_start(state)
-            log(f"superbrain_tool_budget_exhausted session={sid} calls={count} integrated={progress}")
+            progress = integrated_since_session_start(state) or evidence_since_session_start(state)
+            log(f"superbrain_tool_budget_exhausted session={sid} calls={count} persisted_progress={progress}")
             cancel_session(sid, "superbrain_tool_budget_exhausted")
             try:
                 final = api("GET", f"/agents/sessions/{sid}")
-                persist_usage(final, "orchestrator-superbrain", count, "rotated_after_integration" if progress else "paused_no_progress")
+                persist_usage(final, "orchestrator-superbrain", count, "rotated_after_persisted_progress" if progress else "paused_no_progress")
             except Exception as exc:
                 log(f"superbrain_usage_unavailable id={sid} err={exc!r}")
             if progress:

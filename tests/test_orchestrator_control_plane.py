@@ -213,3 +213,13 @@ def test_repeated_blocked_command_set_is_rejected(tmp_path, monkeypatch):
     cp.atomic_json(cp.TASKS, {'tasks': {'prior-blocked': prior}})
     with pytest.raises(RuntimeError, match='DUPLICATE_BLOCKED_WORK'):
         cp.create_task(base_task())
+
+
+def test_new_worker_evidence_allows_one_bounded_session_rotation(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'EVIDENCE', tmp_path / 'evidence.jsonl')
+    state = {'session_start_evidence_bytes': 0}
+    assert not cp.evidence_since_session_start(state)
+    cp.append_jsonl(cp.EVIDENCE, {'type': 'worker_result'})
+    assert cp.evidence_since_session_start(state)
+    state['session_start_evidence_bytes'] = cp.EVIDENCE.stat().st_size
+    assert not cp.evidence_since_session_start(state)
