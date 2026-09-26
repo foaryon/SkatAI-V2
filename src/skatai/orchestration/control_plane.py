@@ -249,7 +249,7 @@ def task_scope_allows(task: dict[str, Any], mode: str, key: str) -> bool:
     return False
 
 
-def bounded_text(path: Path, start: int = 1, end: int | None = None, max_bytes: int = 60000) -> str:
+def bounded_text(path: Path, start: int = 1, end: int | None = None, max_bytes: int = 4000) -> str:
     data = path.read_text(encoding="utf-8", errors="replace").splitlines()
     start = max(1, int(start or 1))
     end = min(len(data), int(end or min(len(data), start + 500)))
@@ -293,9 +293,9 @@ def list_paths_tool(args: dict[str, Any], task: dict[str, Any] | None = None) ->
         if task is not None and not task_scope_allows(task, "read", pkey):
             continue
         out.append(pkey + ("/" if p.is_dir() else ""))
-        if len(out) >= 300:
+        if len(out) >= 80:
             break
-    return {"paths": out, "truncated": len(out) >= 300}
+    return {"paths": out, "truncated": len(out) >= 80}
 
 
 def search_text_tool(args: dict[str, Any], task: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -306,7 +306,7 @@ def search_text_tool(args: dict[str, Any], task: dict[str, Any] | None = None) -
     if not query:
         raise RuntimeError("QUERY_REQUIRED")
     glob = str(args.get("glob") or "*")
-    max_results = min(100, max(1, int(args.get("max_results", 40))))
+    max_results = min(20, max(1, int(args.get("max_results", 20))))
     candidates = [root] if root.is_file() else root.rglob(glob)
     out = []
     for p in candidates:
@@ -321,7 +321,7 @@ def search_text_tool(args: dict[str, Any], task: dict[str, Any] | None = None) -
         try:
             for no, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
                 if query.lower() in line.lower():
-                    out.append({"path": pkey, "line": no, "text": line[:500]})
+                    out.append({"path": pkey, "line": no, "text": line[:200]})
                     if len(out) >= max_results:
                         return {"matches": out, "truncated": True}
         except OSError:
@@ -1062,10 +1062,12 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     if status == "requires_action":
         actions = s.get("required_actions") or []
         count = int(state.get("superbrain_tool_calls", 0))
-        if count + len(actions) > 80:
+        initial_scan = not strict_json(TASKS)["tasks"]
+        limit = 8 if initial_scan else 36
+        if count + len(actions) > limit:
             log(f"superbrain_tool_budget_exhausted session={sid} calls={count}")
             cancel_session(sid, "superbrain_tool_budget_exhausted")
-            state["superbrain_paused_reason"] = "tool budget exhausted; requires independent review"
+            state["superbrain_paused_reason"] = "no-progress or session tool budget exhausted; requires review"
             atomic_json(CONTROLLER_STATE, state)
             return state
         resolve_required_actions(s, kind="orchestrator")

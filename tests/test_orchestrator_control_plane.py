@@ -152,3 +152,9 @@ def test_deterministic_mode_is_not_routed_to_a_model():
     task['execution_profile'].update({'preferred_execution_mode': 'deterministic', 'max_cost_class': 'deterministic'})
     task = cp.validate_task_contract(task)
     assert cp.task_model(task) == (None, None)
+
+
+def test_read_text_bounds_context(tmp_path):
+    p = tmp_path / 'large.txt'
+    p.write_text('large-line\n' * 10000)
+    assert len(cp.bounded_text(p).encode()) < 4200
