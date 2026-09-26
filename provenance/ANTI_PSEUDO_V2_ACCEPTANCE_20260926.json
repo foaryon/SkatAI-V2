@@ -2,8 +2,29 @@
   "schema": "skatai.v2.anti-pseudo-v2-acceptance.v1",
   "captured_at": "2026-09-26T00:00:00Z",
   "task_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Does current V2 satisfy the founding anti-Pseudo-V2 boundary without active dependence on V1 runtime/state/authority?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": {
+    "observation": "The deterministic dependency audit classifies active scripts, src, .github and configs as PASS_NO_ACTIVE_V1_RUNTIME_STATE_AUTHORITY_DEPENDENCY. Both V2 test runners use V2-owned offline uv with pinned pytest==8.4.2 and pass focused suites. R9 startup uses V2 scripts/prepare_r9_runtime_secrets.py; RunPod hunter uses V2 scripts/prepare_runtime_secrets.py. MAIN does not own or materialize the ISS password.",
+    "source_identities_sha256": {
+      "dependency_audit": "b465369c86f278d7b40341c3f07c5894192cfc6846a30f66d7cd747ca35b9f10",
+      "main_test_runner": "f14f1d20a0b0aa79dde5c6ed20bcfa881597c8e956adb5e57de1b605534a47f8",
+      "r9_test_runner": "f44c5616d00437430734b51004a2ba0c9297368658013bb03a12845c7ae69312",
+      "main_secret_prep": "00ba813871ffbb3d4c3e42967f931a52afd98dbb151b12d70687f7ff9dd47790",
+      "r9_secret_prep": "0c6980454db4377806a4344d521d89cdc8892a92a47ac867461694dc55d713f2",
+      "controller": "db3cd37ab3a27805367256ef215e99850220f402841d7a883aa48e85a2bd9add",
+      "gateway": "406ff0b83be74a0f8004ee0a43f37619e3b26523a0d106f7918bd83a222fc2ef"
+    },
+    "evidence": [
+      "provenance/ANTI_PSEUDO_V2_DEPENDENCY_AUDIT_20260926.json",
+      "scripts/openai_platform_main_controller.py",
+      "scripts/main_tool_gateway.py"
+    ]
+  },
+  "decision": {
+    "interpretation": "Current active V2 execution has no identified dependency on V1 runtime, V1 state or V1 authority. Remaining legacy-controller filesystem references are migration/archive or defense-in-depth checks, not active execution authority. Individually qualified legacy-v1-canonical-corpus assets retain provenance and do not confer runtime or governance authority.",
+    "active_v1_dependency": "NONE_IDENTIFIED",
+    "scope": "Anti-Pseudo-V2 independence boundary for current audited active source and focused runtime paths; no claim of complete FULL-AFK operation or gameplay strength.",
+    "legacy_asset_rule": "No V1 model, checkpoint or dataset is accepted as V2 merely because it exists or has a V2-like name."
+  }
 }

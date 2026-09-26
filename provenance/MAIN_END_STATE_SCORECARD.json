@@ -179,10 +179,11 @@
       "id": "ANTI_PSEUDO_V2",
       "goal_path_id": "G7_FULL_AFK",
       "criterion": "V2 passes the anti-Pseudo-V2 test.",
-      "status": "NOT_YET_VERIFIED",
-      "reason": "Final acceptance gate has not been established as passed.",
+      "status": "ACCEPTED",
+      "reason": "Active V2 scripts, source, workflows and configs pass the dependency audit for V1 runtime/state/authority independence; V2-owned test runners pass focused suites and runtime secret preparation is V2-owned. Remaining legacy-controller references are migration/archive or defense-in-depth checks; qualified legacy corpus assets convey no V1 execution authority. This gate does not establish sustained FULL-AFK operation or gameplay strength.",
       "evidence": [
-        "SKATAI_V2_WORK_PROMPT.md"
+        "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+        "provenance/ANTI_PSEUDO_V2_DEPENDENCY_AUDIT_20260926.json"
       ]
     },
     {
