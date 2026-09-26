@@ -1,0 +1,29 @@
+{
+  "schema": "skatai.v2.main-execution-lock.v2",
+  "captured_at": "2026-09-26T02:45:00Z",
+  "reason": "Pre-authorized deterministic MAIN gate queue entry.",
+  "primary": {
+    "gate_id": "STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE",
+    "status": "EXECUTABLE",
+    "goal_path_id": "G6_RELEASE_INTEGRATION",
+    "objective": "Decide whether current V2 satisfies the scorecard criterion that one stable SkatAI deployment interface exists.",
+    "end_state_contribution": "Separates the stable versioned SkatAI host/release interface from later JSkat Java integration, Windows packaging and actual user-host deployment.",
+    "selection_basis": "The stable runtime interface, host service, release loader and source-bound v4 pickup release path all have focused regression coverage, while the scorecard still marks STABLE_DEPLOYMENT_INTERFACE IN_PROGRESS.",
+    "selection_evidence": ["provenance/STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json","provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json","src/skatai/runtime/interface.py","src/skatai/runtime/host_service.py","src/skatai/runtime/release_loader.py","tests/test_product_interface.py","tests/test_host_service.py","tests/test_release_loader.py","tests/test_release_package.py"],
+    "evidence": ["provenance/STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json","provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json"],
+    "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a bounded deployment-interface acceptance decision.",
+    "allowed_material_effects": ["READ_ONLY_INSPECTION","PROVENANCE_WRITE","BOUNDED_TEST_EXECUTION"],
+    "executor_capabilities": [],
+    "progress_contract": {"kind":"JSON_FIELD_TRANSITION","path":"provenance/STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json","field":"classification","before_prefix":"OPEN","after_forbid_prefix":"OPEN"},
+    "authorized_commands": [{"id":"test_stable_deployment_interface","argv_prefix":["/usr/bin/python3","/workspace/skatai-v2/scripts/run_stable_deployment_interface_tests.py"],"script":"scripts/run_stable_deployment_interface_tests.py","script_sha256":"365c5b3a99a3080ac5104fb71724c45fca4dcf5c54dd4b28ec1f02159f47e16a","timeout_seconds":180,"arg_schema":{}}],
+    "writable_files": ["provenance/STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json","provenance/MAIN_END_STATE_SCORECARD.json"],
+    "completion": ["Focused host-service, product-interface, release-loader and release-package tests pass on current source.","Decision distinguishes the stable SkatAI interface from actual JSkat callback integration, Windows packaging and user-host integration.","Scorecard STABLE_DEPLOYMENT_INTERFACE is updated only to the evidence-supported status.","No package publication, model promotion or R9 change is authorized."],
+    "next_action": "Call get_active_lease first. Run test_stable_deployment_interface immediately and avoid broad inspection. Read only the OPEN acceptance provenance and scorecard for exact edits. Decide ACCEPT/REJECT/INCONCLUSIVE, update provenance/scorecard, record_turn_outcome, yield.",
+    "evidence_identities": {"pickup_release_acceptance_sha256":"c06fd9a2faff0d1b15043bdf7525996c8e9515edd74ec06e0388b6e814e07b0b","interface_sha256":"d53e52f693c6e04ba3a271243da5af578adca2fc5f9e7a29296956689d6bcd2f","host_service_sha256":"b833a45151cb262c5eb214b653e1d8077b0f1185e2416364821f3225ae16830d","release_loader_sha256":"4929064f5b48f7c4fad59e548ad0ab10b853d93e38e8520e09593a3999aac699","stable_interface_test_runner_sha256":"365c5b3a99a3080ac5104fb71724c45fca4dcf5c54dd4b28ec1f02159f47e16a","baseline_focused_tests":"60 passed"},
+    "decisive_facts": ["The public runtime interface exposes bidding, declaration, discard and cardplay observations through one SkatAI interface and legality-constrained cardplay input.","The host service and release loader provide explicit versioned release loading and host request/response contracts.","The source-bound v4 pickup release-loader identity gate is ACCEPT with 53 focused tests and strict malformed-v4 rejection.","The current stable-interface baseline passes 60 focused host-service, product-interface, release-loader and release-package tests.","Acceptance of this interface does not imply JSkat Java callback completion, Windows packaging, remote publication, actual user-host integration or gameplay-strength promotion."]
+  },
+  "secondary": null,
+  "external_dependencies": [{"event_watch":{"type":"R9_GATE","status_path":"/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json","supervisor_path":"/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json","expected_next_per_arm_target":300,"expected_source_commit":"5c4b6f977ebdf883e836e95eb0530121b99394e7"},"gate_id":"B1_EXTERNAL_ISS_R9","goal_path_id":"G4_CONTROLLED_EVALUATION","owner":"independent fail-closed supervisor","rule":"No model polling and no R9 mutation from this PRIMARY.","status":"WAITING_EXTERNAL"}],
+  "switching_rule": "Terminal classification returns control to the trusted deterministic gate queue selector. The model cannot select or alter the next gate."
+}

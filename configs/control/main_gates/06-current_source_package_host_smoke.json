@@ -1,0 +1,92 @@
+{
+  "schema": "skatai.v2.main-execution-lock.v2",
+  "captured_at": "2026-09-26T02:55:00Z",
+  "reason": "Pre-authorized deterministic MAIN gate queue entry.",
+  "primary": {
+    "gate_id": "CURRENT_SOURCE_PACKAGE_HOST_SMOKE",
+    "status": "EXECUTABLE",
+    "goal_path_id": "G6_RELEASE_INTEGRATION",
+    "objective": "Build the exact committed current source into a source-bound v4 .skatmodel and verify the five-operation host boundary, including atomic PICKUP_PLAN, on the pinned V2 CPU runtime.",
+    "end_state_contribution": "Establishes a deployment-valid, exact-source package/host smoke for the current product boundary without promoting a model or claiming user-host integration.",
+    "selection_basis": "The source-bound v4 loader gate is ACCEPT, while the last durable host smoke predates v4/pickup-plan and used older source b990471d6504e9f6c7e52f630fd12c523e8ae317.",
+    "selection_evidence": [
+      "provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json",
+      "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json",
+      "provenance/B0_SKATZERO_BASELINE.json",
+      "scripts/run_current_source_package_smoke_gate.py"
+    ],
+    "evidence": [
+      "provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json",
+      "/workspace/skatai-v2-runtime/releases/current-source-host-smoke/LATEST.json"
+    ],
+    "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this gate is deterministic package/runtime verification.",
+    "allowed_material_effects": [
+      "READ_ONLY_INSPECTION",
+      "PROVENANCE_WRITE",
+      "BOUNDED_TEST_EXECUTION"
+    ],
+    "executor_capabilities": [],
+    "progress_contract": {
+      "kind": "JSON_FIELD_TRANSITION",
+      "path": "provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json",
+      "field": "classification",
+      "before_prefix": "OPEN",
+      "after_forbid_prefix": "OPEN"
+    },
+    "authorized_commands": [
+      {
+        "id": "run_current_source_package_smoke",
+        "argv_prefix": [
+          "/workspace/skatai-v2-runtime/runtime/b0-venv/bin/python",
+          "/workspace/skatai-v2/scripts/run_current_source_package_smoke_gate.py"
+        ],
+        "script": "scripts/run_current_source_package_smoke_gate.py",
+        "script_sha256": "c4ab4fc397c67af31d349e4e846a67f2f504b79f18feb5afeb10a2e93ff5a282",
+        "timeout_seconds": 1200,
+        "arg_schema": {}
+      }
+    ],
+    "writable_files": [
+      "provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json"
+    ],
+    "completion": [
+      "The authorized smoke command succeeds or reuses an independently hash-verified result for the exact Git HEAD.",
+      "release_id is V2-B0-package-v4-<exact 40-hex source commit> and the package hash matches the persisted artifact.",
+      "BID, DECLARATION, DISCARD, PLAY_CARD and PICKUP_PLAN all return valid responses; response_count is 5.",
+      "Pinned upstream source SHA is 40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d and the product runtime identity remains Python 3.11 / torch 2.1.2+cpu / numpy 1.26.4.",
+      "The provenance explicitly excludes accepted-release promotion and actual user-host integration."
+    ],
+    "next_action": "Call get_active_lease first, then immediately run run_current_source_package_smoke. Do not browse broadly. Read /workspace/skatai-v2-runtime/releases/current-source-host-smoke/LATEST.json and its exact result_path, verify source/release/package/manifest/phase identities, update only the OPEN gate provenance with ACCEPT/REJECT/INCONCLUSIVE, call record_turn_outcome, yield.",
+    "evidence_identities": {
+      "runner_sha256": "c4ab4fc397c67af31d349e4e846a67f2f504b79f18feb5afeb10a2e93ff5a282",
+      "upstream_source_sha256": "40eff4a1f03aa0a0c0665a11b733505130a79e8ac646195c8dc51c61b6fb3f2d",
+      "prior_durable_smoke_source_commit": "b990471d6504e9f6c7e52f630fd12c523e8ae317",
+      "prior_durable_smoke_package_sha256": "c94406c2ad9a82b29e771c8f283fa6867072de0e0d2de348ec441ed33a8d2d76"
+    },
+    "decisive_facts": [
+      "The prior durable isolated host smoke is COMPLETE but is stale for this gate: source b990471..., v3 identity, response_count 4, no PICKUP_PLAN.",
+      "The current loader accepts only exact v1-v3 identities or V2-B0-package-v4-<source_commit> where the suffix exactly matches manifest.source_commit.",
+      "The immutable SkatZero source archive is persisted under V2 runtime storage and verified to the baseline SHA.",
+      "The pinned V2 CPU runtime is persisted under V2 runtime storage; the runner fails closed if its identity drifts."
+    ]
+  },
+  "secondary": null,
+  "external_dependencies": [
+    {
+      "event_watch": {
+        "type": "R9_GATE",
+        "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
+        "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
+        "expected_next_per_arm_target": 300,
+        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+      },
+      "gate_id": "B1_EXTERNAL_ISS_R9",
+      "goal_path_id": "G4_CONTROLLED_EVALUATION",
+      "owner": "independent fail-closed supervisor",
+      "rule": "No model polling and no R9 mutation from this PRIMARY.",
+      "status": "WAITING_EXTERNAL"
+    }
+  ],
+  "switching_rule": "Terminal classification returns control to the trusted deterministic gate queue selector. The model cannot select or alter the next gate."
+}

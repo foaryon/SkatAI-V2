@@ -1,0 +1,89 @@
+{
+  "schema": "skatai.v2.main-execution-lock.v2",
+  "captured_at": "2026-09-26T02:55:00Z",
+  "reason": "Pre-authorized deterministic MAIN gate queue entry.",
+  "primary": {
+    "gate_id": "CURRENT_SOURCE_RUNTIME_WHEEL",
+    "status": "EXECUTABLE",
+    "goal_path_id": "G6_RELEASE_INTEGRATION",
+    "objective": "Build the exact committed current V2 source twice into a byte-identical wheel, install that wheel into the pinned product runtime, and verify SkatAI host-service imports from site-packages with PYTHONPATH removed.",
+    "end_state_contribution": "Binds the Python product runtime artifact to the current source commit instead of relying on a development checkout or an older adapter-branch wheel.",
+    "selection_basis": "Earlier JSkat staging proved the wheel/runtime pattern on commit dd4dad6, but the accepted current source and v4 package path are newer and require a fresh content-addressed wheel identity.",
+    "selection_evidence": [
+      "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json",
+      "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json",
+      "scripts/run_current_source_runtime_wheel_gate.py"
+    ],
+    "evidence": [
+      "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json",
+      "/workspace/skatai-v2-runtime/releases/current-source-wheel/LATEST.json"
+    ],
+    "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is deterministic reproducible packaging/runtime verification.",
+    "allowed_material_effects": [
+      "READ_ONLY_INSPECTION",
+      "PROVENANCE_WRITE",
+      "BOUNDED_TEST_EXECUTION"
+    ],
+    "executor_capabilities": [],
+    "progress_contract": {
+      "kind": "JSON_FIELD_TRANSITION",
+      "path": "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json",
+      "field": "classification",
+      "before_prefix": "OPEN",
+      "after_forbid_prefix": "OPEN"
+    },
+    "authorized_commands": [
+      {
+        "id": "run_current_source_runtime_wheel",
+        "argv_prefix": [
+          "/workspace/skatai-v2-runtime/runtime/b0-venv/bin/python",
+          "/workspace/skatai-v2/scripts/run_current_source_runtime_wheel_gate.py"
+        ],
+        "script": "scripts/run_current_source_runtime_wheel_gate.py",
+        "script_sha256": "bf061e8def9c461f256954019faf4e5c870677c53bb0cca179090da88c28caf2",
+        "timeout_seconds": 600,
+        "arg_schema": {}
+      }
+    ],
+    "writable_files": [
+      "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json"
+    ],
+    "completion": [
+      "Two independent builds from git archive of exact HEAD are byte-identical.",
+      "The wheel hash, bytes, source commit and SOURCE_DATE_EPOCH are persisted.",
+      "The wheel is installed into the pinned V2 product runtime and skatai plus host_service import from site-packages with PYTHONPATH/SKATAI_V2_PYTHONPATH absent.",
+      "Pinned product runtime identity is checked before installation.",
+      "The provenance records no model promotion or Windows/user-host deployment claim."
+    ],
+    "next_action": "Call get_active_lease first, then immediately run run_current_source_runtime_wheel. Do not browse broadly. Read /workspace/skatai-v2-runtime/releases/current-source-wheel/LATEST.json and its exact result_path, verify source/wheel/reproducibility/import identities, update only the OPEN gate provenance with ACCEPT/REJECT/INCONCLUSIVE, call record_turn_outcome, yield.",
+    "evidence_identities": {
+      "runner_sha256": "bf061e8def9c461f256954019faf4e5c870677c53bb0cca179090da88c28caf2",
+      "prior_installed_wheel_commit": "dd4dad654f5ad70c2210727db06c8bdd19c2db9e",
+      "prior_installed_wheel_sha256": "18672614ec4d05795d6a718cb709fea153f796c7d83c56a3ae2df25b64419fe8"
+    },
+    "decisive_facts": [
+      "An earlier adapter-branch gate proved reproducible wheel installation without PYTHONPATH, but its source commit predates current main.",
+      "Wheel version 0.0.1 alone is not sufficient identity; this gate binds exact current source commit plus wheel SHA.",
+      "This gate verifies Linux staging/runtime packaging only; Windows 11 product-bundle validation remains separate."
+    ]
+  },
+  "secondary": null,
+  "external_dependencies": [
+    {
+      "event_watch": {
+        "type": "R9_GATE",
+        "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
+        "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
+        "expected_next_per_arm_target": 300,
+        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+      },
+      "gate_id": "B1_EXTERNAL_ISS_R9",
+      "goal_path_id": "G4_CONTROLLED_EVALUATION",
+      "owner": "independent fail-closed supervisor",
+      "rule": "No model polling and no R9 mutation from this PRIMARY.",
+      "status": "WAITING_EXTERNAL"
+    }
+  ],
+  "switching_rule": "Terminal classification returns control to the trusted deterministic gate queue selector. The model cannot select or alter the next gate."
+}
