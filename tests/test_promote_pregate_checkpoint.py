@@ -66,6 +66,8 @@ def test_promote_screen_checkpoint_reuses_prefix(tmp_path):
     assert len(x["selected_deal_identities"]) == 5
     assert len(x["records"]) == 2
     assert x["promotion"]["reused_deals"] == 2
+    assert x["promotion"]["reused_deal_identities"] == x["selected_deal_identities"][:2]
+    assert x["promotion"]["overlap_provenance"]["count"] == 2
 
 
 def test_promote_rejects_nonprefix(tmp_path):

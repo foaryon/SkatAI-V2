@@ -98,6 +98,12 @@ def promote_screen_to_confirmation(
                 confirmation_deal_set_path
             ),
             "reused_deals": expected_screen_deals,
+            "reused_deal_identities": screen_ids,
+            "overlap_provenance": {
+                "count": expected_screen_deals,
+                "relationship": "source screen record identities equal the prefix of target confirmation deal identities",
+                "target_confirmation_prefix_identities": confirmation_ids[:expected_screen_deals],
+            },
             "rule": "same-seed deterministic prefix; identical per-deal treatment configuration",
         },
     }
