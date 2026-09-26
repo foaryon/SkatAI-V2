@@ -1403,11 +1403,17 @@ def reconcile_negative_results() -> list[str]:
         if not rp.is_file():
             continue
         result = strict_json(rp)
+        artifacts = result.get("artifacts", [])
+        input_only_artifacts = (task.get("task_family") == "bounded_readonly_audit"
+                                and task.get("authority", {}).get("write") == []
+                                and task.get("authority", {}).get("execute") == []
+                                and isinstance(artifacts, list)
+                                and set(artifacts) <= set(task.get("authority", {}).get("read", [])))
         if (result.get("status") not in {"BLOCKED", "FAILED", "PARTIAL"}
                 or result.get("task_id") != tid
                 or result.get("worker_id") != task.get("assigned_agent")
                 or result.get("changes") != []
-                or result.get("artifacts", []) != []):
+                or (artifacts != [] and not input_only_artifacts)):
             continue
         accept_worker_result(tid, False, "Deterministic fail-closed integration of unchanged negative worker result; "
                                        + result["status"] + "; result_sha256=" + sha256(rp))

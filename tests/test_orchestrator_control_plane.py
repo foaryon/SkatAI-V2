@@ -535,3 +535,21 @@ def test_unchanged_partial_result_closes_fail_closed_without_claiming_acceptance
     assert after['state'] == 'BLOCKED'
     assert after['integration_decision']['accepted'] is False
     assert cp.reconcile_negative_results() == []
+
+
+def test_partial_readonly_result_may_reference_unchanged_input(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'refresh_project_state', lambda: None)
+    task = base_task()
+    task['task_family'] = 'bounded_readonly_audit'
+    task['authority']['execute'] = []
+    task['authority']['write'] = []
+    task['authority']['read'] = ['repo:input.json']
+    task['state'] = 'VERIFYING'
+    cp.atomic_json(cp.TASKS, {'tasks': {task['task_id']: task}})
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 0})
+    cp.atomic_json(cp.result_file(task['task_id']), {
+        'task_id': task['task_id'], 'worker_id': task['assigned_agent'],
+        'status': 'PARTIAL', 'changes': [], 'artifacts': ['repo:input.json'],
+        'observations': [], 'evidence': [], 'verification': [], 'unresolved': ['PENDING']})
+    assert cp.reconcile_negative_results() == [task['task_id']]
+    assert cp.strict_json(cp.TASKS)['tasks'][task['task_id']]['state'] == 'BLOCKED'
