@@ -1668,6 +1668,10 @@ def test_writebehind_storage_outage_retains_games_then_drains_without_duplicates
         assert not uploaded
 
         storage_up.set()
+        # Recovery gets its own bounded window. Reusing the outage-observation
+        # deadline makes this test scheduler-load dependent even when the
+        # write-behind drains immediately after storage returns.
+        deadline = time.monotonic() + 5
         while ev.mirror_backlog_status()["pending_games"]:
             assert time.monotonic() < deadline
             time.sleep(0.01)
