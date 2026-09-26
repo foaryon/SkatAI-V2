@@ -888,8 +888,8 @@ def superbrain_bootstrap_text() -> str:
         "First use get_project_snapshot and list_tasks. Reuse existing READY tasks if valid; "
         "reject or revise any contract with a broad write scope. The R9 ISS gate worker is running; do not restart it. "
         "The founding specification requires evidence over claims. The Work Prompt seeks the full V2 product. "
-        "A focused deterministic validation of pending JSkat source portability is a candidate if still unverified. "
-        "Dispatch one safe, nonconflicting task with exact command and minimum context. "
+        "Prefer an existing READY task with a valid contract. Never repeat a BLOCKED command set "
+        "without changed input evidence. Dispatch one safe nonconflicting task with minimum context. "
         "Do not browse the entire repository first. On result, verify, integrate, persist, then continue."
     )
 
