@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import fcntl
 import fnmatch
 import hashlib
 import json
@@ -72,8 +73,7 @@ def strict_json(path: Path, default: Any = None) -> Any:
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=pairs)
 
 
-def atomic_json(path: Path, value: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+def _write_json_file(path: Path, value: Any) -> None:
     fd, tmp = tempfile.mkstemp(prefix="." + path.name + ".", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -87,6 +87,23 @@ def atomic_json(path: Path, value: Any) -> None:
             os.unlink(tmp)
         except FileNotFoundError:
             pass
+
+
+def atomic_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path != CONTROLLER_STATE:
+        _write_json_file(path, value)
+        return
+    with (path.parent / ".controller_state.lock").open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if path.exists() and isinstance(value, dict):
+            current = strict_json(path)
+            if int(current.get("event_seq", 0)) > int(value.get("event_seq", 0)):
+                value = {**value, "event_seq": current["event_seq"],
+                         "last_event": current.get("last_event"),
+                         "last_superbrain_event_seq": max(int(value.get("last_superbrain_event_seq", 0)),
+                                                           int(current.get("last_superbrain_event_seq", 0)))}
+        _write_json_file(path, value)
 
 
 def append_jsonl(path: Path, row: dict[str, Any]) -> None:
@@ -715,10 +732,13 @@ def persist_usage(session: dict[str, Any], role: str, tool_calls: int, outcome: 
 
 
 def bump_event(kind: str, subject: str) -> None:
-    st = strict_json(CONTROLLER_STATE)
-    st["event_seq"] = int(st.get("event_seq", 0)) + 1
-    st["last_event"] = {"kind": kind, "subject": subject, "time": utc_now()}
-    atomic_json(CONTROLLER_STATE, st)
+    CONTROLLER_STATE.parent.mkdir(parents=True, exist_ok=True)
+    with (CONTROLLER_STATE.parent / ".controller_state.lock").open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        st = strict_json(CONTROLLER_STATE)
+        st["event_seq"] = int(st.get("event_seq", 0)) + 1
+        st["last_event"] = {"kind": kind, "subject": subject, "time": utc_now()}
+        _write_json_file(CONTROLLER_STATE, st)
 
 
 def orchestration_tools() -> list[dict[str, Any]]:

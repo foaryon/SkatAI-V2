@@ -605,3 +605,16 @@ def test_repeated_partial_audits_stop_unproductive_reasoning(tmp_path, monkeypat
     monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: pytest.fail('idle must not call model API'))
     assert 'repeated placeholder audits' in cp.poll_superbrain(state)['superbrain_paused_reason']
     assert cp.strict_json(cp.CONTROLLER_STATE)['last_superbrain_event_seq'] == 2
+
+
+def test_stale_controller_write_preserves_newer_external_event():
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 1, 'last_superbrain_event_seq': 1})
+    stale = cp.strict_json(cp.CONTROLLER_STATE)
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 2, 'last_superbrain_event_seq': 1,
+                                        'last_event': {'kind': 'worker_result', 'subject': 'real'}})
+    stale['superbrain_idle'] = True
+    cp.atomic_json(cp.CONTROLLER_STATE, stale)
+    after = cp.strict_json(cp.CONTROLLER_STATE)
+    assert after['event_seq'] == 2
+    assert after['last_event'] == {'kind': 'worker_result', 'subject': 'real'}
+    assert after['superbrain_idle'] is True
