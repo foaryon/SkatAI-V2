@@ -145,7 +145,9 @@ def main():
                 evidence.mirror.upload_verified(path,"recovery/"+path.name)
         def clear():
             # Recheck after uploads. Failure preserves local authority for retry.
-            if active()!=payload or state()["worker_pids"] or state()["pending_effects"]:
+            if active()!=payload or not eligible(
+                state=state(), payload=payload, source=source, last_error=last_error
+            ):
                 raise RuntimeError("AUTHORITY_CHANGED_BEFORE_CLEAR")
             empty={"schema":payload["schema"],"source_commit":source,"games":[]}
             prepared=folder / f"automatic-active-cleared-{stored['game_id']}.json"
