@@ -1,9 +1,29 @@
 {
   "schema": "skatai.v2.jskat-pickup-source-bound-release.v1",
-  "captured_at": "2026-09-26T02:10:00Z",
+  "captured_at": "2026-09-26T00:23:00Z",
   "task_id": "JSKAT_PICKUP_SOURCE_BOUND_RELEASE",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Can the current source-bound v4 B0 package identity containing the pickup-plan host contract be accepted by the release loader without weakening v1-v3 identity checks?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": {
+    "scope": "Source-bound release-loader identity acceptance only.",
+    "implementation": "release_loader accepts V2-B0-package-v1/v2/v3 unchanged and accepts V2-B0-package-v4-<40 lowercase hex> only when the suffix exactly equals manifest.source_commit.",
+    "negative_cases": [
+      "v4 source-commit mismatch rejected",
+      "short v4 suffix rejected",
+      "uppercase/non-hex v4 suffix rejected",
+      "extra v4 suffix content rejected",
+      "unknown v5 identity rejected"
+    ],
+    "focused_test_command": "python3 scripts/run_jskat_pickup_release_gate_tests.py",
+    "focused_tests": {
+      "passed": 53,
+      "failed": 0
+    },
+    "implementation_sha256": "4929064f5b48f7c4fad59e548ad0ab10b853d93e38e8520e09593a3999aac699",
+    "loader_test_sha256": "b34a484ae5d5fe45a7cc56215874226e35e0262c8dc310840c8d9b22da56d371",
+    "release_package_test_sha256": "dd95928f14e4e749591dae9c764d55e4fb9569443cbf70d39ec4204e3e53dad1",
+    "test_history": "An initial focused run exposed a test-only torch import dependency; the test was isolated with a stub backend and the final focused suite passed 53/53."
+  },
+  "decision": "ACCEPT the source-bound v4 loader identity gate. This does not claim package publication, accepted-release promotion, package-host smoke completion, Java adapter completion, Windows packaging, or actual user-host integration.",
+  "next_action": "Build and smoke one exact-source v4 package under a bounded isolated release gate, preserve package/manifest hashes, then qualify JSkat adapter callbacks separately."
 }

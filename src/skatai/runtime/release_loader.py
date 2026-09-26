@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import shutil
 import tarfile
 
@@ -119,6 +120,19 @@ def _verify_materialized(root: Path, manifest: dict) -> dict:
     return baseline
 
 
+def _supported_release_identity(manifest: dict) -> bool:
+    release_id = manifest["release_id"]
+    if release_id in {"V2-B0-package-v1", "V2-B0-package-v2", "V2-B0-package-v3"}:
+        return True
+    source_commit = manifest.get("source_commit")
+    return (
+        isinstance(release_id, str)
+        and isinstance(source_commit, str)
+        and re.fullmatch(r"V2-B0-package-v4-[0-9a-f]{40}", release_id) is not None
+        and release_id == f"V2-B0-package-v4-{source_commit}"
+    )
+
+
 def load_model(
     package: Path,
     *,
@@ -135,7 +149,7 @@ def load_model(
     validation = validate_release_package(package)
     manifest = validation["manifest"]
     if (
-        manifest["release_id"] not in {"V2-B0-package-v1", "V2-B0-package-v2", "V2-B0-package-v3"}
+        not _supported_release_identity(manifest)
         or manifest.get("release_status") != "BASELINE_PACKAGE_STAGED"
     ):
         raise ReleasePackageError("UNSUPPORTED_RELEASE_IDENTITY")
