@@ -22,8 +22,8 @@ BRANCH = "575858100ffbfc2fc24cb0d5713038eb930adc9a"
 # Cutover artifacts were present before this source port. Their byte identities
 # are fixed here; changed or additional dirty files fail closed.
 ALLOWED_PREEXISTING_UNTRACKED_SHA256 = {
-    'provenance/AUTOMATED_TRAIN_EVAL_PROMOTE_ACCEPTANCE_20260926.json': '37978212ab4986c63c3c4455a830f56cea7dd41e47b2de54bda40aceaac0b95c',
-    'provenance/WEAKNESS_MINING_ACCEPTANCE_20260926.json': '7e0dcb689418b2ae50104267bd2cec7209f4d601bcd700e4cadb9ad5808a46b9',
+    'provenance/AUTOMATED_TRAIN_EVAL_PROMOTE_ACCEPTANCE_20260926.json': 'abbd8703a6d4d9ad42c40cc06a62bc882d9ed0a118911968edf83ec0004a65b4',
+    'provenance/WEAKNESS_MINING_ACCEPTANCE_20260926.json': '38c8ceab7fc415fb1cb2e467f5d9ba8d59a9d30e647fcf564c4e242a0ca80236',
     'scripts/run_jskat_adapter_source_port_tests.py': 'b8852526a96423abe0ddf447ff551679112409dab883a006ad885927fad139ce',
 }
 

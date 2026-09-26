@@ -202,6 +202,28 @@ def reconcile_capability_map() -> dict[str, Any]:
         row.setdefault("founding_reference", "SKATAI_V2_FOUNDING_SPECIFICATION.md")
     if len(phases) != 29 or any(row.get("status") not in CAPABILITY_STATES for row in phases.values()):
         raise RuntimeError("WORK_PROMPT_CAPABILITY_MAP_INVALID")
+
+    # Reconcile narrow top-level capabilities from explicit acceptance records.
+    # This prevents a persisted NOT_STARTED/PARTIAL label from outliving a
+    # subsequently accepted capability while keeping broader capabilities
+    # conservative.
+    accepted_capabilities = {
+        "stable_skatai_interface": (
+            REPO / "provenance/STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json",
+            "ACCEPT",
+        ),
+        "release_packaging": (
+            REPO / "provenance/REPRODUCIBLE_RELEASE_ACCEPTANCE_20260926.json",
+            "ACCEPT",
+        ),
+    }
+    for capability, (evidence_path, expected_classification) in accepted_capabilities.items():
+        if not evidence_path.is_file():
+            continue
+        record = strict_json(evidence_path)
+        if record.get("classification") == expected_classification:
+            data["capabilities"][capability] = "VERIFIED"
+
     data["authority_hashes"] = {"founding_spec": sha256(FOUNDING_SPEC), "work_prompt": sha256(WORK_PROMPT)}
     data["updated_at"] = utc_now()
     atomic_json(CAPABILITIES, data)

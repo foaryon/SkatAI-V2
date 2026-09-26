@@ -1,0 +1,32 @@
+{
+  "schema": "skatai.v2.automated-train-eval-promote-acceptance.v1",
+  "captured_at": "2026-09-26T17:50:00Z",
+  "task_id": "AUTOMATED_TRAIN_EVAL_PROMOTE_ACCEPTANCE",
+  "classification": "REJECT_MISSING_CLOSED_LOOP",
+  "question": "Does current V2 evidence establish an unattended train -> controlled evaluation -> reject/promote -> release loop, or what exact capability remains missing?",
+  "verification": {
+    "result": "FAIL_CLOSED",
+    "evidence": [
+      "src/skatai/training/bidding.py provides bounded training functionality.",
+      "src/skatai/evaluation/bidding_gameplay_gate.py and related decision modules provide controlled evaluation building blocks.",
+      "src/skatai/artifacts/release.py and accepted release evidence provide reproducible packaging building blocks.",
+      "The current orchestration control plane initializes experiment_registry.json but has no experiment lifecycle implementation beyond initialization.",
+      "No current source path deterministically chains training completion -> controlled evaluation -> predefined statistical decision -> atomic reject/promote -> release publication as one unattended resumable experiment."
+    ],
+    "negative_evidence_preserved": true
+  },
+  "decision": "REJECT current end-to-end acceptance. Individual training, evaluation and release components exist, but the autonomous experiment-controller link and transactional promotion/rejection lifecycle are not yet implemented and demonstrated end to end.",
+  "missing_capability": {
+    "primary": "A persisted, resumable experiment state machine that owns candidate lineage and advances only through preregistered train, integrity, controlled evaluation, statistical decision, promotion/rejection and release stages.",
+    "required_properties": [
+      "content-addressed experiment and dataset identities",
+      "predefined gates and stopping rules",
+      "idempotent/resumable stage execution",
+      "atomic champion promotion and rollback",
+      "negative-result preservation",
+      "deployment/release compatibility gate",
+      "no promotion from training loss or anecdotal gameplay"
+    ]
+  },
+  "next_action": "Implement and test the bounded experiment lifecycle in the V2 orchestrator, then run one complete reject path and one safe promotion simulation before requesting acceptance."
+}

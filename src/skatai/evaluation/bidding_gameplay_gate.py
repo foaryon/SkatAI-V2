@@ -587,9 +587,9 @@ def _load_checkpoint(
     *,
     configuration: Mapping[str, Any],
     selected_deal_identities: Sequence[str],
-) -> tuple[dict[str, dict[str, Any]], float]:
+) -> tuple[dict[str, dict[str, Any]], float, dict[str, Any]]:
     if not path.exists():
-        return {}, 0.0
+        return {}, 0.0, {}
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("schema") != CHECKPOINT_SCHEMA:
         raise ValueError("CHECKPOINT_SCHEMA_MISMATCH")
@@ -603,7 +603,13 @@ def _load_checkpoint(
         raise ValueError("CHECKPOINT_DUPLICATE_DEAL")
     if not set(by_id).issubset(set(selected_deal_identities)):
         raise ValueError("CHECKPOINT_UNKNOWN_DEAL")
-    return by_id, float(payload.get("elapsed_s") or 0.0)
+    extensions: dict[str, Any] = {}
+    if "promotion" in payload:
+        promotion = payload["promotion"]
+        if not isinstance(promotion, dict):
+            raise ValueError("CHECKPOINT_PROMOTION_INVALID")
+        extensions["promotion"] = promotion
+    return by_id, float(payload.get("elapsed_s") or 0.0), extensions
 
 
 def run_gate(
@@ -656,8 +662,9 @@ def run_gate(
     selected_ids = [deal.game_identity for deal in deals]
     records_by_id: dict[str, dict[str, Any]] = {}
     prior_elapsed = 0.0
+    checkpoint_extensions: dict[str, Any] = {}
     if checkpoint_path is not None:
-        records_by_id, prior_elapsed = _load_checkpoint(
+        records_by_id, prior_elapsed, checkpoint_extensions = _load_checkpoint(
             checkpoint_path,
             configuration=configuration,
             selected_deal_identities=selected_ids,
@@ -694,6 +701,7 @@ def run_gate(
                         for x in selected_ids
                         if x in records_by_id
                     ],
+                    **checkpoint_extensions,
                 },
             )
     elapsed = prior_elapsed + (time.perf_counter() - start)
@@ -710,6 +718,7 @@ def run_gate(
                 "completed_deals": len(records),
                 "elapsed_s": elapsed,
                 "records": records,
+                **checkpoint_extensions,
             },
         )
 

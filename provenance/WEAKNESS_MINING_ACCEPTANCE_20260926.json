@@ -1,0 +1,31 @@
+{
+  "schema": "skatai.v2.weakness-mining-acceptance.v1",
+  "captured_at": "2026-09-26T17:50:00Z",
+  "task_id": "WEAKNESS_MINING_ACCEPTANCE",
+  "classification": "REJECT_MISSING_CLOSED_FEEDBACK_LOOP",
+  "question": "Does current V2 evidence establish a controlled ISS-failure -> weakness classification -> bounded treatment -> controlled evaluation feedback loop, or what exact link remains missing?",
+  "verification": {
+    "result": "FAIL_CLOSED",
+    "evidence": [
+      "src/skatai/evaluation/bidding_weakness.py and src/skatai/evaluation/cardplay_weakness.py implement bounded weakness diagnostics.",
+      "Current provenance contains multiple preserved bidding/cardplay diagnostic results and negative findings.",
+      "The R9 ISS gate captures live external gameplay evidence with persistent ledgers.",
+      "No current source path automatically converts classified external failures into a leakage-safe bounded treatment experiment and hands that experiment to a controlled evaluation/promotion lifecycle."
+    ],
+    "negative_evidence_preserved": true
+  },
+  "decision": "REJECT current closed-loop acceptance. Failure evidence and diagnostic modules exist, but the external-failure classifier -> bounded treatment -> experiment -> evaluation feedback link is not yet automated and demonstrated.",
+  "missing_capability": {
+    "primary": "A deterministic external-failure mining pipeline with leakage boundaries and experiment handoff.",
+    "required_properties": [
+      "failure taxonomy from Work Prompt phase 14",
+      "reconstructable game/decision identity",
+      "frozen-external-test leakage protection",
+      "deduplication and severity/value prioritization",
+      "bounded treatment proposal with explicit causal hypothesis",
+      "handoff to the experiment controller",
+      "outcome linkage back to the originating weakness without training on protected holdout results"
+    ]
+  },
+  "next_action": "Implement the failure-mining registry and experiment handoff, then demonstrate one preserved ISS failure flowing through classification to a bounded non-promoted treatment evaluation."
+}

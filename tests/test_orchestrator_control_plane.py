@@ -317,6 +317,22 @@ def test_capability_map_covers_all_work_prompt_phases_and_preserves_assessment(t
     assert data['authority_hashes']['work_prompt'] == cp.sha256(cp.WORK_PROMPT)
 
 
+def test_capability_map_reconciles_explicit_acceptance_records(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CAPABILITIES', tmp_path / 'capabilities.json')
+    monkeypatch.setattr(cp, 'REPO', tmp_path)
+    (tmp_path / 'provenance').mkdir()
+    (tmp_path / 'provenance' / 'STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json').write_text(
+        '{"classification":"ACCEPT"}'
+    )
+    (tmp_path / 'provenance' / 'REPRODUCIBLE_RELEASE_ACCEPTANCE_20260926.json').write_text(
+        '{"classification":"ACCEPT"}'
+    )
+    cp.atomic_json(cp.CAPABILITIES, cp.initial_capabilities())
+    data = cp.reconcile_capability_map()
+    assert data['capabilities']['stable_skatai_interface'] == 'VERIFIED'
+    assert data['capabilities']['release_packaging'] == 'VERIFIED'
+
+
 def test_capability_assessment_requires_existing_hashed_evidence(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'CAPABILITIES', tmp_path / 'capabilities.json')
     cp.atomic_json(cp.TASKS, {'tasks': {}})

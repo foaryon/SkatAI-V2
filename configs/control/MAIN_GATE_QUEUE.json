@@ -22,7 +22,7 @@
       "gate_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
       "goal_path_id": "G7_FULL_AFK",
       "lock_file": "gates/02-anti_pseudo_v2_acceptance.json",
-      "lock_sha256": "33bc710b407ca23da5288506deb75d2478c3527dd997df7aca0077cf9ec77afd"
+      "lock_sha256": "604cda91306f45b6c38fd5d5d2ed404c68f760f307c073776af91aad057a4308"
     },
     {
       "index": 3,

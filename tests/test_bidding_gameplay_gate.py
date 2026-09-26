@@ -90,18 +90,25 @@ def test_checkpoint_roundtrip_and_atomic_write(tmp_path):
         "completed_deals": 1,
         "elapsed_s": 12.5,
         "records": [{"deal_identity": "d1", "paired": []}],
+        "promotion": {
+            "overlap_provenance": {
+                "count": 1,
+                "reused_deal_identities": ["d1"],
+            }
+        },
     }
     _atomic_write_json(path, payload)
     assert path.exists()
     assert not path.with_name(path.name + ".tmp").exists()
 
-    records, elapsed = _load_checkpoint(
+    records, elapsed, extensions = _load_checkpoint(
         path,
         configuration=config,
         selected_deal_identities=["d1", "d2"],
     )
     assert list(records) == ["d1"]
     assert elapsed == 12.5
+    assert extensions["promotion"]["overlap_provenance"]["count"] == 1
 
 
 def test_checkpoint_rejects_configuration_mismatch(tmp_path):

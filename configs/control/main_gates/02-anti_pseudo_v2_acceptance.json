@@ -67,7 +67,7 @@
     "decisive_facts": [
       "The founding anti-Pseudo-V2 acceptance rule requires V2 to remain independently operable without depending on V1 runtime, V1 state, or V1 authority merely because legacy material exists.",
       "Deterministic dependency audit classification is PASS_NO_ACTIVE_V1_RUNTIME_STATE_AUTHORITY_DEPENDENCY across active scripts, src, .github and configs after excluding only migration/defense-in-depth references.",
-      "The two V2 test runners no longer use the old /workspace/skatai/... V1 test environment; both use V2-owned offline uv with pinned pytest==8.4.2 and pass their focused suites.",
+      "The two V2 test runners no longer use the legacy V1 workspace test environment; both use V2-owned offline uv with pinned pytest==8.4.2 and pass their focused suites.",
       "R9 startup now uses V2 scripts/prepare_r9_runtime_secrets.py; RunPod hunter uses V2 scripts/prepare_runtime_secrets.py. MAIN still does not own or materialize the ISS password.",
       "Remaining legacy-controller filesystem references are limited to migration/archive/defense-in-depth checks, not active V2 execution authority. Qualified legacy-v1-canonical-corpus references remain individually provenance-bound assets, not authority.",
       "No V1 model/checkpoint/dataset may be treated as accepted V2 merely from presence or naming."
@@ -81,7 +81,7 @@
         "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
         "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
         "expected_next_per_arm_target": 300,
-        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+        "expected_source_commit": "7053b50f7c6622b765fee57e5c3d724e6e81a555"
       },
       "gate_id": "B1_EXTERNAL_ISS_R9",
       "goal_path_id": "G4_CONTROLLED_EVALUATION",

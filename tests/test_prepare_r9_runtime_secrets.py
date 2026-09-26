@@ -46,7 +46,12 @@ def test_trusted_r9_boot_pins_current_frozen_identity():
     text = (root / "scripts" / "r9_trusted_boot.sh").read_text(encoding="utf-8")
     assert "prepare_r9_runtime_secrets.py" in text
     assert "prepare_runtime_secrets.py" not in text
-    assert "5c4b6f977ebdf883e836e95eb0530121b99394e7" in text
-    assert "b76fd0159f72b08af303bf06692d5a73ed1c05baf1d3e35e4141f4c241c87b3d" in text
+    import json
+    recovery = json.loads(
+        (root / "provenance" / "R9_IDLE_TABLE_DESTROY_RECOVERY_20260926.json")
+        .read_text(encoding="utf-8")
+    )
+    assert recovery["change"]["fixed_source_commit"] in text
+    assert recovery["change"]["launcher_sha256"] in text
     assert "SKATAI_R9_FROZEN_REPO" in text
     assert "SKATAI_R9_LAUNCHER" in text

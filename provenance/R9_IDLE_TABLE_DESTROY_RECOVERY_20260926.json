@@ -1,7 +1,7 @@
 {
   "schema": "skatai.v2.r9-idle-table-destroy-recovery.v1",
   "recorded_at": "2026-09-26T17:26:02Z",
-  "status": "FIX_VERIFIED_PENDING_LIVE_RESTART",
+  "status": "FIX_VERIFIED_LIVE",
   "observation": {
     "scored_games_before_fix": 547,
     "stalled_table_id": "AI9979a1",
@@ -26,8 +26,11 @@
   "verification": [
     "R9 gate-worker focused suite: 28 passed",
     "frozen R9 worktree clean after commit",
-    "runtime launcher and trusted boot pin updated to the fixed commit"
+    "runtime launcher and trusted boot pin updated to the fixed commit",
+    "live restart launched fixed source commit 7053b50f7c6622b765fee57e5c3d724e6e81a555",
+    "scored games advanced from 547 to at least 549 after restart",
+    "supervisor observed RUNNING with one active game and zero pending effects"
   ],
   "scientific_scope": "Operational table-lifecycle recovery only. No model, scoring rule, assignment rule, target, opponent stack, or promotion criterion changed.",
-  "live_restart": "PENDING"
+  "live_restart": "VERIFIED_2026-09-26T17:35Z"
 }
