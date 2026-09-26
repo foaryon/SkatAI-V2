@@ -363,6 +363,22 @@ def project_snapshot() -> dict[str, Any]:
     }
 
 
+def validate_write_scopes(task: dict[str, Any]) -> None:
+    for raw in task.get("authority", {}).get("write", []):
+        value = str(raw)
+        if value.startswith("repo:"):
+            value = value[5:]
+        if value.startswith("runtime:") or any(ch in value for ch in "*?[]") or value in {"", "."} or value.endswith("/"):
+            raise RuntimeError("WRITE_SCOPE_MUST_BE_EXACT_REPO_FILE")
+        if value.startswith("/") or ".." in Path(value).parts:
+            raise RuntimeError("WRITE_SCOPE_MUST_BE_REPO_RELATIVE")
+        if value.startswith(("configs/orchestration/", "state/", "src/skatai/orchestration/",
+                             "scripts/orchestrator_", "scripts/install_orchestrator_runtime.sh")):
+            raise RuntimeError("CONTROL_PLANE_WRITE_REQUIRES_DIRECT_ORCHESTRATOR_CHANGE")
+        if (REPO / value).is_dir():
+            raise RuntimeError("WRITE_SCOPE_MUST_BE_EXACT_REPO_FILE")
+
+
 def validate_task_contract(task: dict[str, Any]) -> dict[str, Any]:
     required = [
         "task_id", "task_family", "assigned_agent", "priority", "global_goal_reference",
@@ -383,19 +399,7 @@ def validate_task_contract(task: dict[str, Any]) -> dict[str, Any]:
     for k in ("read", "write", "execute", "forbidden"):
         if not isinstance(authority.get(k, []), list):
             raise RuntimeError(f"AUTHORITY_{k.upper()}_INVALID")
-    for raw in authority.get("write", []):
-        if any(ch in str(raw) for ch in "*?[]") or str(raw) in {"", "."}:
-            raise RuntimeError("WRITE_SCOPE_MUST_BE_EXACT")
-        if str(raw).startswith("/") or ".." in Path(str(raw)).parts:
-            raise RuntimeError("WRITE_SCOPE_MUST_BE_REPO_RELATIVE")
-        if str(raw).startswith((
-            "configs/orchestration/",
-            "state/",
-            "src/skatai/orchestration/",
-            "scripts/orchestrator_",
-            "scripts/install_orchestrator_runtime.sh",
-        )):
-            raise RuntimeError("CONTROL_PLANE_WRITE_REQUIRES_DIRECT_ORCHESTRATOR_CHANGE")
+    validate_write_scopes(task)
     if any(not isinstance(dep, str) or dep == tid for dep in task.get("dependencies", [])):
         raise RuntimeError("DEPENDENCIES_INVALID")
     profile = task["execution_profile"]
@@ -442,6 +446,7 @@ def dispatch_task(tid: str) -> dict[str, Any]:
         raise RuntimeError("TASK_NOT_FOUND")
     if task["state"] != "READY":
         raise RuntimeError(f"TASK_NOT_READY:{task['state']}")
+    validate_write_scopes(task)
     deps = task.get("dependencies", [])
     if any(reg["tasks"].get(dep, {}).get("state") != "COMPLETE" for dep in deps):
         raise RuntimeError("DEPENDENCIES_NOT_COMPLETE")

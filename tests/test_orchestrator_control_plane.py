@@ -172,3 +172,17 @@ def test_exact_worker_command_runs_without_root_credentials(monkeypatch):
     assert seen['user'] == 'sentinelx'
     assert 'OPENAI_API_KEY' not in seen['env']
     assert 'RUNPOD_SECRET_openai_agents_api_key' not in seen['env']
+
+
+def test_repo_prefixed_protected_write_is_rejected():
+    task = base_task()
+    task['authority']['write'] = ['repo:src/skatai/orchestration/control_plane.py']
+    with pytest.raises(RuntimeError, match='CONTROL_PLANE_WRITE'):
+        cp.validate_task_contract(task)
+
+
+def test_directory_write_scope_is_rejected():
+    task = base_task()
+    task['authority']['write'] = ['repo:integrations/jskat-adapter/']
+    with pytest.raises(RuntimeError, match='WRITE_SCOPE'):
+        cp.validate_task_contract(task)
