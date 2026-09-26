@@ -1,12 +1,11 @@
 {
-  "status": "JAVA_GATE_VERIFIED_BOOTSTRAP_TEMPLATE_PENDING",
   "date_utc": "2026-09-26",
   "jdk": {
     "distribution": "Ubuntu 24.04 noble-updates openjdk-25-jdk-headless",
-    "package_version": "25.0.4.1+1-1~24.04.4",
-    "runtime_version": "25.0.4.1",
-    "persistent_path": "/workspace/skatai-v2-runtime/toolchains/jdk-25",
     "java_binary_sha256": "e7a72a95ee0b931a5350a2a25d40dc3ff387f344df27188e7ca9263995efbb32",
+    "package_version": "25.0.4.1+1-1~24.04.4",
+    "persistent_path": "/workspace/skatai-v2-runtime/toolchains/jdk-25",
+    "runtime_version": "25.0.4.1",
     "verified": [
       "java -version",
       "javac -version",
@@ -14,21 +13,34 @@
     ]
   },
   "jskat": {
-    "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
-    "base_jar_path": "/workspace/skatai-v2-runtime/toolchains/jskat-pinned/jskat-base/build/libs/jskat-base.jar",
-    "base_jar_sha256": "2eee6955795d5fba9a47fd597647a691580bc228d2320c4479b703359045a213",
     "adapter_tests": {
       "executed": 12,
-      "passed": 12,
       "failed": 0,
-      "integration_skipped": 1
+      "integration_skipped": 1,
+      "passed": 12
     },
-    "note": "SLF4J API 2.0.18 is required at test runtime by the pinned JSkat base."
+    "base_jar_path": "/workspace/skatai-v2-runtime/toolchains/jskat-pinned/jskat-base/build/libs/jskat-base.jar",
+    "base_jar_sha256": "2eee6955795d5fba9a47fd597647a691580bc228d2320c4479b703359045a213",
+    "note": "SLF4J API 2.0.18 is required at test runtime by the pinned JSkat base.",
+    "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7"
   },
   "pod_recreation": {
-    "template_container_start_command": "/bin/bash /workspace/skatai-v2/scripts/volume_bootstrap.sh",
-    "bootstrap": "installs trusted controller from clean tracked source, installs /pre_start.sh, then execs image /start.sh; persisted JDK symlinks restored",
-    "verification": "existing-pod recovery and syntax validated; new-pod/template hook not yet verified due unavailable RunPod control API (HTTP 403)"
+    "backup": "/workspace/skatai-v2-runtime/orchestrator/control/sentinelx-entrypoint.before-orchestrator.20260926T164814Z.sh",
+    "chain": "upgrade entrypoint -> runpod-entrypoint.sh -> SkatAI volume bootstrap (deferred start) -> /start.sh -> /pre_start.sh",
+    "existing_container_start_command": "/workspace/sentinelx-host/runpod-upgrade-entrypoint.sh",
+    "existing_pod_verification": [
+      "installer idempotent (installed once, second invocation unchanged)",
+      "bash syntax valid",
+      "deferred bootstrap exit code 0; RECOVERY_BOOTSTRAP_OK head=50eb4ab",
+      "SentinelX core, orchestrator supervisor, and R9 ISS gate remained running"
+    ],
+    "hook_sha256": "6a7de716774257f38fb4ae185bd511501767c15dc4a1011f0ba55c2ec7e74ec0",
+    "manual_terminal_call_at_1644_utc": "RECOVERY_FAILED due to Git repository context; prior ready prompt was /start.sh completion, not recovery success",
+    "new_pod_verification": "NOT_PERFORMED; no live pod recreation while R9 ISS gate is running",
+    "persistent_hook": "/workspace/sentinelx-host/runpod-entrypoint.sh",
+    "runpod_metadata": "HTTP 403 using pod environment RunPod API key; metadata and template could not be read",
+    "versioned_installer": "scripts/install_sentinelx_orchestrator_bootstrap.sh"
   },
-  "scientific_workload": "R9 ISS gate remains running; no restart or scientific promotion."
+  "scientific_workload": "R9 ISS gate remains running; no restart or scientific promotion.",
+  "status": "JAVA_GATE_VERIFIED_SENTINELX_START_HOOK_INSTALLED_NEW_POD_UNVERIFIED"
 }
