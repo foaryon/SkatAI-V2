@@ -85,7 +85,7 @@ def assert_target_history_unchanged() -> None:
         raise SystemExit("JSKAT_PORT_TARGET_HISTORY_CHANGED:" + ",".join(changed))
 
 
-def assert_worktree_safe() -> None:
+def assert_worktree_safe(tree: str) -> None:
     dirty = []
     for row in git("status", "--porcelain=v1", "--untracked-files=all").stdout.splitlines():
         if not row:
@@ -93,6 +93,13 @@ def assert_worktree_safe() -> None:
         path = row[3:]
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
+        if path in TARGETS:
+            entry = tree_entry(tree, path)
+            candidate = REPO / path
+            if entry is not None and candidate.is_file() and not candidate.is_symlink():
+                mode, data = entry
+                if candidate.read_bytes() == data and bool(candidate.stat().st_mode & 0o111) == (mode == "100755"):
+                    continue
         expected = ALLOWED_PREEXISTING_UNTRACKED_SHA256.get(path)
         if row.startswith("?? ") and expected is not None:
             candidate = REPO / path
@@ -189,8 +196,8 @@ def main() -> int:
         raise SystemExit("JSKAT_PORT_BRANCH_IDENTITY_MISMATCH")
     fixed_branch_diff()
     assert_target_history_unchanged()
-    assert_worktree_safe()
     tree = merged_tree()
+    assert_worktree_safe(tree)
 
     if args.mode == "plan":
         rows = [{"path": rel} for rel in TARGETS]
