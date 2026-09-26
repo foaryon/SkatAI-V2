@@ -1,0 +1,22 @@
+{
+  "schema": "skatai.v2.operational-recovery-rollout.v1",
+  "captured_at": "2026-09-26T08:32:18.693312+00:00",
+  "r9_game_id": "5b4845990c392e12660941d79c00e90a0fbb585768c6d49497b20ba78c96402f",
+  "r9_game_disposition": "MODEL_FAILURE_UNSCORED_OUTCOME_UNKNOWN",
+  "original_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7",
+  "remote_evidence_verified": true,
+  "timeout_reproduction_seconds": 84.70439566019922,
+  "timeout_underlying_cause": "UNCONFIRMED_INTERMITTENT; no scientific runtime tuning applied",
+  "automatic_recovery_scope": "Only B0 SKAT_OR_HAND_DECL timeout with exactly one retained game, no worker/launcher/pending effects, exact authenticated ISS table absence, frozen source clean and identity matching. Preserve unscored failure plus remote evidence before authority clear. Max three attempts/day; one-hour cooldown. Unknown cases remain held.",
+  "tests": "27 passed: recovery guards, supervisor integration, soak acceptance logic; live running worker no-op check passed",
+  "network_volume_allocated_bytes": 88445092352,
+  "provider_quota_api": "403 Forbidden; exact quota headroom not established",
+  "staging_solution": "Package and wheel staged on pod-local /tmp; artifacts and results uploaded with hash/size verification to Hetzner; network volume stores receipts only",
+  "soak": "24-hour R9 operational soak started; not full-product FULL-AFK acceptance",
+  "evidence": [
+    "provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json",
+    "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json",
+    "/workspace/skatai-v2-runtime/iss/external-gate-r9/recovery/AI0e63d2-reconciliation-20260926.json",
+    "/workspace/skatai-v2-runtime/iss/external-gate-r9/recovery/unattended-soak/state.json"
+  ]
+}

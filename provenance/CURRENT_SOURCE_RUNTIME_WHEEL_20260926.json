@@ -1,9 +1,45 @@
 {
   "schema": "skatai.v2.current-source-runtime-wheel-acceptance.v1",
-  "captured_at": "2026-09-26T02:45:00Z",
+  "captured_at": "2026-09-26T08:32:18.693312+00:00",
   "task_id": "CURRENT_SOURCE_RUNTIME_WHEEL",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Can the exact current committed V2 source produce a byte-reproducible wheel that imports from site-packages on the pinned product runtime without PYTHONPATH?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": {
+    "source_commit": "7c97b35aedd9b509aa0fe43d5251354e77641629",
+    "result": {
+      "byte_reproducible": true,
+      "independent_builds": 2,
+      "installed_host_service_path": "/workspace/skatai-v2-runtime/runtime/b0-venv/lib/python3.11/site-packages/skatai/runtime/host_service.py",
+      "installed_import_without_pythonpath": true,
+      "installed_skatai_path": "/workspace/skatai-v2-runtime/runtime/b0-venv/lib/python3.11/site-packages/skatai/__init__.py",
+      "promotion_claim": false,
+      "runtime_identity": {
+        "numpy": "1.26.4",
+        "packaging": "26.3",
+        "python": "3.11.13",
+        "torch": "2.1.2+cpu"
+      },
+      "runtime_python": "/workspace/skatai-v2-runtime/runtime/b0-venv/bin/python",
+      "schema": "skatai.v2.current-source-runtime-wheel.v1",
+      "source_commit": "7c97b35aedd9b509aa0fe43d5251354e77641629",
+      "source_date_epoch": 1790410877,
+      "wheel_bytes": 176851,
+      "wheel_name": "skatai_v2-0.0.1-py3-none-any.whl",
+      "wheel_sha256": "31275cc48ed51284ce306fc075e8f63ba36cefb4cb83a4a6ea43c91caa26bf14"
+    },
+    "artifact_upload": {
+      "local": "/tmp/skatai-v2-current-source-wheel/7c97b35aedd9b509aa0fe43d5251354e77641629/skatai_v2-0.0.1-py3-none-any.whl",
+      "remote": "s3://skatai-v2/releases/source-bound/7c97b35aedd9b509aa0fe43d5251354e77641629/skatai_v2-0.0.1-py3-none-any.whl",
+      "sha256": "31275cc48ed51284ce306fc075e8f63ba36cefb4cb83a4a6ea43c91caa26bf14",
+      "bytes": 176851
+    },
+    "result_upload": {
+      "local": "/tmp/skatai-v2-current-source-wheel/7c97b35aedd9b509aa0fe43d5251354e77641629/result.json",
+      "remote": "s3://skatai-v2/releases/source-bound/7c97b35aedd9b509aa0fe43d5251354e77641629/runtime-wheel-result.json",
+      "sha256": "f91c95daf04213455429a8fb713971b2203149bb1650f08eae095273b15acb97",
+      "bytes": 922
+    },
+    "staging": "pod-local /tmp; network volume metadata only"
+  },
+  "decision": "ACCEPT bounded exact-source product artifact validation and verified remote persistence. No promotion, Windows GUI or actual user-host integration claim. Pod-local staging avoids unknown network-volume quota."
 }

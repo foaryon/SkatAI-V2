@@ -228,7 +228,22 @@ def supervise(
             failures = 0
             time.sleep(poll_s)
             continue
-        if state["state"] in {"BLOCKED_RECONCILIATION", "MANUAL_HOLD"}:
+        if state["state"] == "BLOCKED_RECONCILIATION":
+            recovery = Path(__file__).resolve().with_name("reconcile_r9_abandoned_game.py")
+            if recovery.is_file():
+                with log_path.open("ab", buffering=0) as recovery_log:
+                    try:
+                        subprocess.run(
+                            [sys.executable, str(recovery), "--runtime", str(runtime),
+                             "--frozen-repo", str(frozen_repo), "--env-file", str(env_file)],
+                            stdin=subprocess.DEVNULL, stdout=recovery_log,
+                            stderr=subprocess.STDOUT, timeout=180, check=False,
+                        )
+                    except subprocess.TimeoutExpired:
+                        recovery_log.write(b"BOUNDED_R9_RECONCILIATION_TIMEOUT\n")
+            time.sleep(blocked_poll_s)
+            continue
+        if state["state"] == "MANUAL_HOLD":
             time.sleep(blocked_poll_s)
             continue
 

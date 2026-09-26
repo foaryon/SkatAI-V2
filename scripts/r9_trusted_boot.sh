@@ -49,6 +49,11 @@ os.chmod(tmp,0o640)
 os.replace(tmp,out)
 PY
 
+# Deterministic operational soak has its own singleton lock and no model access.
+if [ -f "$HERE/watch_r9_recovery_soak.py" ]; then
+  setsid nohup /usr/bin/python3 "$HERE/watch_r9_recovery_soak.py" >>"$RUNTIME/recovery-soak.log" 2>&1 </dev/null &
+fi
+
 if pgrep -f 'supervise_frozen_r9.py' >/dev/null 2>&1; then
   log "supervisor-already-running"
   exit 0

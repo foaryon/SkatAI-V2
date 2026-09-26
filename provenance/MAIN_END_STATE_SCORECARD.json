@@ -193,8 +193,8 @@
       "id": "SUSTAINED_FULL_AFK",
       "goal_path_id": "G7_FULL_AFK",
       "criterion": "A sustained FULL-AFK test succeeds.",
-      "status": "NOT_YET_VERIFIED",
-      "reason": "Controller turn-closure recovery is accepted, but sustained FULL-AFK execution and remaining governance acceptance have not been demonstrated.",
+      "status": "IN_PROGRESS",
+      "reason": "Persistent 24-hour R9 operational soak started after bounded recovery deployment; full-product autonomous research loop and failure-injection acceptance remain unproven.",
       "evidence": [
         "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
         "provenance/MAIN_CURRENT_STATE.json"

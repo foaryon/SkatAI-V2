@@ -59,6 +59,8 @@ extract scripts/approve_main_reenable.py approve_main_reenable.py 755
 extract scripts/r9_trusted_boot.sh r9_trusted_boot.sh 755
 extract scripts/launch_frozen_r9_supervisor.py launch_frozen_r9_supervisor.py 755
 extract scripts/supervise_frozen_r9.py supervise_frozen_r9.py 755
+extract scripts/reconcile_r9_abandoned_game.py reconcile_r9_abandoned_game.py 755
+extract scripts/watch_r9_recovery_soak.py watch_r9_recovery_soak.py 755
 
 extract configs/control/MAIN_AGENT_INSTRUCTIONS.md config/MAIN_AGENT_INSTRUCTIONS.md 644
 extract configs/control/MAIN_CONTINUE_EXECUTION_POLICY.txt config/MAIN_CONTINUE_EXECUTION_POLICY.txt 644

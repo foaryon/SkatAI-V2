@@ -1,22 +1,24 @@
 {
   "active_work": [
     {
-      "classification": "BLOCKED_RECONCILIATION",
+      "classification": "RUNNING_RECONCILED",
       "main_rule": "Do not poll healthy games, open strength look before 300 scored games per arm, or change frozen runtime",
       "owner": "independent fail-closed supervisor",
       "observed_status_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7",
-      "observed_scored_games": 544,
+      "observed_scored_games": 547,
       "next_per_arm_target": 300,
       "task_id": "B1_EXTERNAL_ISS_R9",
       "active_games": 1,
-      "worker_pids": [],
+      "worker_pids": [
+        186368
+      ],
       "pending_effects": 0,
       "crash": "B0_CLI_TIMEOUT:SKAT_OR_HAND_DECL",
-      "retained_table": "AI0e63d2",
-      "retained_game_sequence": 5
+      "retained_table": null,
+      "retained_game_sequence": null
     }
   ],
-  "captured_at": "2026-09-26T01:05:07.796966+00:00",
+  "captured_at": "2026-09-26T08:32:18.693312+00:00",
   "completed_independent_gate": {
     "classification": "PASS_FALSE_POSITIVE_RECONCILED",
     "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
@@ -28,10 +30,10 @@
     "scope": "Immutable original SkatZero V2-B0 identity, pinned environment, nine pretrained agents, API smoke, cardplay benchmark and determinism recheck reproduced; no relative-strength claim"
   },
   "controller_turn_closure_recovery": {
-    "classification": "GATE4_ACCEPTED_RECONCILED_PENDING_GATE5",
+    "classification": "ACCEPT",
     "evidence": "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
-    "scope": "Recovery commit 8cd2a9b and queue extension 02e6e29 installed; 29 focused tests and controller validator PASS; trusted runtime readiness PASS. Old remote session verified idle. Operator reconciled committed pickup acceptance; no completed gate replay. Conservative daily accounting retained.",
-    "next_gate_index": 5,
+    "scope": "Gate5 accepted with 60 focused tests. Packaging gates6-7 completed deterministically by operator with durable exact-source evidence. MAIN finite queue now has no uncompleted authorized entry; do not replay completed gates.",
+    "next_gate_index": null,
     "queue_entries": 8,
     "concurrent_activation": "A concurrent controller session completed gate4 before operator redeployment; retained ACCEPT evidence, cancelled superseded session, no replay permitted."
   },
@@ -85,7 +87,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Resume gate5 STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE only. Gates6-7 require storage headroom; R9 requires terminal evidence reconciliation.",
+  "next_action": "Independent R9 supervisor continues frozen evaluation with bounded terminal-less timeout recovery. Persistent 24-hour operational soak collects evidence. Full-product AFK and final R9 decision remain unaccepted until their real prerequisites complete. Do not fabricate queue work or reopen accepted gates.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -110,7 +112,7 @@
     "status": "CONDITIONAL_JSKAT_PREFERENCE_PICKUP_PLAN_STAGED_NO_ADOPTION",
     "terminal_264_correction": "provenance/BIDDING_TERMINAL_264_CORRECTION_20260925.json"
   },
-  "resource_constraint": "Historical quota observation approximately 119/120 GB remains unverified. df reports aggregate shared backend capacity and cannot establish tenant quota headroom. Large local staging remains prohibited.",
+  "resource_constraint": "Exact provider quota unavailable (403); local allocated scan 88.45GB. Package/wheel staging redirected to pod-local /tmp and verified artifacts persisted to object storage. No large network-volume staging authorized.",
   "resource_state": {
     "estimated_unit_price_usd_per_hour": 0.06,
     "isolated_host_pod_id": null,
@@ -160,5 +162,13 @@
     "classification": "ACCEPT",
     "commit": "7e4602d",
     "evidence": "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json"
+  },
+  "operational_recovery_evidence": "provenance/OPERATIONAL_RECOVERY_ROLLOUT_20260926.json",
+  "product_artifacts": {
+    "source_commit": "7c97b35aedd9b509aa0fe43d5251354e77641629",
+    "package_gate": "ACCEPT",
+    "wheel_gate": "ACCEPT",
+    "durability": "VERIFIED_HETZNER",
+    "promotion": false
   }
 }
