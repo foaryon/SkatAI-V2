@@ -851,7 +851,7 @@ def test_decorated_evidence_reference_verifies_path_and_hash(tmp_path):
     digest = hashlib.sha256(evidence.read_bytes()).hexdigest()
 
     ok, verified = mod.controller_verifiable_evidence(
-        [f"provenance/result.json sha256={digest} classification=ACCEPT"],
+        [f"provenance/result.json: sha256 {digest} classification=ACCEPT"],
         since=evidence.stat().st_mtime - 1,
     )
     assert ok is True

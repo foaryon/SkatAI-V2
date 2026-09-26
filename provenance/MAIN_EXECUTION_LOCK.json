@@ -1,76 +1,86 @@
 {
   "schema": "skatai.v2.main-execution-lock.v2",
-  "captured_at": "2026-09-26T00:00:00Z",
+  "captured_at": "2026-09-26T02:10:00Z",
   "reason": "Pre-authorized deterministic MAIN gate queue entry.",
   "primary": {
-    "gate_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
+    "gate_id": "JSKAT_PICKUP_SOURCE_BOUND_RELEASE",
     "status": "EXECUTABLE",
-    "goal_path_id": "G7_FULL_AFK",
-    "objective": "Evaluate current V2 against the founding anti-Pseudo-V2 acceptance rule using current source/runtime authority boundaries.",
-    "end_state_contribution": "Verifies that clean V2 remains independently operable and does not silently rely on V1 runtime/state/authority.",
-    "selection_basis": "The founding specification requires an explicit anti-Pseudo-V2 acceptance gate; current scorecard still marks it NOT_YET_VERIFIED.",
+    "goal_path_id": "G6_RELEASE_INTEGRATION",
+    "objective": "Make the release loader accept the already-defined source-bound V2-B0-package-v4-<40hex source commit> identity carrying the pickup-plan host contract, while preserving strict v1-v3 identities and rejecting malformed v4 IDs.",
+    "end_state_contribution": "Moves the staged JSkat pickup-plan host operation into a deployment-valid source-bound package path without reusing the frozen v3 identity.",
+    "selection_basis": "The builder already assigns later source commits V2-B0-package-v4-<full commit> and includes pickup-plan schemas, but release_loader currently accepts only v1-v3.",
     "selection_evidence": [
-      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
-      "provenance/ANTI_PSEUDO_V2_DEPENDENCY_AUDIT_20260926.json",
-      "SKATAI_V2_FOUNDING_SPECIFICATION.md",
-      "SKATAI_V2_WORK_PROMPT.md",
-      "provenance/MAIN_END_STATE_SCORECARD.json",
-      "scripts/openai_platform_main_controller.py",
-      "scripts/main_tool_gateway.py"
+      "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
+      "provenance/B0_SOURCE_BOUND_RELEASE_STAGE_20260925.json",
+      "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json",
+      "src/skatai/artifacts/b0_release.py",
+      "src/skatai/runtime/release_loader.py",
+      "tests/test_release_package.py",
+      "tests/test_release_loader.py",
+      "tests/test_host_service.py"
     ],
     "evidence": [
-      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
-      "provenance/ANTI_PSEUDO_V2_DEPENDENCY_AUDIT_20260926.json",
-      "SKATAI_V2_FOUNDING_SPECIFICATION.md",
-      "SKATAI_V2_WORK_PROMPT.md",
-      "provenance/MAIN_END_STATE_SCORECARD.json",
-      "scripts/openai_platform_main_controller.py",
-      "scripts/main_tool_gateway.py"
+      "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json",
+      "provenance/JSKAT_PICKUP_PLAN_STAGE_20260925.json",
+      "provenance/B0_SOURCE_BOUND_RELEASE_STAGE_20260925.json"
     ],
     "model_tier": "VERIFIED_CURRENT",
-    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a bounded evidence/control task.",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a narrow source-bound release-loader/test task.",
     "allowed_material_effects": [
       "READ_ONLY_INSPECTION",
-      "PROVENANCE_WRITE"
+      "LOCAL_GIT_CHANGE",
+      "PROVENANCE_WRITE",
+      "BOUNDED_TEST_EXECUTION"
     ],
     "executor_capabilities": [],
     "progress_contract": {
       "kind": "JSON_FIELD_TRANSITION",
-      "path": "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "path": "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json",
       "field": "classification",
       "before_prefix": "OPEN",
       "after_forbid_prefix": "OPEN"
     },
-    "authorized_commands": [],
+    "authorized_commands": [
+      {
+        "id": "test_jskat_pickup_release_gate",
+        "argv_prefix": [
+          "/usr/bin/python3",
+          "/workspace/skatai-v2/scripts/run_jskat_pickup_release_gate_tests.py"
+        ],
+        "script": "scripts/run_jskat_pickup_release_gate_tests.py",
+        "script_sha256": "3596a0ab3d2bc358fd387a239180abd5baadfecb68ac6be7f53a6d93b00ce2c7",
+        "timeout_seconds": 180,
+        "arg_schema": {}
+      }
+    ],
     "writable_files": [
-      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
-      "provenance/MAIN_END_STATE_SCORECARD.json"
+      "src/skatai/runtime/release_loader.py",
+      "tests/test_release_loader.py",
+      "tests/test_release_package.py",
+      "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json"
     ],
     "completion": [
-      "Decision explicitly checks active V2 runtime/source/authority independence from V1, not filenames or historical labels.",
-      "Any remaining active V1 dependency is named precisely.",
-      "Scorecard is updated only to the supported status.",
-      "No V1 artifact is promoted merely because it exists."
+      "Loader accepts existing v1-v3 identities and only correctly formatted V2-B0-package-v4-<40 lowercase hex> identities.",
+      "Malformed/unknown v4 identities remain rejected.",
+      "Focused release-package, release-loader and host-service tests cover the v4 source-bound identity and existing pickup-plan contract.",
+      "test_jskat_pickup_release_gate returns zero after the change.",
+      "Gate provenance records ACCEPT, REJECT or INCONCLUSIVE without claiming remote publication, accepted release promotion, Java adapter completion or actual user-host integration."
     ],
-    "next_action": "Call get_active_lease first. Treat decisive_facts/evidence_identities as controller-bound. Do not run another repository search unless a concrete contradiction appears. Read only the OPEN anti-Pseudo-V2 provenance and current scorecard needed for exact edits. Decide ACCEPT/REJECT/INCONCLUSIVE, explicitly distinguish migration/defense-in-depth references and individually qualified legacy assets from active runtime/state/authority dependencies, update provenance/scorecard, record_turn_outcome, and yield.",
+    "next_action": "Call get_active_lease first. Read only release_loader identity validation, release_id_for_source_commit tests, focused loader tests, and the OPEN gate provenance. Implement the smallest strict v4 identity acceptance path; do not change frozen v1-v3 semantics or publish a package. Add focused regression coverage, run test_jskat_pickup_release_gate, inspect the exact diff once, update gate provenance, record_turn_outcome, and yield.",
     "evidence_identities": {
-      "founding_spec_sha256": "d4a4315325f7b16f528c1475c5490c4e6bef31cebcce2dd744d300bd07ebfdee",
-      "work_prompt_sha256": "a440b349adbcf9cef547cc19cd1bdea6531686d6a8361b117c7da2b1e25f99ea",
-      "dependency_audit_sha256": "b465369c86f278d7b40341c3f07c5894192cfc6846a30f66d7cd747ca35b9f10",
-      "controller_sha256": "db3cd37ab3a27805367256ef215e99850220f402841d7a883aa48e85a2bd9add",
-      "gateway_sha256": "406ff0b83be74a0f8004ee0a43f37619e3b26523a0d106f7918bd83a222fc2ef",
-      "main_test_runner_sha256": "f14f1d20a0b0aa79dde5c6ed20bcfa881597c8e956adb5e57de1b605534a47f8",
-      "r9_test_runner_sha256": "f44c5616d00437430734b51004a2ba0c9297368658013bb03a12845c7ae69312",
-      "r9_secret_prep_sha256": "0c6980454db4377806a4344d521d89cdc8892a92a47ac867461694dc55d713f2",
-      "main_secret_prep_sha256": "00ba813871ffbb3d4c3e42967f931a52afd98dbb151b12d70687f7ff9dd47790"
+      "pickup_stage_sha256": "0a948e0b32829023345388e83c26c98edb4390c97046faa1c1c0a7fb582745f8",
+      "source_bound_stage_sha256": "53598ac37efb3780d41b3feec506e33d9ca517782b4ffa4ed290fba9e50ac577",
+      "builder_sha256": "eec63116dd14432e0a8c1ded81570af8e0830139c30e7d91afef01fa144788b6",
+      "loader_prechange_sha256": "1a2dcd27a049e17a5a1999df3a13297aad4c3d31dcf3a0d2f96deaa3d2b8b30e",
+      "gate_test_runner_sha256": "3596a0ab3d2bc358fd387a239180abd5baadfecb68ac6be7f53a6d93b00ce2c7",
+      "baseline_focused_tests": "43 passed"
     },
     "decisive_facts": [
-      "The founding anti-Pseudo-V2 acceptance rule requires V2 to remain independently operable without depending on V1 runtime, V1 state, or V1 authority merely because legacy material exists.",
-      "Deterministic dependency audit classification is PASS_NO_ACTIVE_V1_RUNTIME_STATE_AUTHORITY_DEPENDENCY across active scripts, src, .github and configs after excluding only migration/defense-in-depth references.",
-      "The two V2 test runners no longer use the old /workspace/skatai/... V1 test environment; both use V2-owned offline uv with pinned pytest==8.4.2 and pass their focused suites.",
-      "R9 startup now uses V2 scripts/prepare_r9_runtime_secrets.py; RunPod hunter uses V2 scripts/prepare_runtime_secrets.py. MAIN still does not own or materialize the ISS password.",
-      "Remaining legacy-controller filesystem references are limited to migration/archive/defense-in-depth checks, not active V2 execution authority. Qualified legacy-v1-canonical-corpus references remain individually provenance-bound assets, not authority.",
-      "No V1 model/checkpoint/dataset may be treated as accepted V2 merely from presence or naming."
+      "release_id_for_source_commit preserves V2-B0-package-v3 only for frozen source f56a1003075e9043924eac39eed83d37995647bf and returns V2-B0-package-v4-<full 40-hex commit> for later source commits.",
+      "The current B0 release builder already embeds host_pickup_plan_request_schema and host_pickup_plan_response_schema in deployment_config.",
+      "JSkat pickup-plan source staging concluded STAGED_PICKUP_PLAN_PASS with 42 focused tests and no accepted-release claim.",
+      "Source-bound release staging concluded SOURCE_BOUND_ID_AND_PICKUP_SMOKE_STAGED; package build/publication remained pending.",
+      "Current release_loader identity check accepts only V2-B0-package-v1, v2 and v3, so a correctly built source-bound v4 package cannot currently load."
     ]
   },
   "secondary": null,

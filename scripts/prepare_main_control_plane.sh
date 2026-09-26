@@ -57,10 +57,11 @@ restart_policy=DO_NOT_START until readiness validation passes and a hash-bound a
 EOF
 chmod 600 "$CONTROL_ROOT/AGENT_HARD_DISABLED"
 rm -f "$CONTROL_ROOT/AGENT_REENABLE_APPROVED" "$CONTROL_ROOT/ACTIVE_WORK_PERMIT.json"
-rm -f "$CONTROL_ROOT/EXECUTION_LOCK.json" "$CONTROL_ROOT/executor-write-scope.json"
 
 # A trusted-runtime cutover must not overlap controller authority epochs.
-# First let the old controller/guardian observe the hard-disable naturally.
+# Keep the old lock/scope intact until all old controller/guardian processes
+# have observed the hard-disable and exited; otherwise an in-flight poll can
+# fail on a transient missing authority file rather than exiting cleanly.
 main_pids() {
   pgrep -f '^python3 /opt/skatai-main-controller/current/openai_platform_main_controller\.py$' 2>/dev/null || true
   pgrep -f '^bash /opt/skatai-main-controller/current/openai_platform_guardian\.sh$' 2>/dev/null || true
@@ -82,6 +83,10 @@ if [ -n "$(main_pids)" ]; then
   echo "MAIN_CONTROL_PLANE_QUIESCE_FAILED" >&2
   exit 1
 fi
+
+# Only after the previous authority epoch is fully quiescent may these files
+# be removed for replacement by the newly installed trusted release.
+rm -f "$CONTROL_ROOT/EXECUTION_LOCK.json" "$CONTROL_ROOT/executor-write-scope.json"
 
 # Keep the old marker only as defense-in-depth; it is not authoritative.
 cat >"$OLD_AGENT/AGENT_HARD_DISABLED" <<'EOF'
