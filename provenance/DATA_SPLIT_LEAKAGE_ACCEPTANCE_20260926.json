@@ -1,0 +1,37 @@
+{
+  "basis": "ISS fixture exposure manifest already states frozen split membership unchanged; registry rule aligned without changing membership.",
+  "captured_at": "2026-09-26T14:27:02Z",
+  "classification": "PASS_STRUCTURAL_REGISTERED_SCOPE_ONLY",
+  "decision": "ACCEPT_REGISTERED_STRUCTURAL_CONTROLS_ONLY; no blanket leakage-freedom or model promotion claim",
+  "question": "Do the current registered frozen split identities, quarantine rules and experiment guards satisfy the end-state DATA_SPLIT_LEAKAGE criterion within their registered scope?",
+  "schema": "skatai.v2.data-split-leakage-acceptance.v1",
+  "task_id": "DATA_SPLIT_LEAKAGE_ACCEPTANCE",
+  "verification": {
+    "active_registry_assets": [
+      {
+        "active_training_use": "source_only_via_registered_transformations",
+        "asset_id": "legacy-v1-canonical-corpus",
+        "status": "VERIFIED_CANONICAL",
+        "trust": "D3_SOURCE"
+      }
+    ],
+    "cardplay_guard_classification": "CONCLUDE",
+    "cardplay_guard_sha256": "d2cc999664ff463c9a2bc6ab0ce9a0bdd2f1de8d684dbc648abbbf9986816ac7",
+    "d3_classification": "PASS_FALSE_POSITIVE_RECONCILED",
+    "d3_sha256": "5ea5be4b3bc0a3c0d3d89cf0590ff37aaab7609e55992ac65d74b74231b96b75",
+    "holdout_exposure_count": 3,
+    "holdout_incidents": [
+      "public-dhs-rules-probe-20260925",
+      "public-basic-score-oracle-20260925",
+      "historical-iss-protocol-fixture-20260925"
+    ],
+    "registry_sha256": "921ea65b4563798c81d0d886de22db1053a1e0bf44ae4c180ef9401b2ed1729b",
+    "schema": "skatai.v2.data-split-leakage-audit.v1",
+    "scope_limit": "This audit verifies registered frozen split identities, known holdout-exposure quarantine rules, D3 exact split integrity, cardplay train-only guard binding, and V5 exploratory split status. It does not infer leakage freedom for unregistered future datasets or experiments.",
+    "split_sha256": "c4b7a91e0c836f57128b195aaf85f12c6abbff0f8ec593baa4ec181f7b26fdd3",
+    "split_status": "FROZEN",
+    "status": "PASS_STRUCTURAL_CONTROLS",
+    "v5_classification": "PASS_D1_EXPLORATORY_ONLY",
+    "v5_sha256": "4279f4154cbd05ae569098830bf8ac215c1408bfc31214dc22d4a6d32e3ac942"
+  }
+}

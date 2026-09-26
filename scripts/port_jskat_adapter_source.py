@@ -23,9 +23,7 @@ BRANCH = "575858100ffbfc2fc24cb0d5713038eb930adc9a"
 # are fixed here; changed or additional dirty files fail closed.
 ALLOWED_PREEXISTING_UNTRACKED_SHA256 = {
     'provenance/AUTOMATED_TRAIN_EVAL_PROMOTE_ACCEPTANCE_20260926.json': '37978212ab4986c63c3c4455a830f56cea7dd41e47b2de54bda40aceaac0b95c',
-    'provenance/DATA_SPLIT_LEAKAGE_ACCEPTANCE_20260926.json': '29055f23ef6e331c7f47a4301af8e9108b14688bfd4625fcd203446d29f709ea',
     'provenance/WEAKNESS_MINING_ACCEPTANCE_20260926.json': '7e0dcb689418b2ae50104267bd2cec7209f4d601bcd700e4cadb9ad5808a46b9',
-    'scripts/audit_data_split_leakage.py': '927554c68e3658a9b31ec1ef8c1573e49bfc9286ec50264beeb67f99d8ffd9eb',
     'scripts/run_jskat_adapter_source_port_tests.py': 'b8852526a96423abe0ddf447ff551679112409dab883a006ad885927fad139ce',
 }
 
