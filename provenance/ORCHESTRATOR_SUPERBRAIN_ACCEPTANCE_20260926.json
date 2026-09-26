@@ -35,6 +35,7 @@
     "adaptive_budget_pause": null,
     "capability_map_registry": "/workspace/skatai-v2-runtime/orchestrator/state/capability_gap_registry.json",
     "controller_pid": 215129,
+    "estimated_usd_per_accepted_outcome_short_context": 0.6299,
     "event_seq": 13,
     "last_superbrain_event_seq": 13,
     "model_usage_registry": "/workspace/skatai-v2-runtime/orchestrator/state/model_usage_registry.jsonl",
@@ -45,12 +46,28 @@
     ],
     "no_progress_pause": "repeated placeholder audits without accepted outcome; require new underlying evidence or execution capability",
     "project_state_registry": "/workspace/skatai-v2-runtime/orchestrator/state/skatai_v2_project_state.json",
+    "rolling_budget_snapshot": {
+      "accepted_outcomes": 2,
+      "estimated_usd_short_context": 1.2598,
+      "exhausted": false,
+      "known_tokens": 5295421,
+      "limits": {
+        "estimated_usd": 4.0,
+        "sessions": 24,
+        "tokens": 8000000
+      },
+      "missing_usage_sessions": 1,
+      "reasons": [],
+      "sessions": 21,
+      "window_hours": 24,
+      "worker_sessions": 16
+    },
     "superbrain_session_id": "sess_04826dfba94b8391006ab7eade7ebc819799febf65c31ffd19",
     "task_count": 17,
     "worker_role_definitions": 14
   },
-  "recorded_at": "2026-09-26T16:08:40Z",
-  "repository_revision": "b56e848de54221bf3c9e8683b7209f1f452fe5c6",
+  "recorded_at": "2026-09-26T16:09:55Z",
+  "repository_revision": "bb01c5d6d5722ac4433e8e872351f5e4c049b93b",
   "schema": "skatai.v2.orchestrator.acceptance.v1",
   "status": "LIVE_PARTIAL_NO_PROGRESS_PAUSED",
   "verified": [
@@ -62,6 +79,7 @@
     "Controller event writes are serialized and stale writes preserve a newer event; recovered event led to deterministic no-progress pause without another model session.",
     "New trusted controller release was installed and restarted with persisted task, evidence, roles and session state; old MAIN controller process is absent.",
     "R9 ISS gate worker and frozen supervisor remained running through control-plane restarts.",
-    "Repository source/config revision watcher initialized at live HEAD and kept provenance-only changes out of model wake decisions."
+    "Repository source/config revision watcher initialized at live HEAD and kept provenance-only changes out of model wake decisions.",
+    "Provenance-only commit bb01c5d advanced the observed HEAD with event sequence unchanged at 13 and no new SUPERBRAIN session."
   ]
 }
