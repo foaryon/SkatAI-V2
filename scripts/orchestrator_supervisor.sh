@@ -22,6 +22,10 @@ while true; do
   fi
   SKATAI_ORCHESTRATOR_TRUSTED_ROOT="$TRUST" PYTHONPATH="$TRUST"     /usr/bin/python3 "$TRUST/control_plane.py" >>"$CONTROL/controller-boot.log" 2>&1
   rc=$?
+  if grep -q 'OpenAI HTTP 400:' "$CONTROL/controller-boot.log"; then
+    printf '%s non-retriable agent configuration error; supervisor stopped\n' "$(date -u +%FT%TZ)" >>"$CONTROL/supervisor.log"
+    exit 1
+  fi
   printf '%s controller exit rc=%s restart_s=%s\n' "$(date -u +%FT%TZ)" "$rc" "$backoff" >>"$CONTROL/supervisor.log"
   sleep "$backoff"
   if [ "$backoff" -lt 60 ]; then backoff=$((backoff*2)); [ "$backoff" -gt 60 ] && backoff=60; fi

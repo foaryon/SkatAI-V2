@@ -735,6 +735,7 @@ def ensure_agents(state: dict[str, Any]) -> dict[str, Any]:
         a = api("POST", "/agents", {"name": sb["name"], **sb_config, "metadata": {"project": "SkatAI-V2", "role": "ORCHESTRATOR_SUPERBRAIN"}})
         aid = a["id"]
         state["superbrain_agent_id"] = aid
+        atomic_json(CONTROLLER_STATE, state)
         log(f"superbrain_agent_created id={aid} model={a.get('model')}")
     worker_ids = dict(state.get("worker_agent_ids") or {})
     wcfg = cfg["workers"]
@@ -754,6 +755,8 @@ def ensure_agents(state: dict[str, Any]) -> dict[str, Any]:
             a = api("POST", "/agents", {"name": f"SkatAI V2 WORKER {rid}", **acfg, "metadata": {"project": "SkatAI-V2", "role": role["role"], "worker_id": rid}})
             wid = a["id"]
             worker_ids[rid] = wid
+            state["worker_agent_ids"] = worker_ids
+            atomic_json(CONTROLLER_STATE, state)
             log(f"worker_agent_created role={rid} id={wid} model={a.get('model')}")
     state["worker_agent_ids"] = worker_ids
     atomic_json(CONTROLLER_STATE, state)
