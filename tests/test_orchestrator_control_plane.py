@@ -496,3 +496,22 @@ def test_repeated_orchestrator_rejection_is_session_scoped(tmp_path):
     assert cp.repeated_orchestrator_rejection('current')
     assert not cp.repeated_orchestrator_rejection('other')
     assert not cp.repeated_orchestrator_rejection('unseen')
+
+
+def test_readonly_worker_package_excludes_global_authority_documents():
+    with pytest.raises(RuntimeError, match='GLOBAL_AUTHORITY_IS_ORCHESTRATOR_CONTEXT'):
+        cp.create_and_dispatch_readonly_task({'read_paths': ['repo:SKATAI_V2_WORK_PROMPT.md']})
+
+
+def test_canonical_scoped_paths_roundtrip_into_worker_read(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'REPO', tmp_path)
+    source = tmp_path / 'evidence.txt'
+    source.write_text('verified evidence\n')
+    task = base_task()
+    task['authority']['read'] = ['repo:evidence.txt']
+    assert cp.safe_path('repo:evidence.txt') == (source, 'repo:evidence.txt')
+    assert 'verified evidence' in cp.read_text_tool({'path': 'repo:evidence.txt'}, task)['text']
+    with pytest.raises(RuntimeError, match='PATH_OUTSIDE_PROJECT'):
+        cp.safe_path('repo:../other')
+    with pytest.raises(RuntimeError, match='PATH_OUTSIDE_PROJECT'):
+        cp.safe_path('runtime:somefile', allow_runtime=False)

@@ -278,9 +278,17 @@ def ensure_state() -> None:
 def safe_path(raw: str, *, allow_runtime: bool = True) -> tuple[Path, str]:
     if not isinstance(raw, str) or not raw.strip():
         raise RuntimeError("PATH_REQUIRED")
-    p = Path(raw)
-    if not p.is_absolute():
-        p = REPO / p
+    if raw.startswith("repo:") or raw.startswith("runtime:"):
+        prefix, relative = raw.split(":", 1)
+        if not relative or Path(relative).is_absolute() or ".." in Path(relative).parts:
+            raise RuntimeError("PATH_OUTSIDE_PROJECT")
+        if prefix == "runtime" and not allow_runtime:
+            raise RuntimeError("PATH_OUTSIDE_PROJECT")
+        p = (REPO if prefix == "repo" else RUNTIME) / relative
+    else:
+        p = Path(raw)
+        if not p.is_absolute():
+            p = REPO / p
     resolved = p.resolve(strict=False)
     roots = [REPO] + ([RUNTIME] if allow_runtime else [])
     for root in roots:
@@ -539,13 +547,15 @@ def create_task(task: dict[str, Any]) -> dict[str, Any]:
 def create_and_dispatch_readonly_task(args: dict[str, Any]) -> dict[str, Any]:
     """Build a complete bounded worker package from a small orchestrator order."""
     paths = args["read_paths"]
-    if not isinstance(paths, list) or not 1 <= len(paths) <= 5:
-        raise RuntimeError("READ_ONLY_TASK_NEEDS_ONE_TO_FIVE_FILES")
+    if not isinstance(paths, list) or not 1 <= len(paths) <= 3:
+        raise RuntimeError("READ_ONLY_TASK_NEEDS_ONE_TO_THREE_FILES")
     reads = []
     for raw in paths:
         p, key = safe_path(raw, allow_runtime=False)
         if not p.is_file():
             raise RuntimeError("READ_ONLY_INPUT_MISSING")
+        if p in {FOUNDING_SPEC, WORK_PROMPT, ARCHITECTURE}:
+            raise RuntimeError("GLOBAL_AUTHORITY_IS_ORCHESTRATOR_CONTEXT; use phase references in the contract")
         reads.append(key)
     contract = {
         "task_id": args["task_id"], "task_family": "bounded_readonly_audit",
@@ -769,7 +779,7 @@ def orchestration_tools() -> list[dict[str, Any]]:
         {"type": "function", "name": "list_paths", "description": "List project/runtime paths.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "depth": {"type": "integer"}, "glob": {"type": "string"}}, "required": ["path"], "additionalProperties": False}},
         {"type": "function", "name": "list_tasks", "description": "Read task registry, optionally filtered by state.", "parameters": {"type": "object", "properties": {"state": {"type": ["string", "null"]}}, "additionalProperties": False}},
         {"type": "function", "name": "get_task", "description": "Read one full task contract by ID only when details are needed.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
-        {"type": "function", "name": "create_and_dispatch_readonly_task", "description": "Create and dispatch one read-only Luna worker with controller-generated bounded package. Use for audits; no execute argv is accepted.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "assigned_agent": {"type": "string", "enum": sorted(roles())}, "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]}, "objective": {"type": "string"}, "rationale": {"type": "string"}, "current_gap": {"type": "string"}, "read_paths": {"type": "array", "minItems": 1, "maxItems": 5, "items": {"type": "string"}}, "work_prompt_capability_reference": {"type": "array", "items": {"type": "string"}}, "evidence_requirements": {"type": "array", "items": {"type": "string"}}, "success_criteria": {"type": "array", "items": {"type": "string"}}, "dependencies": {"type": "array", "items": {"type": "string"}}}, "required": ["task_id", "assigned_agent", "priority", "objective", "rationale", "current_gap", "read_paths", "work_prompt_capability_reference", "evidence_requirements", "success_criteria"], "additionalProperties": False}},
+        {"type": "function", "name": "create_and_dispatch_readonly_task", "description": "Create and dispatch one read-only Luna worker with controller-generated bounded package. Use for audits; no execute argv is accepted.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "assigned_agent": {"type": "string", "enum": sorted(roles())}, "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]}, "objective": {"type": "string"}, "rationale": {"type": "string"}, "current_gap": {"type": "string"}, "read_paths": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string"}}, "work_prompt_capability_reference": {"type": "array", "items": {"type": "string"}}, "evidence_requirements": {"type": "array", "items": {"type": "string"}}, "success_criteria": {"type": "array", "items": {"type": "string"}}, "dependencies": {"type": "array", "items": {"type": "string"}}}, "required": ["task_id", "assigned_agent", "priority", "objective", "rationale", "current_gap", "read_paths", "work_prompt_capability_reference", "evidence_requirements", "success_criteria"], "additionalProperties": False}},
         {"type": "function", "name": "create_task", "description": "Create one bounded worker task contract; execute accepts only inert exact probes. For evidence audits use create_and_dispatch_readonly_task, not pytest or scripts in the shared checkout.", "parameters": {"type": "object", "properties": {"contract": task_contract}, "required": ["contract"], "additionalProperties": False}},
         {"type": "function", "name": "dispatch_task", "description": "Request deterministic controller dispatch of a READY worker task.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "read_worker_result", "description": "Read a persisted worker result for verification.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
@@ -1105,7 +1115,7 @@ def superbrain_bootstrap_text() -> str:
         "reject or revise any contract with a broad write scope. The R9 ISS gate worker is running; do not restart it. "
         "The founding specification requires evidence over claims. The Work Prompt seeks the full V2 product. "
         "Prefer an existing READY task with a valid contract. If none exists, use create_and_dispatch_readonly_task "
-        "for a specific unresolved evidence gap and exact existing input files. Never put pytest, scripts, or broad commands "
+        "for a specific unresolved evidence gap and one to three exact input files. Give workers phase references, not the full Founding Spec or Work Prompt as read inputs. Never put pytest, scripts, or broad commands "
         "in create_task on the shared checkout. Never repeat a BLOCKED command set "
         "without changed input evidence. Dispatch one safe nonconflicting task with minimum context. "
         "Do not browse the entire repository first. On result, verify, integrate, persist, then continue."
