@@ -1,9 +1,21 @@
 {
   "schema": "skatai.v2.stable-deployment-interface-acceptance.v1",
-  "captured_at": "2026-09-26T02:40:00Z",
+  "captured_at": "2026-09-26T01:06:10Z",
   "task_id": "STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Does current V2 provide one stable deployment interface with versioned release loading, legality-safe host contracts, diagnostics and focused regression coverage?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": {
+    "command_id": "test_stable_deployment_interface",
+    "result": "60 passed in 1.97s; returncode 0",
+    "source_identities_sha256": {
+      "interface": "d53e52f693c6e04ba3a271243da5af578adca2fc5f9e7a29296956689d6bcd2f",
+      "host_service": "b833a45151cb262c5eb214b653e1d8077b0f1185e2416364821f3225ae16830d",
+      "release_loader": "4929064f5b48f7c4fad59e548ad0ab10b853d93e38e8520e09593a3999aac699",
+      "test_runner": "365c5b3a99a3080ac5104fb71724c45fca4dcf5c54dd4b28ec1f02159f47e16a"
+    },
+    "supporting_evidence": [
+      "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json"
+    ]
+  },
+  "decision": "ACCEPT: The current V2 has one stable SkatAI runtime and host interface across bidding, declaration, discard and legality-constrained cardplay, with versioned release loading and focused host, product-interface, release-loader and release-package regression coverage. This accepts the interface criterion only; JSkat Java callbacks, Windows packaging, actual user-host deployment, remote publication and gameplay-strength promotion remain separate decisions."
 }

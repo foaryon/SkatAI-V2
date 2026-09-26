@@ -141,10 +141,11 @@
       "id": "STABLE_DEPLOYMENT_INTERFACE",
       "goal_path_id": "G6_RELEASE_INTEGRATION",
       "criterion": "One stable SkatAI deployment interface exists.",
-      "status": "IN_PROGRESS",
-      "reason": "Host/interface work exists but final stable integration acceptance is not assumed.",
+      "status": "ACCEPTED",
+      "reason": "The versioned SkatAI runtime, host service and release loader expose one stable contract across bidding, declaration, discard and legality-constrained cardplay; 60 focused tests pass on current source. JSkat Java callbacks, Windows packaging and actual user-host deployment require separate acceptance.",
       "evidence": [
-        "provenance/MAIN_CURRENT_STATE.json"
+        "provenance/STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE_20260926.json",
+        "provenance/JSKAT_PICKUP_SOURCE_BOUND_RELEASE_20260926.json"
       ]
     },
     {
