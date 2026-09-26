@@ -662,3 +662,27 @@ def test_repeated_blocked_readonly_audits_pause_reasoning(tmp_path, monkeypatch)
         cp.atomic_json(cp.result_file(f'audit-{i}'),
                        {'status': 'BLOCKED', 'changes': []})
     assert cp.repeated_placeholder_audit_streak() == 2
+
+
+def test_final_existing_superbrain_session_runs_at_session_allowance(monkeypatch):
+    monkeypatch.setattr(cp, 'superbrain_budget_status',
+                        lambda: {'exhausted': True, 'reasons': ['session_allowance']})
+    observed = []
+    monkeypatch.setattr(cp, 'api',
+                        lambda method, path: observed.append((method, path)) or {'status': 'idle'})
+    state = {'superbrain_session_id': 'last-session',
+             'superbrain_paused_reason': 'adaptive superbrain budget exhausted',
+             'event_seq': 0, 'last_superbrain_event_seq': 0}
+    cp.poll_superbrain(state)
+    assert observed == [('GET', '/agents/sessions/last-session')]
+    assert state['superbrain_idle'] is True
+    assert 'superbrain_paused_reason' not in state
+
+
+def test_token_ceiling_blocks_even_existing_session(monkeypatch):
+    monkeypatch.setattr(cp, 'superbrain_budget_status',
+                        lambda: {'exhausted': True, 'reasons': ['session_allowance', 'token_allowance']})
+    monkeypatch.setattr(cp, 'api', lambda *args: pytest.fail('token ceiling was ignored'))
+    state = {'superbrain_session_id': 'last-session'}
+    cp.poll_superbrain(state)
+    assert state['superbrain_paused_reason'] == 'adaptive superbrain budget exhausted'

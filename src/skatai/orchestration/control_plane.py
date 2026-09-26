@@ -1533,11 +1533,17 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
             state["last_usage_reconcile_epoch"] = time.time()
             atomic_json(CONTROLLER_STATE, state)
             budget = superbrain_budget_status()
-    if budget["exhausted"]:
+    # The session allowance limits *new* sessions. Let the last already-created
+    # session finish within the token/cost ceilings, or its bootstrap is wasted.
+    allow_current = bool(sid and budget.get("reasons") == ["session_allowance"])
+    if budget["exhausted"] and not allow_current:
         if state.get("superbrain_paused_reason") != "adaptive superbrain budget exhausted":
             state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
             atomic_json(CONTROLLER_STATE, state)
         return state
+    if allow_current and state.get("superbrain_paused_reason") == "adaptive superbrain budget exhausted":
+        state.pop("superbrain_paused_reason")
+        atomic_json(CONTROLLER_STATE, state)
     if state.get("superbrain_paused_reason"):
         if has_actionable_reasoning_event(state):
             state.pop("superbrain_paused_reason", None)
