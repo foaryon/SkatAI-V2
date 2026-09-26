@@ -8,7 +8,10 @@
     "reasoning_effort": "medium",
     "text_verbosity": "low",
     "service_tier": "flex",
-    "persistent_session": true
+    "persistent_session": true,
+    "max_sessions_per_utc_day": 2,
+    "max_tool_calls_per_session": 8,
+    "max_daily_total_tokens": 150000
   },
   "workers": {
     "default_model": "gpt-6-luna",

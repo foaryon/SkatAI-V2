@@ -164,6 +164,65 @@ def initial_capabilities() -> dict[str, Any]:
     }
 
 
+CAPABILITY_STATES = {"NOT_STARTED", "PARTIAL", "IMPLEMENTED", "VERIFIED", "BLOCKED", "SUPERSEDED", "NOT_REQUIRED"}
+
+
+def reconcile_capability_map() -> dict[str, Any]:
+    """Keep all Work Prompt phases addressable without inventing completion claims."""
+    data = strict_json(CAPABILITIES, initial_capabilities())
+    phases = data.setdefault("work_prompt_phases", {})
+    lines = WORK_PROMPT.read_text(encoding="utf-8").splitlines()
+    for line_no, line in enumerate(lines, 1):
+        match = re.match(r"^# PHASE (\d+) — (.+)$", line)
+        if not match:
+            continue
+        key = f"phase_{int(match.group(1)):02d}"
+        row = phases.setdefault(key, {"status": "NOT_STARTED", "evidence": [],
+                                      "assessment": "unassessed; no completion inference"})
+        row["title"] = match.group(2)
+        row["work_prompt_reference"] = f"SKATAI_V2_WORK_PROMPT.md:{line_no}"
+        row.setdefault("founding_reference", "SKATAI_V2_FOUNDING_SPECIFICATION.md")
+    if len(phases) != 29 or any(row.get("status") not in CAPABILITY_STATES for row in phases.values()):
+        raise RuntimeError("WORK_PROMPT_CAPABILITY_MAP_INVALID")
+    data["authority_hashes"] = {"founding_spec": sha256(FOUNDING_SPEC), "work_prompt": sha256(WORK_PROMPT)}
+    data["updated_at"] = utc_now()
+    atomic_json(CAPABILITIES, data)
+    return data
+
+
+def assess_capability(capability_id: str, status: str, evidence: list[str], reason: str) -> dict[str, Any]:
+    if status not in CAPABILITY_STATES or len(reason.strip()) < 20 or not evidence:
+        raise RuntimeError("CAPABILITY_ASSESSMENT_INSUFFICIENT")
+    data = strict_json(CAPABILITIES)
+    row = data.get("work_prompt_phases", {}).get(capability_id)
+    if row is None:
+        raise RuntimeError("CAPABILITY_ID_UNKNOWN")
+    verified = []
+    for ref in evidence:
+        if ref.startswith("task:"):
+            tid = ref[5:]
+            task = strict_json(TASKS)["tasks"].get(tid)
+            if not task or not task.get("integration_decision", {}).get("accepted"):
+                raise RuntimeError("CAPABILITY_TASK_EVIDENCE_NOT_ACCEPTED")
+            rp = result_file(tid)
+            if not rp.is_file():
+                raise RuntimeError("CAPABILITY_RESULT_MISSING")
+            verified.append({"reference": ref, "sha256": sha256(rp)})
+        else:
+            path, key = safe_path(ref[5:] if ref.startswith("repo:") else ref, allow_runtime=False)
+            if not path.is_file():
+                raise RuntimeError("CAPABILITY_EVIDENCE_MISSING")
+            verified.append({"reference": key, "sha256": sha256(path)})
+    row.update({"status": status, "evidence": verified, "assessment": reason,
+                "assessed_at": utc_now(), "repository_revision": git("rev-parse", "HEAD")})
+    data["updated_at"] = utc_now()
+    atomic_json(CAPABILITIES, data)
+    append_jsonl(DECISIONS, {"time": utc_now(), "type": "capability_assessment", "capability_id": capability_id,
+                             "status": status, "reason": reason, "evidence": verified})
+    refresh_project_state()
+    return {"capability_id": capability_id, "status": status, "evidence": verified}
+
+
 def ensure_state() -> None:
     CONTROL.mkdir(parents=True, exist_ok=True)
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -173,6 +232,7 @@ def ensure_state() -> None:
         atomic_json(WORKERS, {"schema_version": "1.0.0", "workers": {}})
     if not CAPABILITIES.exists():
         atomic_json(CAPABILITIES, initial_capabilities())
+    reconcile_capability_map()
     if not EXPERIMENTS.exists():
         atomic_json(EXPERIMENTS, {"schema_version": "1.0.0", "experiments": {}})
     if not RELEASES.exists():
@@ -350,6 +410,7 @@ def project_snapshot() -> dict[str, Any]:
         "git_head": git("rev-parse", "HEAD"),
         "git_status": git("status", "--short"),
         "project_state": ps,
+        "capability_map": {"work_prompt_phases": {k: {"status": v["status"], "title": v["title"], "evidence": v["evidence"]} for k, v in strict_json(CAPABILITIES)["work_prompt_phases"].items()}},
         "tasks": {
             "active": [k for k, v in tasks.items() if v.get("state") in {"READY", "DISPATCH_REQUESTED", "RUNNING", "VERIFYING"}],
             "blocked": [k for k, v in tasks.items() if v.get("state") == "BLOCKED"],
@@ -626,6 +687,7 @@ def orchestration_tools() -> list[dict[str, Any]]:
         {"type": "function", "name": "dispatch_task", "description": "Request deterministic controller dispatch of a READY worker task.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "read_worker_result", "description": "Read a persisted worker result for verification.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "accept_worker_result", "description": "Accept or reject a worker result after evidence review.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "accepted": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["task_id", "accepted", "reason"], "additionalProperties": False}},
+        {"type": "function", "name": "assess_capability", "description": "Set a Work Prompt phase assessment with hashed accepted task or repository evidence; never infer completion from a worker result alone.", "parameters": {"type": "object", "properties": {"capability_id": {"type": "string"}, "status": {"type": "string", "enum": sorted(CAPABILITY_STATES)}, "evidence": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}}, "required": ["capability_id", "status", "evidence", "reason"], "additionalProperties": False}},
         {"type": "function", "name": "record_decision", "description": "Append a durable orchestrator decision record.", "parameters": {"type": "object", "properties": {"decision_type": {"type": "string"}, "subject": {"type": "string"}, "decision": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "string"}}}, "required": ["decision_type", "subject", "decision", "evidence"], "additionalProperties": False}},
     ]
 
@@ -775,6 +837,8 @@ def dispatch_tool(name: str, args: dict[str, Any], *, kind: str, task: dict[str,
             return strict_json(rp) if rp.exists() else {"missing": True}
         if name == "accept_worker_result":
             return accept_worker_result(args["task_id"], args["accepted"], args["reason"])
+        if name == "assess_capability":
+            return assess_capability(args["capability_id"], args["status"], args["evidence"], args["reason"])
         if name == "record_decision":
             row = {"time": utc_now(), **args}
             append_jsonl(DECISIONS, row)
@@ -938,6 +1002,28 @@ def superbrain_bootstrap_text() -> str:
     )
 
 
+def superbrain_budget_status() -> dict[str, Any]:
+    """Use persistent server logs and usage; missing usage never bypasses session cap."""
+    today = utc_now()[:10]
+    starts = sum(1 for line in LOG.read_text(encoding="utf-8").splitlines()
+                 if line.startswith(today) and " superbrain_session_created " in line) if LOG.exists() else 0
+    seen = set()
+    tokens = 0
+    if COST.exists():
+        for line in COST.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if row.get("time", "")[:10] != today or row.get("role") != "orchestrator-superbrain":
+                continue
+            sid = row.get("session_id")
+            usage = row.get("usage") or {}
+            if sid and sid not in seen and isinstance(usage.get("total_tokens"), int):
+                tokens += usage["total_tokens"]
+                seen.add(sid)
+    cfg = config()["superbrain"]
+    exhausted = starts >= cfg["max_sessions_per_utc_day"] or tokens >= cfg["max_daily_total_tokens"]
+    return {"date": today, "sessions": starts, "known_tokens": tokens, "exhausted": exhausted}
+
+
 def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
     cfg = config()["superbrain"]
     sid = state.get("superbrain_session_id")
@@ -947,6 +1033,10 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
             return state
         except Exception:
             state["superbrain_session_id"] = None
+    if superbrain_budget_status()["exhausted"]:
+        state["superbrain_paused_reason"] = "daily superbrain budget exhausted"
+        atomic_json(CONTROLLER_STATE, state)
+        return state
     s = create_session(
         state["superbrain_agent_id"], cfg["model"], cfg["service_tier"], superbrain_bootstrap_text(),
         reasoning=cfg["reasoning_effort"],
@@ -1148,7 +1238,14 @@ def poll_workers(state: dict[str, Any]) -> None:
 
 
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
-    sid = state["superbrain_session_id"]
+    sid = state.get("superbrain_session_id")
+    if superbrain_budget_status()["exhausted"]:
+        if state.get("superbrain_paused_reason") != "daily superbrain budget exhausted":
+            state["superbrain_paused_reason"] = "daily superbrain budget exhausted"
+            atomic_json(CONTROLLER_STATE, state)
+        return state
+    if not sid:
+        return ensure_superbrain_session(state)
     try:
         s = api("GET", f"/agents/sessions/{sid}")
     except Exception as exc:
@@ -1163,22 +1260,17 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         actions = s.get("required_actions") or []
         count = int(state.get("superbrain_tool_calls", 0))
         initial_scan = not strict_json(TASKS)["tasks"]
-        limit = 8 if initial_scan else 16
+        limit = min(8 if initial_scan else 16, config()["superbrain"]["max_tool_calls_per_session"])
         if count + len(actions) > limit:
             progress = integrated_since_session_start(state) or evidence_since_session_start(state)
             log(f"superbrain_tool_budget_exhausted session={sid} calls={count} persisted_progress={progress}")
             cancel_session(sid, "superbrain_tool_budget_exhausted")
             try:
                 final = api("GET", f"/agents/sessions/{sid}")
-                persist_usage(final, "orchestrator-superbrain", count, "rotated_after_persisted_progress" if progress else "paused_no_progress")
+                persist_usage(final, "orchestrator-superbrain", count, "paused_after_session_limit")
             except Exception as exc:
                 log(f"superbrain_usage_unavailable id={sid} err={exc!r}")
-            if progress:
-                state["superbrain_session_id"] = None
-                state["event_seq"] = int(state.get("event_seq", 0)) + 1
-                atomic_json(CONTROLLER_STATE, state)
-                return ensure_superbrain_session(state)
-            state["superbrain_paused_reason"] = "no-progress session tool budget exhausted; requires review"
+            state["superbrain_paused_reason"] = "session tool budget exhausted; review persisted evidence before continuation"
             atomic_json(CONTROLLER_STATE, state)
             return state
         resolve_required_actions(s, kind="orchestrator")

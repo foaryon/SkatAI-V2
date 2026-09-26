@@ -281,3 +281,43 @@ def test_worker_command_cannot_run_script_or_tests_with_indirect_effects(monkeyp
     task['authority']['execute'] = [['rg', '-n', 'needle', '--pre', 'evil', 'src/skatai']]
     with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
         cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
+
+
+def test_capability_map_covers_all_work_prompt_phases_and_preserves_assessment(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CAPABILITIES', tmp_path / 'capabilities.json')
+    cp.atomic_json(cp.CAPABILITIES, {'capabilities': {'controlled_scientific_evaluation': 'PARTIAL'},
+                                      'work_prompt_phases': {'phase_00': {'status': 'BLOCKED', 'evidence': ['prior']}}})
+    data = cp.reconcile_capability_map()
+    assert len(data['work_prompt_phases']) == 29
+    assert data['work_prompt_phases']['phase_00']['status'] == 'BLOCKED'
+    assert data['work_prompt_phases']['phase_28']['status'] == 'NOT_STARTED'
+    assert data['capabilities']['controlled_scientific_evaluation'] == 'PARTIAL'
+    assert data['authority_hashes']['work_prompt'] == cp.sha256(cp.WORK_PROMPT)
+
+
+def test_capability_assessment_requires_existing_hashed_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CAPABILITIES', tmp_path / 'capabilities.json')
+    cp.reconcile_capability_map()
+    with pytest.raises(RuntimeError, match='CAPABILITY_TASK_EVIDENCE_NOT_ACCEPTED'):
+        cp.assess_capability('phase_16', 'VERIFIED', ['task:invented'], 'Controlled promotion evidence was independently verified.')
+    with pytest.raises(RuntimeError, match='CAPABILITY_ASSESSMENT_INSUFFICIENT'):
+        cp.assess_capability('phase_16', 'VERIFIED', [], 'Controlled promotion evidence was independently verified.')
+
+
+def test_daily_session_cap_uses_persisted_log_even_when_token_usage_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'LOG', tmp_path / 'controller.log')
+    monkeypatch.setattr(cp, 'COST', tmp_path / 'usage.jsonl')
+    day = cp.utc_now()[:10]
+    cp.LOG.write_text(''.join(f'{day}T00:00:00Z superbrain_session_created id=s{i} model=gpt-6-sol\n' for i in range(2)))
+    status = cp.superbrain_budget_status()
+    assert status['sessions'] == 2
+    assert status['known_tokens'] == 0
+    assert status['exhausted'] is True
+
+
+def test_budget_prevents_creating_another_superbrain_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'state.json')
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': True})
+    monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('model session created'))
+    state = cp.ensure_superbrain_session({'superbrain_agent_id': 'a', 'event_seq': 1})
+    assert state['superbrain_paused_reason'] == 'daily superbrain budget exhausted'
