@@ -203,3 +203,13 @@ def test_session_rotation_requires_persisted_integration(tmp_path, monkeypatch):
     assert cp.integrated_since_session_start(prior)
     prior['session_start_decision_bytes'] = cp.decision_file_size()
     assert not cp.integrated_since_session_start(prior)
+
+
+def test_repeated_blocked_command_set_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    prior = base_task()
+    prior['task_id'] = 'prior-blocked'
+    prior['state'] = 'BLOCKED'
+    cp.atomic_json(cp.TASKS, {'tasks': {'prior-blocked': prior}})
+    with pytest.raises(RuntimeError, match='DUPLICATE_BLOCKED_WORK'):
+        cp.create_task(base_task())

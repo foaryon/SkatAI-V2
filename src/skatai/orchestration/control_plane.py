@@ -429,10 +429,36 @@ def validate_task_contract(task: dict[str, Any]) -> dict[str, Any]:
     return task
 
 
+def command_input_hashes(task: dict[str, Any]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for argv in task.get("authority", {}).get("execute", []):
+        for arg in argv:
+            if not isinstance(arg, str) or arg.startswith("-"):
+                continue
+            p = Path(arg)
+            p = p if p.is_absolute() else REPO / p
+            try:
+                p = p.resolve(strict=True)
+                p.relative_to(REPO)
+                if p.is_file():
+                    result[str(p.relative_to(REPO))] = sha256(p)
+            except (OSError, ValueError):
+                continue
+    return result
+
+
 def create_task(task: dict[str, Any]) -> dict[str, Any]:
     reg = strict_json(TASKS)
     normalized = validate_task_contract(task)
     tid = normalized["task_id"]
+    commands = normalized["authority"].get("execute", [])
+    hashes = command_input_hashes(normalized)
+    if commands:
+        for prior in reg["tasks"].values():
+            if prior.get("state") in {"BLOCKED", "COMPLETE", "VERIFYING", "RUNNING", "DISPATCH_REQUESTED"} and prior.get("authority", {}).get("execute") == commands:
+                if not prior.get("command_input_hashes") or prior["command_input_hashes"] == hashes:
+                    raise RuntimeError("DUPLICATE_BLOCKED_WORK" if prior.get("state") == "BLOCKED" else "DUPLICATE_WORK")
+    normalized["command_input_hashes"] = hashes
     if tid in reg["tasks"] and reg["tasks"][tid].get("state") not in {"FAILED", "BLOCKED", "SUPERSEDED"}:
         raise RuntimeError("TASK_ALREADY_EXISTS")
     reg["tasks"][tid] = normalized
