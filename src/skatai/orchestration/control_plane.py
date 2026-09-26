@@ -1473,8 +1473,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         resolve_required_actions(s, kind="orchestrator")
         state = strict_json(CONTROLLER_STATE)
         state["superbrain_tool_calls"] = count + len(actions)
-        if (repeated_orchestrator_rejection(sid) and not integrated_since_session_start(state)
-                and not evidence_since_session_start(state)):
+        if repeated_orchestrator_rejection(sid):
             log(f"superbrain_no_progress_paused session={sid} calls={state['superbrain_tool_calls']}")
             cancel_session(sid, "repeated_rejected_action")
             try:
