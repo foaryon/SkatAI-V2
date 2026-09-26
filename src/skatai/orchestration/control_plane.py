@@ -1123,6 +1123,32 @@ def superbrain_bootstrap_text() -> str:
     )
 
 
+def reconcile_delayed_superbrain_usage(state: dict[str, Any], *, max_checks: int = 3) -> list[str]:
+    """Recover late usage deterministically; never count an active session as settled."""
+    known = set()
+    if COST.exists():
+        for line in COST.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if isinstance((row.get("usage") or {}).get("total_tokens"), int):
+                known.add(row.get("session_id"))
+    missing = []
+    if LOG.exists():
+        for line in LOG.read_text(encoding="utf-8").splitlines():
+            match = re.search(r"superbrain_session_created id=(sess_[A-Za-z0-9]+)", line)
+            if match and match.group(1) not in known and match.group(1) != state.get("superbrain_session_id"):
+                missing.append(match.group(1))
+    recovered = []
+    for sid in list(dict.fromkeys(missing))[-max_checks:]:
+        try:
+            session = api("GET", f"/agents/sessions/{sid}")
+            if isinstance((session.get("usage") or {}).get("total_tokens"), int):
+                persist_usage(session, "orchestrator-superbrain", 0, "delayed_usage_reconciled")
+                recovered.append(sid)
+        except Exception as exc:
+            log(f"usage_reconcile_unavailable id={sid} err={type(exc).__name__}")
+    return recovered
+
+
 def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
     """Rolling, evidence-funded budget; a missing usage record cannot hide spend."""
     now_epoch = time.time() if now_epoch is None else now_epoch
@@ -1185,6 +1211,7 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
             return state
         except Exception:
             state["superbrain_session_id"] = None
+    reconcile_delayed_superbrain_usage(state)
     if superbrain_budget_status()["exhausted"]:
         state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
         atomic_json(CONTROLLER_STATE, state)
@@ -1436,6 +1463,23 @@ def repeated_orchestrator_rejection(session_id: str) -> bool:
     return any(value >= 2 for value in counts.values())
 
 
+def repeated_placeholder_audit_streak() -> int:
+    """Count recent unaccepted read-only partials; they must not fund planning loops."""
+    tasks = strict_json(TASKS)["tasks"]
+    ordered = sorted(tasks.values(), key=lambda t: t.get("created_at", ""), reverse=True)
+    streak = 0
+    for task in ordered:
+        if task.get("task_family") != "bounded_readonly_audit":
+            break
+        if task.get("state") != "BLOCKED" or task.get("integration_decision", {}).get("accepted") is not False:
+            break
+        rp = result_file(task["task_id"])
+        if not rp.is_file() or strict_json(rp).get("status") != "PARTIAL":
+            break
+        streak += 1
+    return streak
+
+
 def has_actionable_reasoning_event(state: dict[str, Any]) -> bool:
     event = state.get("last_event") or {}
     return (int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0))
@@ -1444,7 +1488,24 @@ def has_actionable_reasoning_event(state: dict[str, Any]) -> bool:
 
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     sid = state.get("superbrain_session_id")
-    if superbrain_budget_status()["exhausted"]:
+    event = state.get("last_event") or {}
+    if (event.get("kind") == "negative_worker_result_integrated"
+            and has_actionable_reasoning_event(state)
+            and repeated_placeholder_audit_streak() >= 2):
+        state["superbrain_paused_reason"] = "repeated placeholder audits without accepted outcome; require new underlying evidence or execution capability"
+        state["last_superbrain_event_seq"] = state["event_seq"]
+        atomic_json(CONTROLLER_STATE, state)
+        log("superbrain_no_progress_paused repeated_readonly_partial_audits")
+        return state
+    budget = superbrain_budget_status()
+    if "missing_usage" in budget.get("reasons", []):
+        last = float(state.get("last_usage_reconcile_epoch", 0))
+        if time.time() - last >= 300:
+            reconcile_delayed_superbrain_usage(state)
+            state["last_usage_reconcile_epoch"] = time.time()
+            atomic_json(CONTROLLER_STATE, state)
+            budget = superbrain_budget_status()
+    if budget["exhausted"]:
         if state.get("superbrain_paused_reason") != "adaptive superbrain budget exhausted":
             state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
             atomic_json(CONTROLLER_STATE, state)
@@ -1551,12 +1612,16 @@ def run_controller() -> None:
     state = ensure_superbrain_session(state)
     log("orchestrator_controller_started")
     while True:
-        state = strict_json(CONTROLLER_STATE)
-        reconcile_negative_results()
-        state = poll_superbrain(state)
-        launch_ready_workers(state)
-        poll_workers(state)
+        controller_iteration()
         time.sleep(3)
+
+
+def controller_iteration() -> None:
+    """Reload durable state after each phase that may emit an orchestration event."""
+    reconcile_negative_results()
+    state = poll_superbrain(strict_json(CONTROLLER_STATE))
+    launch_ready_workers(state)
+    poll_workers(strict_json(CONTROLLER_STATE))
 
 
 if __name__ == "__main__":

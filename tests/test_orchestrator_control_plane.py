@@ -553,3 +553,55 @@ def test_partial_readonly_result_may_reference_unchanged_input(tmp_path, monkeyp
         'observations': [], 'evidence': [], 'verification': [], 'unresolved': ['PENDING']})
     assert cp.reconcile_negative_results() == [task['task_id']]
     assert cp.strict_json(cp.TASKS)['tasks'][task['task_id']]['state'] == 'BLOCKED'
+
+
+def test_delayed_usage_recovery_skips_live_session_and_deduplicates(tmp_path, monkeypatch):
+    cp.LOG.write_text('2026-09-26T12:00:00Z superbrain_session_created id=sess_old model=gpt-6-sol\n'
+                      '2026-09-26T12:01:00Z superbrain_session_created id=sess_live model=gpt-6-sol\n')
+    seen = []
+    def fake_api(method, path):
+        seen.append(path)
+        return {'id': 'sess_old', 'status': 'idle', 'usage': {'input_tokens': 5,
+                'input_tokens_details': {'cached_tokens': 0}, 'output_tokens': 1, 'total_tokens': 6}}
+    monkeypatch.setattr(cp, 'api', fake_api)
+    assert cp.reconcile_delayed_superbrain_usage({'superbrain_session_id': 'sess_live'}) == ['sess_old']
+    assert cp.reconcile_delayed_superbrain_usage({'superbrain_session_id': 'sess_live'}) == []
+    assert seen == ['/agents/sessions/sess_old']
+
+
+def test_controller_iteration_sees_result_event_after_deterministic_reconcile(monkeypatch):
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 1})
+    seen = []
+    def reconcile():
+        cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 2, 'last_event': {'kind': 'negative_worker_result_integrated'}})
+    def poll(state):
+        seen.append(state['event_seq'])
+        return state
+    monkeypatch.setattr(cp, 'reconcile_negative_results', reconcile)
+    monkeypatch.setattr(cp, 'poll_superbrain', poll)
+    monkeypatch.setattr(cp, 'launch_ready_workers', lambda state: None)
+    monkeypatch.setattr(cp, 'poll_workers', lambda state: None)
+    cp.controller_iteration()
+    assert seen == [2]
+    assert cp.strict_json(cp.CONTROLLER_STATE)['event_seq'] == 2
+
+
+def test_repeated_partial_audits_stop_unproductive_reasoning(tmp_path, monkeypatch):
+    for i in range(2):
+        task = base_task()
+        task['task_id'] = f'placeholder_{i}'
+        task['task_family'] = 'bounded_readonly_audit'
+        task['state'] = 'BLOCKED'
+        task['created_at'] = f'2026-09-26T12:00:0{i}Z'
+        task['integration_decision'] = {'accepted': False}
+        if i == 0:
+            tasks = {}
+        tasks[task['task_id']] = task
+        cp.atomic_json(cp.result_file(task['task_id']), {'status': 'PARTIAL'})
+    cp.atomic_json(cp.TASKS, {'tasks': tasks})
+    assert cp.repeated_placeholder_audit_streak() == 2
+    state = {'event_seq': 2, 'last_superbrain_event_seq': 1,
+             'last_event': {'kind': 'negative_worker_result_integrated'}}
+    monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: pytest.fail('idle must not call model API'))
+    assert 'repeated placeholder audits' in cp.poll_superbrain(state)['superbrain_paused_reason']
+    assert cp.strict_json(cp.CONTROLLER_STATE)['last_superbrain_event_seq'] == 2
