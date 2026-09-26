@@ -1523,7 +1523,11 @@ def reconcile_delayed_superbrain_usage(state: dict[str, Any], *, max_checks: int
     return recovered
 
 
-def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
+def superbrain_budget_status(
+    now_epoch: float | None = None,
+    *,
+    active_session_id: str | None = None,
+) -> dict[str, Any]:
     """Rolling, evidence-funded budget; a missing usage record cannot hide spend."""
     now_epoch = time.time() if now_epoch is None else now_epoch
     cfg = config()["superbrain"]["adaptive_budget"]
@@ -1566,7 +1570,12 @@ def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
     tokens = sum(row["total_tokens"] for row in usage_rows.values())
     estimated = sum(estimate_usage_usd(row, "gpt-6-sol", "flex") or 0 for sid, row in usage_rows.items() if sid in starts)
     estimated += sum(estimate_usage_usd(row, "gpt-6-luna", "default") or 0 for sid, row in usage_rows.items() if sid in worker_starts)
-    missing = len(starts.keys() - usage_rows.keys())
+    missing_ids = starts.keys() - usage_rows.keys()
+    # A live session normally has no final usage yet. It must not poison the
+    # missing-usage safety gate merely because accounting settles at the end.
+    if active_session_id:
+        missing_ids = missing_ids - {active_session_id}
+    missing = len(missing_ids)
     reasons = []
     warnings = []
     # Session count is a churn signal, not a spend proxy. Crossing the
@@ -1589,7 +1598,11 @@ def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
             "reasons": reasons, "exhausted": bool(reasons)}
 
 
-def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
+def ensure_superbrain_session(
+    state: dict[str, Any],
+    *,
+    force: bool = False,
+) -> dict[str, Any]:
     cfg = config()["superbrain"]
     sid = state.get("superbrain_session_id")
     if sid:
@@ -1609,6 +1622,10 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
         state.pop("superbrain_paused_reason", None)
     elif pause_reason:
         # Preserve deliberate fail-closed/no-progress holds across restart.
+        atomic_json(CONTROLLER_STATE, state)
+        return state
+    if not force and not superbrain_work_pending(state):
+        state["superbrain_idle"] = True
         atomic_json(CONTROLLER_STATE, state)
         return state
     s = create_session(
@@ -1881,6 +1898,15 @@ def has_actionable_reasoning_event(state: dict[str, Any]) -> bool:
             and event.get("kind") in {"worker_result", "negative_worker_result_integrated", "controller_revision"})
 
 
+def superbrain_work_pending(state: dict[str, Any]) -> bool:
+    """Bootstrap once, then wake reasoning only for a verified actionable event."""
+    return not bool(state.get("bootstrap_sent")) or has_actionable_reasoning_event(state)
+
+
+def pause_requires_operator(reason: str | None) -> bool:
+    return bool(reason and str(reason).startswith("maintenance "))
+
+
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     sid = state.get("superbrain_session_id")
     event = state.get("last_event") or {}
@@ -1892,27 +1918,40 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         atomic_json(CONTROLLER_STATE, state)
         log("superbrain_no_progress_paused repeated_readonly_partial_audits")
         return state
-    budget = superbrain_budget_status()
+    budget = superbrain_budget_status(active_session_id=sid)
     if "missing_usage" in budget.get("reasons", []):
         last = float(state.get("last_usage_reconcile_epoch", 0))
         if time.time() - last >= 300:
             reconcile_delayed_superbrain_usage(state)
             state["last_usage_reconcile_epoch"] = time.time()
             atomic_json(CONTROLLER_STATE, state)
-            budget = superbrain_budget_status()
-    # The session allowance limits *new* sessions. Let the last already-created
-    # session finish within the token/cost ceilings, or its bootstrap is wasted.
-    allow_current = bool(sid and budget.get("reasons") == ["session_allowance"])
+            budget = superbrain_budget_status(active_session_id=sid)
+
+    reasons = set(budget.get("reasons") or [])
+    # Session count controls churn/new-session creation. It is not itself a
+    # reason to discard useful work in the already-created current session.
+    allow_current = bool(sid and reasons == {"session_allowance"})
     if budget["exhausted"] and not allow_current:
-        if state.get("superbrain_paused_reason") != "adaptive superbrain budget exhausted":
+        state["superbrain_budget_reasons"] = sorted(reasons)
+        if sid:
+            cancel_session(sid, "superbrain_hard_budget_hold")
+            state["superbrain_session_id"] = None
+            state["superbrain_idle"] = False
+        # Do not overwrite an explicit maintenance/operator hold merely because
+        # a budget condition is simultaneously active.
+        if not state.get("superbrain_paused_reason") or state.get("superbrain_paused_reason") == "adaptive superbrain budget exhausted":
             state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
-            atomic_json(CONTROLLER_STATE, state)
-        return state
-    if allow_current and state.get("superbrain_paused_reason") == "adaptive superbrain budget exhausted":
-        state.pop("superbrain_paused_reason")
         atomic_json(CONTROLLER_STATE, state)
-    if state.get("superbrain_paused_reason"):
-        if has_actionable_reasoning_event(state):
+        return state
+
+    state.pop("superbrain_budget_reasons", None)
+    if state.get("superbrain_paused_reason") == "adaptive superbrain budget exhausted":
+        state.pop("superbrain_paused_reason", None)
+        atomic_json(CONTROLLER_STATE, state)
+
+    pause_reason = state.get("superbrain_paused_reason")
+    if pause_reason:
+        if has_actionable_reasoning_event(state) and not pause_requires_operator(pause_reason):
             state.pop("superbrain_paused_reason", None)
             state["superbrain_session_id"] = None
             atomic_json(CONTROLLER_STATE, state)
@@ -1928,7 +1967,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         log(f"superbrain_session_lost id={sid} err={exc!r}")
         state["superbrain_session_id"] = None
         atomic_json(CONTROLLER_STATE, state)
-        return ensure_superbrain_session(state)
+        return ensure_superbrain_session(state, force=True)
     status = s.get("status")
     if state.get("superbrain_paused_reason"):
         return state
@@ -1969,7 +2008,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         delete_session(sid)
         state["superbrain_session_id"] = None
         atomic_json(CONTROLLER_STATE, state)
-        return ensure_superbrain_session(state)
+        return ensure_superbrain_session(state, force=True)
     elif status == "idle":
         current = int(state.get("event_seq", 0))
         last = int(state.get("last_superbrain_event_seq", 0))
@@ -2011,12 +2050,11 @@ def run_controller() -> None:
     PID.write_text(str(os.getpid()), encoding="utf-8")
     os.chmod(PID, 0o600)
     state = strict_json(CONTROLLER_STATE)
-    state = ensure_agents(state)
-    # Reconcile source/config identity before creating a reasoning session.
-    # Otherwise a restart after deployment can create one session for the old
-    # event sequence and immediately orphan it when the revision event lands.
+    ensure_agents(state)
+    # Reconcile source/config identity before the first poll. Do not create a
+    # reasoning session merely because the controller restarted; poll_superbrain
+    # will create one only for initial bootstrap or an actionable event.
     reconcile_repository_revision()
-    state = ensure_superbrain_session(strict_json(CONTROLLER_STATE))
     log("orchestrator_controller_started")
     while True:
         controller_iteration()

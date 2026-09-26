@@ -429,9 +429,64 @@ def test_rolling_budget_adapts_to_accepted_outcomes_and_requires_usage(tmp_path,
     assert 'missing_usage' in cp.superbrain_budget_status(now)['reasons']
 
 
+def test_active_superbrain_session_is_not_counted_as_missing_usage(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'LOG', tmp_path / 'controller.log')
+    monkeypatch.setattr(cp, 'COST', tmp_path / 'usage.jsonl')
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    cp.atomic_json(cp.TASKS, {'tasks': {}})
+    stamp = cp.utc_now()
+    cp.LOG.write_text(
+        f'{stamp} superbrain_session_created id=sess_old model=gpt-6-sol\n'
+        f'{stamp} superbrain_session_created id=sess_live model=gpt-6-sol\n'
+    )
+    cp.COST.write_text('')
+    blocked = cp.superbrain_budget_status(cp.time.time())
+    assert blocked['missing_usage_sessions'] == 2
+    assert 'missing_usage' in blocked['reasons']
+
+    active = cp.superbrain_budget_status(
+        cp.time.time(),
+        active_session_id='sess_live',
+    )
+    assert active['missing_usage_sessions'] == 1
+    assert 'missing_usage' not in active['reasons']
+
+
+def test_no_pending_work_does_not_create_superbrain_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'state.json')
+    monkeypatch.setattr(cp, 'reconcile_delayed_superbrain_usage', lambda state: 0)
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': False})
+    monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('idle restart created a model session'))
+    state = cp.ensure_superbrain_session({
+        'superbrain_agent_id': 'a',
+        'bootstrap_sent': True,
+        'event_seq': 7,
+        'last_superbrain_event_seq': 7,
+    })
+    assert state['superbrain_idle'] is True
+    assert state.get('superbrain_session_id') is None
+
+
+def test_maintenance_pause_does_not_auto_resume_on_repository_event(monkeypatch):
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': False, 'reasons': []})
+    monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('maintenance hold auto-resumed'))
+    state = {
+        'superbrain_agent_id': 'a',
+        'superbrain_session_id': None,
+        'superbrain_paused_reason': 'maintenance resource cleanup',
+        'bootstrap_sent': True,
+        'event_seq': 4,
+        'last_superbrain_event_seq': 3,
+        'last_event': {'kind': 'controller_revision'},
+    }
+    result = cp.poll_superbrain(state)
+    assert result['superbrain_paused_reason'] == 'maintenance resource cleanup'
+    assert result.get('superbrain_session_id') is None
+
+
 def test_budget_prevents_creating_another_superbrain_session(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'state.json')
-    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': True})
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': True})
     monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('model session created'))
     state = cp.ensure_superbrain_session({'superbrain_agent_id': 'a', 'event_seq': 1})
     assert state['superbrain_paused_reason'] == 'adaptive superbrain budget exhausted'
@@ -442,7 +497,7 @@ def test_expired_budget_pause_is_cleared_before_new_session(tmp_path, monkeypatc
     monkeypatch.setattr(cp, 'LOG', tmp_path / 'controller.log')
     monkeypatch.setattr(cp, 'EVIDENCE', tmp_path / 'evidence.jsonl')
     monkeypatch.setattr(cp, 'reconcile_delayed_superbrain_usage', lambda state: 0)
-    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': False})
     monkeypatch.setattr(
         cp,
         'create_session',
@@ -460,7 +515,7 @@ def test_expired_budget_pause_is_cleared_before_new_session(tmp_path, monkeypatc
 def test_nonbudget_pause_survives_restart_without_new_session(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'state.json')
     monkeypatch.setattr(cp, 'reconcile_delayed_superbrain_usage', lambda state: 0)
-    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': False})
     monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('session created'))
     state = cp.ensure_superbrain_session({
         'superbrain_agent_id': 'a',
@@ -759,7 +814,7 @@ def test_readonly_worker_gets_distinct_minimal_contract_and_dispatch(tmp_path, m
 
 
 def test_idle_dispatch_event_does_not_call_superbrain(monkeypatch):
-    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': False})
     monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: {'status': 'idle'})
     monkeypatch.setattr(cp, 'send_message', lambda *args, **kwargs: pytest.fail('idle dispatch caused model call'))
     state = {'superbrain_session_id': 's1', 'event_seq': 2, 'last_superbrain_event_seq': 1,
@@ -768,7 +823,7 @@ def test_idle_dispatch_event_does_not_call_superbrain(monkeypatch):
 
 
 def test_idle_superbrain_makes_no_api_poll_without_actionable_event(monkeypatch):
-    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda **kwargs: {'exhausted': False})
     monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: pytest.fail('idle session was polled'))
     state = {'superbrain_session_id': 's1', 'superbrain_idle': True, 'event_seq': 9,
              'last_superbrain_event_seq': 8, 'last_event': {'kind': 'task_dispatch_requested'}}
@@ -967,7 +1022,7 @@ def test_repeated_blocked_readonly_audits_pause_reasoning(tmp_path, monkeypatch)
 
 def test_final_existing_superbrain_session_runs_at_session_allowance(monkeypatch):
     monkeypatch.setattr(cp, 'superbrain_budget_status',
-                        lambda: {'exhausted': True, 'reasons': ['session_allowance']})
+                        lambda **kwargs: {'exhausted': True, 'reasons': ['session_allowance']})
     observed = []
     monkeypatch.setattr(cp, 'api',
                         lambda method, path: observed.append((method, path)) or {'status': 'idle'})
@@ -980,10 +1035,21 @@ def test_final_existing_superbrain_session_runs_at_session_allowance(monkeypatch
     assert 'superbrain_paused_reason' not in state
 
 
-def test_token_ceiling_blocks_even_existing_session(monkeypatch):
-    monkeypatch.setattr(cp, 'superbrain_budget_status',
-                        lambda: {'exhausted': True, 'reasons': ['session_allowance', 'token_allowance']})
-    monkeypatch.setattr(cp, 'api', lambda *args: pytest.fail('token ceiling was ignored'))
+def test_token_ceiling_cancels_existing_session_and_blocks_replacement(monkeypatch):
+    monkeypatch.setattr(
+        cp,
+        'superbrain_budget_status',
+        lambda **kwargs: {
+            'exhausted': True,
+            'reasons': ['session_allowance', 'token_allowance'],
+        },
+    )
+    cancelled = []
+    monkeypatch.setattr(cp, 'cancel_session', lambda sid, reason: cancelled.append((sid, reason)))
+    monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('token ceiling created replacement session'))
     state = {'superbrain_session_id': 'last-session'}
     cp.poll_superbrain(state)
+    assert cancelled == [('last-session', 'superbrain_hard_budget_hold')]
+    assert state['superbrain_session_id'] is None
     assert state['superbrain_paused_reason'] == 'adaptive superbrain budget exhausted'
+    assert state['superbrain_budget_reasons'] == ['session_allowance', 'token_allowance']
