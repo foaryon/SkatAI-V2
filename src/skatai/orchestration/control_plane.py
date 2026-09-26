@@ -1112,14 +1112,37 @@ def write_text_worker(task: dict[str, Any], raw: str, content: str) -> dict[str,
     return {"changed": str(p.relative_to(REPO)), "bytes": len(content.encode())}
 
 
+def _normalize_worker_result_lists(result: dict[str, Any]) -> dict[str, Any]:
+    """Normalize harmless scalar/list shape drift without inventing evidence."""
+    normalized = dict(result)
+    required = ("observations", "changes", "evidence", "verification", "unresolved")
+    optional = ("hypotheses", "confirmed_causes", "risks", "artifacts", "recommended_followups")
+    invalid: list[str] = []
+    for key in (*required, *optional):
+        if key not in normalized:
+            if key in optional:
+                normalized[key] = []
+                continue
+            invalid.append(f"{key}=missing")
+            continue
+        value = normalized[key]
+        if isinstance(value, str):
+            normalized[key] = [value]
+        elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+            pass
+        else:
+            invalid.append(f"{key}={type(value).__name__}")
+    if invalid:
+        raise RuntimeError("WORKER_RESULT_SCHEMA_INVALID:" + ",".join(invalid))
+    return normalized
+
+
 def submit_worker_result(task: dict[str, Any], worker_id: str, session_id: str, result: dict[str, Any]) -> dict[str, Any]:
     if result.get("status") not in TERMINAL_RESULT_STATES:
         raise RuntimeError("WORKER_RESULT_STATUS_INVALID")
     if worker_id != task["assigned_agent"]:
         raise RuntimeError("WORKER_RESULT_IDENTITY_MISMATCH")
-    required = ("observations", "changes", "evidence", "verification", "unresolved")
-    if any(not isinstance(result.get(k), list) for k in required):
-        raise RuntimeError("WORKER_RESULT_SCHEMA_INVALID")
+    result = _normalize_worker_result_lists(result)
     if result["status"] == "COMPLETE" and (not result["evidence"] or not result["verification"]):
         raise RuntimeError("WORKER_RESULT_EVIDENCE_MISSING")
     tid = task["task_id"]
@@ -1876,9 +1899,17 @@ def repeated_orchestrator_rejection(session_id: str) -> bool:
 
 
 def repeated_placeholder_audit_streak() -> int:
-    """Count recent unaccepted read-only partials; they must not fund planning loops."""
+    """Count only evidence-empty audit loops, not control-plane execution failures."""
     tasks = strict_json(TASKS)["tasks"]
     ordered = sorted(tasks.values(), key=lambda t: t.get("created_at", ""), reverse=True)
+    operational_markers = (
+        "worker became idle without submitting required result contract",
+        "worker tool-call budget exhausted",
+        "worker task exceeded bounded runtime",
+        "worker session retrieval failed",
+        "tool-call",
+        "tool layer",
+    )
     streak = 0
     for task in ordered:
         if task.get("task_family") != "bounded_readonly_audit":
@@ -1886,7 +1917,19 @@ def repeated_placeholder_audit_streak() -> int:
         if task.get("state") != "BLOCKED" or task.get("integration_decision", {}).get("accepted") is not False:
             break
         rp = result_file(task["task_id"])
-        if not rp.is_file() or strict_json(rp).get("status") not in {"PARTIAL", "BLOCKED"}:
+        if not rp.is_file():
+            break
+        result = strict_json(rp)
+        if result.get("status") not in {"PARTIAL", "BLOCKED"}:
+            break
+        text = " ".join(
+            str(item)
+            for key in ("observations", "unresolved")
+            for item in (result.get(key) or [])
+        ).lower()
+        if any(marker in text for marker in operational_markers):
+            break
+        if result.get("evidence") or result.get("verification"):
             break
         streak += 1
     return streak

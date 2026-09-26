@@ -1020,6 +1020,60 @@ def test_repeated_blocked_readonly_audits_pause_reasoning(tmp_path, monkeypatch)
     assert cp.repeated_placeholder_audit_streak() == 2
 
 
+def test_worker_result_list_normalization_accepts_scalar_strings_and_fills_optional_lists():
+    normalized = cp._normalize_worker_result_lists({
+        'status': 'BLOCKED',
+        'observations': 'one observation',
+        'changes': [],
+        'evidence': 'source line 10',
+        'verification': [],
+        'unresolved': 'needs follow-up',
+    })
+    assert normalized['observations'] == ['one observation']
+    assert normalized['evidence'] == ['source line 10']
+    assert normalized['unresolved'] == ['needs follow-up']
+    assert normalized['hypotheses'] == []
+    assert normalized['recommended_followups'] == []
+
+
+def test_worker_result_list_normalization_rejects_non_scalar_non_list():
+    with pytest.raises(RuntimeError, match='WORKER_RESULT_SCHEMA_INVALID:.*evidence=dict'):
+        cp._normalize_worker_result_lists({
+            'status': 'BLOCKED',
+            'observations': [],
+            'changes': [],
+            'evidence': {'bad': 'shape'},
+            'verification': [],
+            'unresolved': [],
+        })
+
+
+def test_operational_worker_failure_does_not_trigger_placeholder_pause():
+    cp.atomic_json(cp.TASKS, {'tasks': {
+        'older': {
+            'task_id': 'older', 'task_family': 'bounded_readonly_audit',
+            'created_at': '2026-09-26T00:00:01Z', 'state': 'BLOCKED',
+            'integration_decision': {'accepted': False},
+        },
+        'newer': {
+            'task_id': 'newer', 'task_family': 'bounded_readonly_audit',
+            'created_at': '2026-09-26T00:00:02Z', 'state': 'BLOCKED',
+            'integration_decision': {'accepted': False},
+        },
+    }})
+    cp.atomic_json(cp.result_file('older'), {
+        'status': 'BLOCKED', 'observations': [], 'unresolved': [],
+        'evidence': [], 'verification': [],
+    })
+    cp.atomic_json(cp.result_file('newer'), {
+        'status': 'BLOCKED',
+        'observations': ['worker became idle without submitting required result contract'],
+        'unresolved': ['worker became idle without submitting required result contract'],
+        'evidence': [], 'verification': [],
+    })
+    assert cp.repeated_placeholder_audit_streak() == 0
+
+
 def test_final_existing_superbrain_session_runs_at_session_allowance(monkeypatch):
     monkeypatch.setattr(cp, 'superbrain_budget_status',
                         lambda **kwargs: {'exhausted': True, 'reasons': ['session_allowance']})
