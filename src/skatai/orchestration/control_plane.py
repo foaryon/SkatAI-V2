@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -432,6 +433,10 @@ def validate_task_contract(task: dict[str, Any]) -> dict[str, Any]:
 def command_input_hashes(task: dict[str, Any]) -> dict[str, str]:
     result: dict[str, str] = {}
     for argv in task.get("authority", {}).get("execute", []):
+        if argv:
+            executable = shutil.which(argv[0])
+            if executable and Path(executable).is_file():
+                result["tool:" + argv[0]] = sha256(Path(executable))
         for arg in argv:
             if not isinstance(arg, str) or arg.startswith("-"):
                 continue

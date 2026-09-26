@@ -223,3 +223,17 @@ def test_new_worker_evidence_allows_one_bounded_session_rotation(tmp_path, monke
     assert cp.evidence_since_session_start(state)
     state['session_start_evidence_bytes'] = cp.EVIDENCE.stat().st_size
     assert not cp.evidence_since_session_start(state)
+
+
+def test_command_input_hashes_track_newly_available_tool(tmp_path, monkeypatch):
+    import shutil
+    task = base_task()
+    task['authority']['execute'] = [['rg', 'pattern', 'provenance']]
+    monkeypatch.setattr(shutil, 'which', lambda name: None)
+    missing = cp.command_input_hashes(task)
+    binary = tmp_path / 'rg'
+    binary.write_bytes(b'new-tool')
+    monkeypatch.setattr(shutil, 'which', lambda name: str(binary))
+    present = cp.command_input_hashes(task)
+    assert 'tool:rg' not in missing
+    assert present['tool:rg'] == cp.sha256(binary)
