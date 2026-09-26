@@ -584,7 +584,12 @@ def run_exact_worker_command(task: dict[str, Any], argv: list[str], timeout: int
     if not argv or argv[0] in {"sudo", "su", "ssh", "scp", "curl", "wget", "rm"}:
         raise RuntimeError("COMMAND_FORBIDDEN")
     timeout = min(int(timeout or 300), 900)
-    cp = subprocess.run(argv, cwd=REPO, text=True, capture_output=True, timeout=timeout)
+    worker_env = {
+        "PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "LC_ALL": "C.UTF-8",
+        "PYTHONPATH": str(REPO / "src"), "PYTHONDONTWRITEBYTECODE": "1", "TZ": "UTC",
+    }
+    cp = subprocess.run(argv, cwd=REPO, text=True, capture_output=True, timeout=timeout,
+                        user="sentinelx", group="sentinelx", env=worker_env)
     out = (cp.stdout + ("\nSTDERR:\n" + cp.stderr if cp.stderr else ""))[-60000:]
     return {"returncode": cp.returncode, "output": out}
 

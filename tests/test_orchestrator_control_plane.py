@@ -158,3 +158,17 @@ def test_read_text_bounds_context(tmp_path):
     p = tmp_path / 'large.txt'
     p.write_text('large-line\n' * 10000)
     assert len(cp.bounded_text(p).encode()) < 4200
+
+
+def test_exact_worker_command_runs_without_root_credentials(monkeypatch):
+    import subprocess
+    seen = {}
+    def fake_run(*args, **kwargs):
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(args, 0, 'ok', '')
+    monkeypatch.setattr(cp.subprocess, 'run', fake_run)
+    task = base_task()
+    cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
+    assert seen['user'] == 'sentinelx'
+    assert 'OPENAI_API_KEY' not in seen['env']
+    assert 'RUNPOD_SECRET_openai_agents_api_key' not in seen['env']
