@@ -422,3 +422,14 @@ def test_tool_failure_is_persisted_without_arguments(tmp_path, monkeypatch):
     line = (tmp_path / 'tool_failure_registry.jsonl').read_text()
     assert 'INVALID_CONTRACT' in line
     assert 'dont-log' not in line
+
+
+def test_only_new_external_evidence_or_revision_can_resume_paused_reasoning():
+    state = {'event_seq': 7, 'last_superbrain_event_seq': 6,
+             'last_event': {'kind': 'controller_revision'}}
+    assert cp.has_actionable_reasoning_event(state)
+    state['last_superbrain_event_seq'] = 7
+    assert not cp.has_actionable_reasoning_event(state)
+    state['last_superbrain_event_seq'] = 6
+    state['last_event']['kind'] = 'task_dispatch_requested'
+    assert not cp.has_actionable_reasoning_event(state)

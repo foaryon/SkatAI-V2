@@ -1365,6 +1365,12 @@ def reconcile_negative_results() -> list[str]:
     return closed
 
 
+def has_actionable_reasoning_event(state: dict[str, Any]) -> bool:
+    event = state.get("last_event") or {}
+    return (int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0))
+            and event.get("kind") in {"worker_result", "controller_revision"})
+
+
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     sid = state.get("superbrain_session_id")
     if superbrain_budget_status()["exhausted"]:
@@ -1373,9 +1379,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
             atomic_json(CONTROLLER_STATE, state)
         return state
     if state.get("superbrain_paused_reason"):
-        event = state.get("last_event") or {}
-        if (int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0))
-                and event.get("kind") == "worker_result"):
+        if has_actionable_reasoning_event(state):
             state.pop("superbrain_paused_reason", None)
             state["superbrain_session_id"] = None
             atomic_json(CONTROLLER_STATE, state)
