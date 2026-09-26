@@ -186,3 +186,10 @@ def test_directory_write_scope_is_rejected():
     task['authority']['write'] = ['repo:integrations/jskat-adapter/']
     with pytest.raises(RuntimeError, match='WRITE_SCOPE'):
         cp.validate_task_contract(task)
+
+
+def test_bootstrap_has_bounded_dispatch_instruction():
+    prompt = cp.superbrain_bootstrap_text()
+    assert 'list_tasks' in prompt
+    assert 'within at most six tool calls' in prompt
+    assert 'do not restart it' in prompt

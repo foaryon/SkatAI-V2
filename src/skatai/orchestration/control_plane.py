@@ -842,12 +842,13 @@ def resolve_required_actions(session: dict[str, Any], *, kind: str, task: dict[s
 
 def superbrain_bootstrap_text() -> str:
     return (
-        "Fresh orchestration control-plane bootstrap after removal of the legacy single-MAIN agent system. "
-        "Reconcile the freshest current V2 state now. Start with get_project_snapshot. "
-        "Read the Founding Specification and Work Prompt only as needed. Preserve current scientific/runtime work. "
-        "The repository currently may contain valuable untracked completed work from the cutover window; inspect before assigning changes. "
-        "Create and dispatch a small non-conflicting set of highest-value bounded worker tasks. "
-        "Use cheap workers for execution; retain global reasoning here. Do not recreate legacy MAIN gates, permits, execution locks, or guardian logic."
+        "Bootstrap a single real, bounded V2 work order within at most six tool calls. "
+        "First use get_project_snapshot and list_tasks. Reuse existing READY tasks if valid; "
+        "reject or revise any contract with a broad write scope. The R9 ISS gate worker is running; do not restart it. "
+        "The founding specification requires evidence over claims. The Work Prompt seeks the full V2 product. "
+        "A focused deterministic validation of pending JSkat source portability is a candidate if still unverified. "
+        "Dispatch one safe, nonconflicting task with exact command and minimum context. "
+        "Do not browse the entire repository first. On result, verify, integrate, persist, then continue."
     )
 
 
