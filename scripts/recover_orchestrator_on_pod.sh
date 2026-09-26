@@ -6,8 +6,8 @@ repo=/workspace/skatai-v2
 control=/workspace/skatai-v2-runtime/orchestrator/control
 cd "$repo"
 # Never install a controller from edited source; untracked scientific files are preserved.
-git diff --quiet HEAD -- src/skatai/orchestration scripts/install_orchestrator_runtime.sh scripts/orchestrator_boot.sh scripts/orchestrator_supervisor.sh scripts/pre_start_orchestrator.sh scripts/volume_bootstrap.sh configs/orchestration SKATAI_V2_FOUNDING_SPECIFICATION.md SKATAI_V2_WORK_PROMPT.md || { echo TRACKED_CONTROL_SOURCE_DIRTY >&2; exit 1; }
-git diff --cached --quiet -- src/skatai/orchestration scripts/install_orchestrator_runtime.sh scripts/orchestrator_boot.sh scripts/orchestrator_supervisor.sh scripts/pre_start_orchestrator.sh scripts/volume_bootstrap.sh configs/orchestration SKATAI_V2_FOUNDING_SPECIFICATION.md SKATAI_V2_WORK_PROMPT.md || { echo STAGED_CONTROL_SOURCE_DIRTY >&2; exit 1; }
+env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git -C "$repo" diff --quiet HEAD -- src/skatai/orchestration scripts/install_orchestrator_runtime.sh scripts/orchestrator_boot.sh scripts/orchestrator_supervisor.sh scripts/pre_start_orchestrator.sh scripts/volume_bootstrap.sh configs/orchestration SKATAI_V2_FOUNDING_SPECIFICATION.md SKATAI_V2_WORK_PROMPT.md || { echo TRACKED_CONTROL_SOURCE_DIRTY >&2; exit 1; }
+env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git -C "$repo" diff --cached --quiet -- src/skatai/orchestration scripts/install_orchestrator_runtime.sh scripts/orchestrator_boot.sh scripts/orchestrator_supervisor.sh scripts/pre_start_orchestrator.sh scripts/volume_bootstrap.sh configs/orchestration SKATAI_V2_FOUNDING_SPECIFICATION.md SKATAI_V2_WORK_PROMPT.md || { echo STAGED_CONTROL_SOURCE_DIRTY >&2; exit 1; }
 if pgrep -f '^(/usr/bin/)?python3 /opt/skatai-main-controller/current/openai_platform_main_controller\.py$' >/dev/null; then
   echo LEGACY_MAIN_ACTIVE >&2
   exit 1
@@ -22,4 +22,4 @@ install -o root -g root -m 755 scripts/pre_start_orchestrator.sh /pre_start.sh
 if [ "${SKATAI_RECOVERY_DEFER_BOOT:-0}" != "1" ]; then
   bash /pre_start.sh
 fi
-printf 'RECOVERY_BOOTSTRAP_OK head=%s\n' "$(git rev-parse --short HEAD)"
+printf 'RECOVERY_BOOTSTRAP_OK head=%s\n' "$(env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git -C "$repo" rev-parse --short HEAD)"
