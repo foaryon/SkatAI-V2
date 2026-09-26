@@ -67,14 +67,11 @@ extract configs/control/MAIN_CONTINUE_EXECUTION_POLICY.txt config/MAIN_CONTINUE_
 extract configs/control/MAIN_EXECUTION_GOVERNOR.json config/MAIN_EXECUTION_GOVERNOR.json 644
 extract configs/control/MAIN_GOAL_POLICY.json config/MAIN_GOAL_POLICY.json 644
 extract configs/control/MAIN_GATE_QUEUE.json config/MAIN_GATE_QUEUE.json 644
-extract configs/control/main_gates/00-main_state_reconciliation.json config/gates/00-main_state_reconciliation.json 644
-extract configs/control/main_gates/01-budgets_enforced_acceptance.json config/gates/01-budgets_enforced_acceptance.json 644
-extract configs/control/main_gates/02-anti_pseudo_v2_acceptance.json config/gates/02-anti_pseudo_v2_acceptance.json 644
-extract configs/control/main_gates/03-jskat_pickup_source_bound_release.json config/gates/03-jskat_pickup_source_bound_release.json 644
-extract configs/control/main_gates/04-automatic_recovery_acceptance.json config/gates/04-automatic_recovery_acceptance.json 644
-extract configs/control/main_gates/05-stable_deployment_interface_acceptance.json config/gates/05-stable_deployment_interface_acceptance.json 644
-extract configs/control/main_gates/06-current_source_package_host_smoke.json config/gates/06-current_source_package_host_smoke.json 644
-extract configs/control/main_gates/07-current_source_runtime_wheel.json config/gates/07-current_source_runtime_wheel.json 644
+while IFS= read -r gate_rel; do
+  [ -n "$gate_rel" ] || continue
+  gate_name="${gate_rel##*/}"
+  extract "$gate_rel" "config/gates/$gate_name" 644
+done < <(git ls-tree -r --name-only "$head" -- configs/control/main_gates | sort)
 extract provenance/MAIN_EXECUTION_LOCK.json config/INITIAL_EXECUTION_LOCK.json 644
 
 extract SKATAI_V2_FOUNDING_SPECIFICATION.md authority/SKATAI_V2_FOUNDING_SPECIFICATION.md 644

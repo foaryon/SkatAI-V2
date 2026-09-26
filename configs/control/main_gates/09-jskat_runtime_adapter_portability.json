@@ -1,0 +1,96 @@
+{
+  "schema": "skatai.v2.main-execution-lock.v2",
+  "captured_at": "2026-09-26T09:05:00Z",
+  "reason": "Pre-authorized deterministic MAIN gate queue entry.",
+  "primary": {
+    "gate_id": "JSKAT_RUNTIME_ADAPTER_PORTABILITY",
+    "status": "EXECUTABLE",
+    "goal_path_id": "G6_RELEASE_INTEGRATION",
+    "objective": "Verify that the previously runtime-validated JSkat adapter branch remains cleanly portable onto current main and record the exact remaining deployment-matched Java prerequisite without claiming current-main Java acceptance.",
+    "end_state_contribution": "Preserves validated JSkat integration work and establishes a precise, conflict-free port boundary for the next product-integration step.",
+    "selection_basis": "feat/jskat-runtime-adapter-v1 contains verified Java/Python adapter evidence but is based on older V2 source; a deterministic merge-tree against current main is required before porting.",
+    "selection_evidence": [
+      "provenance/JSKAT_RUNTIME_ADAPTER_PORTABILITY_20260926.json",
+      "provenance/OPEN_SOURCE_SKAT_PRODUCT_AUDIT_20260925.json",
+      "provenance/JSKAT_V2_DECISION_BRIDGE_CONTRACT_20260925.json",
+      "scripts/run_jskat_adapter_portability.py"
+    ],
+    "evidence": [
+      "provenance/JSKAT_RUNTIME_ADAPTER_PORTABILITY_20260926.json"
+    ],
+    "model_tier": "VERIFIED_CURRENT",
+    "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a deterministic branch-portability gate, not a Java runtime acceptance gate.",
+    "allowed_material_effects": [
+      "READ_ONLY_INSPECTION",
+      "PROVENANCE_WRITE",
+      "BOUNDED_TEST_EXECUTION"
+    ],
+    "executor_capabilities": [],
+    "progress_contract": {
+      "kind": "JSON_FIELD_TRANSITION",
+      "path": "provenance/JSKAT_RUNTIME_ADAPTER_PORTABILITY_20260926.json",
+      "field": "classification",
+      "before_prefix": "OPEN",
+      "after_forbid_prefix": "OPEN"
+    },
+    "authorized_commands": [
+      {
+        "id": "audit_jskat_adapter_portability",
+        "argv_prefix": [
+          "/usr/bin/python3",
+          "/workspace/skatai-v2/scripts/run_jskat_adapter_portability.py"
+        ],
+        "script": "scripts/run_jskat_adapter_portability.py",
+        "script_sha256": "d7aeb0997e1e75fecb3b5798500c5d8e187e5dfe7655012a4a58c726bf753c17",
+        "timeout_seconds": 90,
+        "arg_schema": {}
+      }
+    ],
+    "writable_files": [
+      "provenance/JSKAT_RUNTIME_ADAPTER_PORTABILITY_20260926.json",
+      "provenance/MAIN_CURRENT_STATE.json"
+    ],
+    "completion": [
+      "The deterministic portability command binds current main, exact adapter branch head 5758581..., merge base, merge tree and changed path set.",
+      "Any merge conflict or unexpected changed path yields REJECT/INCONCLUSIVE rather than source mutation.",
+      "A clean merge-tree may ACCEPT portability only; it must not claim current-main Java/JSkat runtime acceptance.",
+      "The decision records that deployment-matched JDK/JSkat revalidation is required before porting/adoption when java/javac are unavailable.",
+      "R9 and accepted package/model identities remain unchanged."
+    ],
+    "next_action": "Call get_active_lease first, then immediately run audit_jskat_adapter_portability. Do not browse broadly. Read only the OPEN portability provenance and MAIN_CURRENT_STATE for exact edits. If the command reports PASS_CLEAN_MERGE_TREE, record ACCEPT for portability while explicitly preserving the missing deployment-matched JDK/current-main Java validation prerequisite; otherwise REJECT/INCONCLUSIVE. Update current state with the exact next product step, call record_turn_outcome, and yield.",
+    "evidence_identities": {
+      "runner_sha256": "d7aeb0997e1e75fecb3b5798500c5d8e187e5dfe7655012a4a58c726bf753c17",
+      "adapter_branch": "feat/jskat-runtime-adapter-v1",
+      "adapter_branch_head": "575858100ffbfc2fc24cb0d5713038eb930adc9a",
+      "adapter_implementation_commit": "edff3d92b66ceabd9c96133a8b7d0cb668f7f688",
+      "adapter_evidence_commit": "dd4dad654f5ad70c2210727db06c8bdd19c2db9e",
+      "adapter_runtime_wheel_commit": "575858100ffbfc2fc24cb0d5713038eb930adc9a",
+      "prior_java_runtime_evidence_classification": "CONCLUDE_STAGED_PRODUCT_GATE",
+      "current_system_java_available": false
+    },
+    "decisive_facts": [
+      "Prior adapter evidence reports 603 V2 Python tests, 13 Java adapter tests, real Java-Python release roundtrip, JSkat runtime parity, patch build, installed-distribution class discovery, and zero post-close host/worker orphans on the staged branch.",
+      "The staged adapter branch is not current main and must not be treated as merged or accepted current-source product code merely because those tests passed.",
+      "A deterministic current-main merge-tree precheck is the authorized evidence for this gate; no files are ported by this command.",
+      "The current pod exposes neither java nor javac, and no cached JDK toolchain was found in the checked V2/Gradle runtime paths. Current-main Java acceptance therefore remains a separate prerequisite even if the merge tree is clean."
+    ]
+  },
+  "secondary": null,
+  "external_dependencies": [
+    {
+      "event_watch": {
+        "type": "R9_GATE",
+        "status_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/status.json",
+        "supervisor_path": "/workspace/skatai-v2-runtime/iss/external-gate-r9/supervisor-status.json",
+        "expected_next_per_arm_target": 300,
+        "expected_source_commit": "5c4b6f977ebdf883e836e95eb0530121b99394e7"
+      },
+      "gate_id": "B1_EXTERNAL_ISS_R9",
+      "goal_path_id": "G4_CONTROLLED_EVALUATION",
+      "owner": "independent fail-closed supervisor",
+      "rule": "No model polling and no R9 mutation from this PRIMARY.",
+      "status": "WAITING_EXTERNAL"
+    }
+  ],
+  "switching_rule": "Queue exhaustion after this terminal gate is a truthful external/product-runtime boundary until a deployment-matched JDK/JSkat validation path is authorized; do not fabricate further queue work."
+}

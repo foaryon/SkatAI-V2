@@ -32,9 +32,9 @@
   "controller_turn_closure_recovery": {
     "classification": "ACCEPT",
     "evidence": "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
-    "scope": "Gate5 accepted with 60 focused tests. Packaging gates6-7 completed deterministically by operator with durable exact-source evidence. MAIN finite queue now has no uncompleted authorized entry; do not replay completed gates.",
-    "next_gate_index": null,
-    "queue_entries": 8,
+    "scope": "Gates 0-7 complete; queue extended with reproducible-release acceptance and JSkat adapter portability. Completed gates must not be replayed.",
+    "next_gate_index": 8,
+    "queue_entries": 10,
     "concurrent_activation": "A concurrent controller session completed gate4 before operator redeployment; retained ACCEPT evidence, cancelled superseded session, no replay permitted."
   },
   "data_integrity": {
@@ -87,7 +87,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Independent R9 supervisor continues frozen evaluation with bounded terminal-less timeout recovery. Persistent 24-hour operational soak collects evidence. Full-product AFK and final R9 decision remain unaccepted until their real prerequisites complete. Do not fabricate queue work or reopen accepted gates.",
+  "next_action": "Resume MAIN at REPRODUCIBLE_RELEASE_ACCEPTANCE. R9 remains independently supervised; then verify JSkat adapter current-main portability. Deployment-matched JDK/JSkat runtime validation remains required before adapter port/adoption.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
