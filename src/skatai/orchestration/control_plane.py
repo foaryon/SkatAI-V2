@@ -417,6 +417,7 @@ def project_snapshot() -> dict[str, Any]:
             "complete": [k for k, v in tasks.items() if v.get("state") == "COMPLETE"][-30:],
         },
         "worker_roles": list(roles()),
+        "cost_summary": model_cost_summary(),
         "runtime_processes": processes,
         "authority_hashes": {
             "founding_spec": sha256(FOUNDING_SPEC),
@@ -602,6 +603,50 @@ def evidence_since_session_start(state: dict[str, Any]) -> bool:
     return size > int(state.get("session_start_evidence_bytes", 0))
 
 
+def estimate_usage_usd(usage: dict[str, Any], model: str, service_tier: str) -> float | None:
+    """Indicative text-token estimate, excluding per-request long-context premiums.
+
+    Rates: https://developers.openai.com/api/docs/models/gpt-6-sol and
+    https://developers.openai.com/api/docs/models/gpt-6-luna (2026-09-26).
+    This is telemetry, never an invoice or scientific outcome metric.
+    """
+    prices = {"gpt-6-sol": (2.0, 0.2, 10.0), "gpt-6-luna": (0.1, 0.01, 0.5)}
+    if model not in prices or not isinstance(usage.get("input_tokens"), int) or not isinstance(usage.get("output_tokens"), int):
+        return None
+    inp, cached, out = usage["input_tokens"], (usage.get("input_tokens_details") or {}).get("cached_tokens", 0), usage["output_tokens"]
+    if not isinstance(cached, int) or cached < 0 or cached > inp:
+        return None
+    regular_rate, cached_rate, output_rate = prices[model]
+    multiplier = 0.5 if service_tier == "flex" else 1.0
+    return round(((inp - cached) * regular_rate + cached * cached_rate + out * output_rate) * multiplier / 1_000_000, 6)
+
+
+def model_cost_summary() -> dict[str, Any]:
+    rows = {}
+    if COST.exists():
+        for line in COST.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if isinstance((row.get("usage") or {}).get("total_tokens"), int):
+                rows[row["session_id"]] = row
+    estimated = 0.0
+    total_tokens = 0
+    for row in rows.values():
+        usage = row["usage"]
+        total_tokens += usage["total_tokens"]
+        model = row.get("model") or ("gpt-6-sol" if row.get("role") == "orchestrator-superbrain" else "gpt-6-luna")
+        tier = row.get("service_tier") or ("flex" if row.get("role") == "orchestrator-superbrain" else "default")
+        estimate = estimate_usage_usd(usage, model, tier)
+        if estimate is not None:
+            estimated += estimate
+    accepted = sum(1 for v in strict_json(TASKS)["tasks"].values()
+                   if v.get("state") == "COMPLETE" and v.get("integration_decision", {}).get("accepted"))
+    return {"sessions_with_usage": len(rows), "total_tokens": total_tokens,
+            "estimated_usd_short_context": round(estimated, 4),
+            "accepted_worker_outcomes": accepted,
+            "estimated_usd_per_accepted_worker_outcome": round(estimated / accepted, 4) if accepted else None,
+            "estimate_limits": "Uses published short-context text token rates; long-context premiums, cache writes and actual billing may differ."}
+
+
 def persist_usage(session: dict[str, Any], role: str, tool_calls: int, outcome: str) -> None:
     if session.get("usage") is None:
         for _ in range(3):
@@ -612,9 +657,12 @@ def persist_usage(session: dict[str, Any], role: str, tool_calls: int, outcome: 
                 break
             if session.get("usage") is not None:
                 break
+    model = session.get("agent", {}).get("model") or ("gpt-6-sol" if role == "orchestrator-superbrain" else "gpt-6-luna")
+    tier = "flex" if role == "orchestrator-superbrain" else "default"
     row = {"time": utc_now(), "session_id": session["id"], "role": role,
-           "model": session.get("agent", {}).get("model"), "tool_calls": tool_calls,
-           "outcome": outcome, "usage": session.get("usage")}
+           "model": model, "service_tier": tier, "tool_calls": tool_calls,
+           "outcome": outcome, "usage": session.get("usage"),
+           "estimated_usd_short_context": estimate_usage_usd(session.get("usage") or {}, model, tier)}
     append_jsonl(COST, row)
 
 

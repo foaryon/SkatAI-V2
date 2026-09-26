@@ -332,3 +332,18 @@ def test_task_listing_is_compact_and_full_contract_requires_single_id(tmp_path, 
     assert 'authority' not in listing
     assert listing['objective'] == task['objective']
     assert cp.dispatch_tool('get_task', {'task_id': 'one'}, kind='orchestrator')['authority'] == task['authority']
+
+
+def test_cost_estimate_deduplicates_delayed_usage_and_counts_accepted_outcomes(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'COST', tmp_path / 'usage.jsonl')
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    usage = {'input_tokens': 1000000, 'input_tokens_details': {'cached_tokens': 900000},
+             'output_tokens': 10000, 'total_tokens': 1010000}
+    assert cp.estimate_usage_usd(usage, 'gpt-6-sol', 'flex') == 0.24
+    cp.append_jsonl(cp.COST, {'session_id': 's1', 'role': 'orchestrator-superbrain', 'usage': usage})
+    cp.append_jsonl(cp.COST, {'session_id': 's1', 'role': 'orchestrator-superbrain', 'usage': usage, 'outcome': 'correction'})
+    cp.atomic_json(cp.TASKS, {'tasks': {'t': {'state': 'COMPLETE', 'integration_decision': {'accepted': True}}}})
+    x = cp.model_cost_summary()
+    assert x['sessions_with_usage'] == 1
+    assert x['total_tokens'] == 1010000
+    assert x['estimated_usd_per_accepted_worker_outcome'] == 0.24
