@@ -1073,7 +1073,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         actions = s.get("required_actions") or []
         count = int(state.get("superbrain_tool_calls", 0))
         initial_scan = not strict_json(TASKS)["tasks"]
-        limit = 8 if initial_scan else 36
+        limit = 8 if initial_scan else 16
         if count + len(actions) > limit:
             log(f"superbrain_tool_budget_exhausted session={sid} calls={count}")
             cancel_session(sid, "superbrain_tool_budget_exhausted")
