@@ -569,7 +569,7 @@ def create_and_dispatch_readonly_task(args: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("READ_ONLY_TASK_NEEDS_ONE_TO_THREE_FILES")
     reads = []
     input_artifacts = []
-    total_bytes = 0
+    embedded_bytes = 0
     for raw in paths:
         p, key = safe_path(raw, allow_runtime=False)
         if not p.is_file():
@@ -577,11 +577,24 @@ def create_and_dispatch_readonly_task(args: dict[str, Any]) -> dict[str, Any]:
         if p in {FOUNDING_SPEC, WORK_PROMPT, ARCHITECTURE}:
             raise RuntimeError("GLOBAL_AUTHORITY_IS_ORCHESTRATOR_CONTEXT; use phase references in the contract")
         size = p.stat().st_size
-        total_bytes += size
-        if size > 8000 or total_bytes > 16000:
-            raise RuntimeError("READ_ONLY_PACKAGE_TOO_LARGE; choose a narrower input")
         reads.append(key)
-        input_artifacts.append({"path": key, "sha256": sha256(p), "content": p.read_text(encoding="utf-8")})
+        if size <= 8000 and embedded_bytes + size <= 16000:
+            content = p.read_text(encoding="utf-8")
+            embedded_bytes += len(content.encode("utf-8"))
+            input_artifacts.append({
+                "path": key, "sha256": sha256(p), "bytes": size,
+                "content": content, "content_truncated": False,
+            })
+        else:
+            # Large evidence stays hash-bound and readable through the scoped
+            # worker read/search tools. Embed only a bounded orientation
+            # excerpt instead of rejecting an otherwise safe task.
+            content = bounded_text(p, 1, None, max_bytes=4000)
+            embedded_bytes += len(content.encode("utf-8"))
+            input_artifacts.append({
+                "path": key, "sha256": sha256(p), "bytes": size,
+                "content": content, "content_truncated": True,
+            })
     contract = {
         "task_id": args["task_id"], "task_family": "bounded_readonly_audit",
         "assigned_agent": args["assigned_agent"], "priority": args["priority"],
@@ -831,37 +844,132 @@ def worker_tools() -> list[dict[str, Any]]:
     ]
 
 
-def validate_worker_command(argv: list[str]) -> None:
-    """Only inert, narrowly parsed probes may run in the shared live checkout.
-
-    Executing a Python or shell script can write beyond the declared task scope,
-    including indirectly from a test. Such work needs an isolated executor.
-    """
-    if not isinstance(argv, list) or not argv or any(not isinstance(x, str) for x in argv):
-        raise RuntimeError("COMMAND_UNSAFE_SHARED_CHECKOUT")
+def worker_command_is_shared_safe(argv: list[str]) -> bool:
+    """Return True only for commands proven inert in the live checkout."""
     if argv[:3] == ["git", "-C", str(REPO)]:
         rest = argv[3:]
         if rest in (["rev-parse", "HEAD"], ["status", "--short"], ["diff", "--stat"]):
-            return
+            return True
         if (len(rest) == 4 and rest[:3] in (["status", "--porcelain=v1", "--"],
                                              ["status", "--short", "--"],
                                              ["diff", "--no-ext-diff", "--"])
                 and not rest[3].startswith("-")
                 and safe_path(rest[3], allow_runtime=False)[0].is_file()):
-            return
+            return True
     if argv[0] == "rg" and len(argv) >= 4 and argv[1] == "-n" and not argv[2].startswith("-") and all(
         not arg.startswith("-") and safe_path(arg, allow_runtime=False)[0].is_file()
         for arg in argv[3:]
     ):
-        return
+        return True
     if argv[0] == "sha256sum" and len(argv) >= 2 and all(
         not arg.startswith("-") and safe_path(arg, allow_runtime=False)[0].is_file()
         for arg in argv[1:]
     ):
-        return
-    if argv in (["java", "-version"], ["javac", "-version"]):
+        return True
+    return argv in (["java", "-version"], ["javac", "-version"])
+
+
+def worker_command_is_isolated_safe(argv: list[str]) -> bool:
+    """Allow bounded test execution only inside a disposable repository copy."""
+    if len(argv) < 4 or argv[0] not in {"python", "python3"} or argv[1:3] != ["-m", "pytest"]:
+        return False
+    for arg in argv[3:]:
+        if "\x00" in arg:
+            return False
+        candidate = arg.split("::", 1)[0]
+        if not candidate or candidate.startswith("-"):
+            continue
+        if "/" not in candidate and not candidate.endswith(".py"):
+            continue
+        p = Path(candidate)
+        p = p if p.is_absolute() else REPO / p
+        try:
+            p.resolve().relative_to(REPO)
+        except ValueError:
+            return False
+    return True
+
+
+def validate_worker_command(argv: list[str]) -> None:
+    """Permit inert live probes or bounded tests in a disposable checkout."""
+    if not isinstance(argv, list) or not argv or any(not isinstance(x, str) for x in argv):
+        raise RuntimeError("COMMAND_UNSAFE_SHARED_CHECKOUT")
+    if worker_command_is_shared_safe(argv) or worker_command_is_isolated_safe(argv):
         return
     raise RuntimeError("COMMAND_UNSAFE_SHARED_CHECKOUT")
+
+
+def _sandbox_argv(argv: list[str], sandbox: Path) -> list[str]:
+    out = []
+    repo_prefix = str(REPO) + os.sep
+    for arg in argv:
+        if arg == str(REPO):
+            out.append(str(sandbox))
+        elif arg.startswith(repo_prefix):
+            out.append(str(sandbox / Path(arg).relative_to(REPO)))
+        elif arg.startswith("/") and arg not in {"/dev/null"}:
+            raise RuntimeError("ISOLATED_COMMAND_ABSOLUTE_PATH_OUTSIDE_REPO")
+        else:
+            if ".." in Path(arg.split("::", 1)[0]).parts:
+                raise RuntimeError("ISOLATED_COMMAND_PATH_TRAVERSAL")
+            out.append(arg)
+    return out
+
+
+def run_isolated_worker_command(argv: list[str], timeout: int) -> dict[str, Any]:
+    """Run a bounded test command as the unprivileged worker in a disposable copy."""
+    root = Path(tempfile.mkdtemp(prefix="skatai-worker-sandbox-"))
+    sandbox = root / "repo"
+    try:
+        for source in REPO.rglob("*"):
+            if ".git" in source.parts:
+                continue
+            if source.is_symlink():
+                raise RuntimeError(f"ISOLATED_REPO_SYMLINK_UNSUPPORTED:{source.relative_to(REPO)}")
+        shutil.copytree(
+            REPO,
+            sandbox,
+            ignore=shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache", "*.pyc"),
+        )
+        home = root / "home"
+        tmpdir = root / "tmp"
+        home.mkdir()
+        tmpdir.mkdir()
+        import pwd
+        account = pwd.getpwnam("sentinelx")
+        for path in [root, sandbox, home, tmpdir, *sandbox.rglob("*")]:
+            try:
+                os.chown(path, account.pw_uid, account.pw_gid)
+            except FileNotFoundError:
+                pass
+        rewritten = _sandbox_argv(argv, sandbox)
+        worker_bin = RUNTIME / "orchestrator/worker-venv/bin"
+        worker_python = worker_bin / "python"
+        if not worker_python.is_file():
+            raise RuntimeError("ISOLATED_WORKER_RUNTIME_MISSING")
+        worker_env = {
+            "PATH": str(worker_bin) + ":/usr/local/bin:/usr/bin:/bin",
+            "HOME": str(home),
+            "TMPDIR": str(tmpdir),
+            "LC_ALL": "C.UTF-8",
+            "PYTHONPATH": str(sandbox / "src"),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "TZ": "UTC",
+        }
+        cp = subprocess.run(
+            rewritten,
+            cwd=sandbox,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            user="sentinelx",
+            group="sentinelx",
+            env=worker_env,
+        )
+        out = (cp.stdout + ("\nSTDERR:\n" + cp.stderr if cp.stderr else ""))[-60000:]
+        return {"returncode": cp.returncode, "output": out, "isolated": True}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def run_exact_worker_command(task: dict[str, Any], argv: list[str], timeout: int) -> dict[str, Any]:
@@ -870,6 +978,8 @@ def run_exact_worker_command(task: dict[str, Any], argv: list[str], timeout: int
         raise RuntimeError("COMMAND_NOT_AUTHORIZED")
     validate_worker_command(argv)
     timeout = min(int(timeout or 300), 900)
+    if worker_command_is_isolated_safe(argv):
+        return run_isolated_worker_command(argv, timeout)
     worker_env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "LC_ALL": "C.UTF-8",
         "PYTHONPATH": str(REPO / "src"), "PYTHONDONTWRITEBYTECODE": "1", "TZ": "UTC",
@@ -877,7 +987,7 @@ def run_exact_worker_command(task: dict[str, Any], argv: list[str], timeout: int
     cp = subprocess.run(argv, cwd=REPO, text=True, capture_output=True, timeout=timeout,
                         user="sentinelx", group="sentinelx", env=worker_env)
     out = (cp.stdout + ("\nSTDERR:\n" + cp.stderr if cp.stderr else ""))[-60000:]
-    return {"returncode": cp.returncode, "output": out}
+    return {"returncode": cp.returncode, "output": out, "isolated": False}
 
 
 def apply_replacements(task: dict[str, Any], replacements: list[dict[str, str]]) -> dict[str, Any]:
@@ -1207,8 +1317,13 @@ def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
                     usage_rows[sid] = usage
     accepted = sum(1 for task in strict_json(TASKS)["tasks"].values()
                    if task.get("state") == "COMPLETE" and task.get("integration_decision", {}).get("accepted"))
+    soft_session_limit = min(
+        cfg["max_sessions"],
+        cfg["base_sessions"] + accepted * cfg["sessions_per_accepted_outcome"],
+    )
     limits = {
-        "sessions": min(cfg["max_sessions"], cfg["base_sessions"] + accepted * cfg["sessions_per_accepted_outcome"]),
+        "sessions": soft_session_limit,
+        "sessions_hard": cfg["max_sessions"],
         "tokens": min(cfg["max_total_tokens"], cfg["base_total_tokens"] + accepted * cfg["tokens_per_accepted_outcome"]),
         "estimated_usd": min(cfg["max_estimated_usd"], cfg["base_estimated_usd"] + accepted * cfg["estimated_usd_per_accepted_outcome"]),
     }
@@ -1217,7 +1332,14 @@ def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
     estimated += sum(estimate_usage_usd(row, "gpt-6-luna", "default") or 0 for sid, row in usage_rows.items() if sid in worker_starts)
     missing = len(starts.keys() - usage_rows.keys())
     reasons = []
+    warnings = []
+    # Session count is a churn signal, not a spend proxy. Crossing the
+    # evidence-funded soft allowance must not strand actionable work while
+    # token/cost ceilings still provide a hard bound. The absolute configured
+    # max remains a fail-closed circuit breaker.
     if len(starts) >= limits["sessions"]:
+        warnings.append("soft_session_allowance")
+    if len(starts) >= limits["sessions_hard"]:
         reasons.append("session_allowance")
     if tokens >= limits["tokens"]:
         reasons.append("token_allowance")
@@ -1227,7 +1349,8 @@ def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
         reasons.append("missing_usage")
     return {"window_hours": cfg["window_hours"], "sessions": len(starts), "worker_sessions": len(worker_starts), "known_tokens": tokens,
             "estimated_usd_short_context": round(estimated, 4), "missing_usage_sessions": missing,
-            "accepted_outcomes": accepted, "limits": limits, "reasons": reasons, "exhausted": bool(reasons)}
+            "accepted_outcomes": accepted, "limits": limits, "warnings": warnings,
+            "reasons": reasons, "exhausted": bool(reasons)}
 
 
 def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:

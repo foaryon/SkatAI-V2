@@ -22,4 +22,15 @@ mv "$stage" "$base/releases/$release"
 ln -sfn "releases/$release" "$base/.current.new"
 mv -Tf "$base/.current.new" "$base/current"
 install -d -m 700 /workspace/skatai-v2-runtime/orchestrator/state
+worker_venv=/workspace/skatai-v2-runtime/orchestrator/worker-venv
+worker_cache=/workspace/skatai-v2-runtime/toolchains/uv-cache
+install -d -m 755 "$worker_cache"
+if ! "$worker_venv/bin/python" -m pytest --version >/dev/null 2>&1; then
+  python3 -m venv "$worker_venv"
+  UV_CACHE_DIR="$worker_cache" uv pip install --python "$worker_venv/bin/python" pytest==8.4.2
+fi
+if id sentinelx >/dev/null 2>&1; then
+  chown -R sentinelx:sentinelx "$worker_venv"
+fi
+"$worker_venv/bin/python" -m pytest --version
 printf 'INSTALLED %s\n' "$base/releases/$release"

@@ -9,7 +9,7 @@
     "text_verbosity": "low",
     "service_tier": "flex",
     "persistent_session": true,
-    "max_tool_calls_per_session": 8,
+    "max_tool_calls_per_session": 16,
     "adaptive_budget": {
       "window_hours": 24,
       "base_sessions": 8,

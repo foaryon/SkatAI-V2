@@ -284,13 +284,19 @@ def test_nonconflicting_workers_launch_while_shared_write_waits(tmp_path, monkey
     assert len(launched) == 2
 
 
-def test_worker_command_cannot_run_script_or_tests_with_indirect_effects(monkeypatch):
-    import subprocess
-    monkeypatch.setattr(cp.subprocess, 'run', lambda *args, **kwargs: pytest.fail('unsafe subprocess ran'))
+def test_worker_tests_use_isolated_executor_and_unsafe_scripts_stay_blocked(monkeypatch):
     task = base_task()
     task['authority']['execute'] = [['python3', '-m', 'pytest', '-q', 'tests/test_game_rules.py']]
-    with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
-        cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
+    observed = []
+    monkeypatch.setattr(
+        cp, 'run_isolated_worker_command',
+        lambda argv, timeout: observed.append((argv, timeout)) or
+        {'returncode': 0, 'output': '1 passed', 'isolated': True},
+    )
+    result = cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
+    assert result['isolated'] is True
+    assert observed == [(task['authority']['execute'][0], 10)]
+
     task['authority']['execute'] = [['bash', 'scripts/audit_data_split_leakage.py']]
     with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
         cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
@@ -342,6 +348,15 @@ def test_rolling_budget_adapts_to_accepted_outcomes_and_requires_usage(tmp_path,
         with cp.LOG.open('a') as f:
             f.write(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n')
         cp.append_jsonl(cp.COST, {'session_id': f'sess_{i}', 'role': 'orchestrator-superbrain', 'usage': usage})
+    status = cp.superbrain_budget_status(now)
+    assert 'soft_session_allowance' in status['warnings']
+    assert 'session_allowance' not in status['reasons']
+    assert not status['exhausted']
+    for i in range(24, 48):
+        with cp.LOG.open('a') as f:
+            f.write(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n')
+        cp.append_jsonl(cp.COST, {'session_id': f'sess_{i}', 'role': 'orchestrator-superbrain',
+                                  'usage': {'input_tokens': 0, 'output_tokens': 0, 'total_tokens': 0}})
     assert 'session_allowance' in cp.superbrain_budget_status(now)['reasons']
     cp.LOG.write_text(''.join(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n' for i in range(15)))
     cp.COST.write_text('')
@@ -382,9 +397,12 @@ def test_cost_estimate_deduplicates_delayed_usage_and_counts_accepted_outcomes(t
     assert x['estimated_usd_per_accepted_worker_outcome'] == 0.24
 
 
-def test_unsafe_command_rejected_before_worker_session_creation():
+def test_isolated_pytest_contract_is_accepted_but_python_c_is_rejected():
     task = base_task()
     task['authority']['execute'] = [['python3', '-m', 'pytest', '-q', 'tests/test_game_rules.py']]
+    assert cp.validate_task_contract(task)['state'] == 'READY'
+    task = base_task()
+    task['authority']['execute'] = [['python3', '-c', 'print(1)']]
     with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
         cp.validate_task_contract(task)
 
@@ -469,9 +487,13 @@ def test_readonly_worker_gets_distinct_minimal_contract_and_dispatch(tmp_path, m
     assert task['authority'] == {'read': ['repo:acceptance.json'], 'write': [], 'execute': [],
                                   'forbidden': ['No commands, writes, secrets, promotion, or project-wide decisions.']}
     assert task['execution_profile']['max_cost_class'] == 'very_low'
-    assert task['input_artifacts'] == [{'path': 'repo:acceptance.json',
-                                         'sha256': cp.sha256(tmp_path / 'acceptance.json'),
-                                         'content': '{"status":"PENDING"}'}]
+    assert task['input_artifacts'] == [{
+        'path': 'repo:acceptance.json',
+        'sha256': cp.sha256(tmp_path / 'acceptance.json'),
+        'bytes': len('{"status":"PENDING"}'),
+        'content': '{"status":"PENDING"}',
+        'content_truncated': False,
+    }]
 
 
 def test_idle_dispatch_event_does_not_call_superbrain(monkeypatch):
@@ -645,11 +667,28 @@ def test_repository_revision_wakes_only_for_relevant_new_work(monkeypatch):
     assert state['observed_repository_revision'] == 'c'
 
 
-def test_readonly_package_rejects_oversized_input_before_session(tmp_path, monkeypatch):
+def test_readonly_package_hash_binds_and_truncates_oversized_input(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'REPO', tmp_path)
-    (tmp_path / 'large.json').write_text('x' * 8001)
-    with pytest.raises(RuntimeError, match='READ_ONLY_PACKAGE_TOO_LARGE'):
-        cp.create_and_dispatch_readonly_task({'read_paths': ['large.json']})
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'controller.json')
+    cp.atomic_json(cp.TASKS, {'tasks': {}})
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 0})
+    source = tmp_path / 'large.json'
+    source.write_text('x' * 8001)
+    result = cp.create_and_dispatch_readonly_task({
+        'task_id': 'large-audit', 'assigned_agent': 'scientific-governance',
+        'priority': 'P1', 'objective': 'Audit the bounded large artifact.',
+        'rationale': 'The artifact is larger than the inline context budget.',
+        'current_gap': 'Large evidence must remain usable without bloating context.',
+        'read_paths': ['large.json'], 'work_prompt_capability_reference': ['phase_16'],
+        'evidence_requirements': ['Hash and bounded evidence'], 'success_criteria': ['Precise finding'],
+    })
+    artifact = cp.strict_json(cp.TASKS)['tasks']['large-audit']['input_artifacts'][0]
+    assert result['state'] == 'DISPATCH_REQUESTED'
+    assert artifact['sha256'] == cp.sha256(source)
+    assert artifact['bytes'] == 8001
+    assert artifact['content_truncated'] is True
+    assert len(artifact['content'].encode()) <= 4100
 
 
 def test_repeated_blocked_readonly_audits_pause_reasoning(tmp_path, monkeypatch):
