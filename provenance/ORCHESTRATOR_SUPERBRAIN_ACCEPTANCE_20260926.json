@@ -18,39 +18,48 @@
     ]
   },
   "limits_and_blockers": [
-    "Pod replacement bootstrap is not installed in a verified RunPod template/entrypoint; RunPod pod metadata request returned HTTP 403. Recreated-pod recovery is therefore unverified.",
-    "Two preexisting untracked acceptance artifacts remain untouched pending scientific review.",
-    "One worker result awaits SUPERBRAIN integration while the daily model budget is exhausted.",
-    "Legacy MAIN source, installer, and configuration remain in repository as rollback evidence, though no legacy MAIN controller process runs.",
+    "Pod recreation bootstrap in a verified RunPod template/entrypoint remains unproven; prior RunPod metadata request returned HTTP 403. Current-pod recovery command succeeded.",
+    "Two preexisting untracked scientific acceptance artifacts remain untouched; automated train/evaluate/promote verification and decision are PENDING.",
+    "The current worker command gate permits inert probes in the shared checkout; a separate safely isolated executor for bounded code/test jobs remains missing.",
+    "Two consecutive placeholder acceptance-record audits yielded unaccepted PARTIAL results, so SUPERBRAIN reasoning is intentionally paused until underlying evidence or execution capability changes.",
+    "Legacy MAIN source remains in the repository for rollback; no legacy MAIN controller process is active.",
     "Very-low-cost nano models were rejected by Managed Agents API; Luna low is the cheapest verified available worker tier.",
-    "JSkat Java gate and autonomous scientific full-loop acceptance remain open."
+    "Controlled scientific full-loop acceptance and JSkat Java gate are still open."
   ],
   "observations": {
     "accepted_bounded_worker_tasks": [
       "audit_pregate_confirmation_independence_20260926",
       "record_pregate_confirmation_overlap_20260926"
     ],
+    "adaptive_budget_pause": null,
     "capability_map_registry": "/workspace/skatai-v2-runtime/orchestrator/state/capability_gap_registry.json",
-    "controller_pid": 210118,
-    "daily_budget_pause": "daily superbrain budget exhausted",
+    "controller_pid": 215129,
+    "event_seq": 13,
+    "last_superbrain_event_seq": 13,
     "model_usage_registry": "/workspace/skatai-v2-runtime/orchestrator/state/model_usage_registry.jsonl",
-    "pending_evidence_for_superbrain": [
-      "preserve_pregate_overlap_provenance_20260926"
+    "negative_audit_tasks": [
+      "audit_weakness_mining_acceptance_evidence_20260926",
+      "audit_train_eval_acceptance_record_20260926",
+      "audit_data_split_leakage_record_20260926"
     ],
+    "no_progress_pause": "repeated placeholder audits without accepted outcome; require new underlying evidence or execution capability",
     "project_state_registry": "/workspace/skatai-v2-runtime/orchestrator/state/skatai_v2_project_state.json",
-    "superbrain_session_id": "sess_01537cc1b12a1695006ab7da3e6e188195a814c836c82212da",
+    "superbrain_session_id": "sess_04826dfba94b8391006ab7eade7ebc819799febf65c31ffd19",
+    "task_count": 17,
     "worker_role_definitions": 14
   },
-  "recorded_at": "2026-09-26T14:56:20Z",
-  "repository_revision": "3b29dc55859bfdbb626f159a6e6a0f55437bbd24",
+  "recorded_at": "2026-09-26T16:04:49Z",
+  "repository_revision": "b56e848de54221bf3c9e8683b7209f1f452fe5c6",
   "schema": "skatai.v2.orchestrator.acceptance.v1",
-  "status": "LIVE_PARTIAL_COST_PAUSED",
+  "status": "LIVE_PARTIAL_NO_PROGRESS_PAUSED",
   "verified": [
-    "Focused final test suite: 58 passed for orchestrator, pre-gate checkpoint, host interface and JSkat source parity on 2026-09-26.",
-    "Controller process restarted with same persisted session and 14 worker definitions; old MAIN controller process absent.",
-    "Real Luna worker result on pre-gate/confirmation overlap independently accepted by SUPERBRAIN; no model promotion.",
-    "Trusted release manifest verified, controller and R9 ISS processes remained active after cutover.",
-    "Daily budget circuit breaker paused after historic 15 Sol sessions; no new session started at deployment restart.",
-    "Persistent-volume recovery bootstrap ran idempotently on current pod without disturbing R9."
+    "Focused control-plane suite: 48 passed in isolated temporary state; live controller/task state hashes remained unchanged during isolation verification.",
+    "New read-only task tool created a separate Luna contract; canonical repo path round trip was corrected and one-file audits completed in two worker tool calls.",
+    "Worker partial/blocked results with no write effects were integrated fail closed with result hashes; no scientific promotion or release was accepted.",
+    "A SUPERBRAIN session resumed on a real event and dispatched work; another session started automatically after a worker integration event.",
+    "Rolling 24-hour budget used accepted outcomes, tokens, estimated cost and late usage reconciliation; no current budget exhaustion.",
+    "Controller event writes are serialized and stale writes preserve a newer event; recovered event led to deterministic no-progress pause without another model session.",
+    "New trusted controller release was installed and restarted with persisted task, evidence, roles and session state; old MAIN controller process is absent.",
+    "R9 ISS gate worker and frozen supervisor remained running through control-plane restarts."
   ]
 }
