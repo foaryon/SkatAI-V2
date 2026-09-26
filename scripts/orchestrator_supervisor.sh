@@ -20,6 +20,7 @@ while true; do
     sleep 30
     continue
   fi
+  : >"$CONTROL/controller-boot.log"
   SKATAI_ORCHESTRATOR_TRUSTED_ROOT="$TRUST" PYTHONPATH="$TRUST"     /usr/bin/python3 "$TRUST/control_plane.py" >>"$CONTROL/controller-boot.log" 2>&1
   rc=$?
   if grep -q 'OpenAI HTTP 400:' "$CONTROL/controller-boot.log"; then
