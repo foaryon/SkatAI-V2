@@ -532,6 +532,15 @@ def integrated_since_session_start(state: dict[str, Any]) -> bool:
 
 
 def persist_usage(session: dict[str, Any], role: str, tool_calls: int, outcome: str) -> None:
+    if session.get("usage") is None:
+        for _ in range(3):
+            time.sleep(1)
+            try:
+                session = api("GET", f"/agents/sessions/{session['id']}")
+            except Exception:
+                break
+            if session.get("usage") is not None:
+                break
     row = {"time": utc_now(), "session_id": session["id"], "role": role,
            "model": session.get("agent", {}).get("model"), "tool_calls": tool_calls,
            "outcome": outcome, "usage": session.get("usage")}
