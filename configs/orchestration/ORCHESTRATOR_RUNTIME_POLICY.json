@@ -19,7 +19,7 @@
     "sessions": "ephemeral_bounded",
     "max_concurrent_sessions": 4,
     "max_task_runtime_seconds": 1800,
-    "max_task_tool_calls": 40,
+    "max_task_tool_calls": 12,
     "max_task_total_tokens": 50000,
     "may_spawn_subworkers": false,
     "may_self_escalate": false,

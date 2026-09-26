@@ -40,6 +40,7 @@ RELEASES = STATE_DIR / "release_registry.json"
 CONTROLLER_STATE = CONTROL / "controller_state.json"
 LOG = CONTROL / "controller.log"
 PID = CONTROL / "controller.pid"
+COST = STATE_DIR / "model_usage_registry.jsonl"
 
 TERMINAL_RESULT_STATES = {"COMPLETE", "PARTIAL", "BLOCKED", "FAILED"}
 TASK_STATES = {"READY", "DISPATCH_REQUESTED", "RUNNING", "VERIFYING", "COMPLETE", "FAILED", "BLOCKED", "SUPERSEDED"}
@@ -496,6 +497,21 @@ def refresh_project_state() -> None:
     atomic_json(PROJECT_STATE, ps)
 
 
+def decision_file_size() -> int:
+    return DECISIONS.stat().st_size if DECISIONS.exists() else 0
+
+
+def integrated_since_session_start(state: dict[str, Any]) -> bool:
+    return decision_file_size() > int(state.get("session_start_decision_bytes", 0))
+
+
+def persist_usage(session: dict[str, Any], role: str, tool_calls: int, outcome: str) -> None:
+    row = {"time": utc_now(), "session_id": session["id"], "role": role,
+           "model": session.get("agent", {}).get("model"), "tool_calls": tool_calls,
+           "outcome": outcome, "usage": session.get("usage")}
+    append_jsonl(COST, row)
+
+
 def bump_event(kind: str, subject: str) -> None:
     st = strict_json(CONTROLLER_STATE)
     st["event_seq"] = int(st.get("event_seq", 0)) + 1
@@ -870,6 +886,7 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
     state["superbrain_session_id"] = s["id"]
     state["bootstrap_sent"] = True
     state["superbrain_tool_calls"] = 0
+    state["session_start_decision_bytes"] = decision_file_size()
     state["last_superbrain_event_seq"] = int(state.get("event_seq", 0))
     atomic_json(CONTROLLER_STATE, state)
     log(f"superbrain_session_created id={s['id']} model={cfg['model']} reasoning={cfg['reasoning_effort']}")
@@ -1031,6 +1048,7 @@ def poll_workers(state: dict[str, Any]) -> None:
                 changed = True
         elif status == "idle":
             if result_file(tid).exists():
+                persist_usage(s, worker["worker_id"], int(worker.get("tool_calls", 0)), "submitted_result")
                 delete_session(sid)
                 worker["state"] = "FINISHED"
                 worker["finished_at"] = utc_now()
@@ -1076,9 +1094,20 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         initial_scan = not strict_json(TASKS)["tasks"]
         limit = 8 if initial_scan else 16
         if count + len(actions) > limit:
-            log(f"superbrain_tool_budget_exhausted session={sid} calls={count}")
+            progress = integrated_since_session_start(state)
+            log(f"superbrain_tool_budget_exhausted session={sid} calls={count} integrated={progress}")
             cancel_session(sid, "superbrain_tool_budget_exhausted")
-            state["superbrain_paused_reason"] = "no-progress or session tool budget exhausted; requires review"
+            try:
+                final = api("GET", f"/agents/sessions/{sid}")
+                persist_usage(final, "orchestrator-superbrain", count, "rotated_after_integration" if progress else "paused_no_progress")
+            except Exception as exc:
+                log(f"superbrain_usage_unavailable id={sid} err={exc!r}")
+            if progress:
+                state["superbrain_session_id"] = None
+                state["event_seq"] = int(state.get("event_seq", 0)) + 1
+                atomic_json(CONTROLLER_STATE, state)
+                return ensure_superbrain_session(state)
+            state["superbrain_paused_reason"] = "no-progress session tool budget exhausted; requires review"
             atomic_json(CONTROLLER_STATE, state)
             return state
         resolve_required_actions(s, kind="orchestrator")

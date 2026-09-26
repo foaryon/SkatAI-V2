@@ -193,3 +193,13 @@ def test_bootstrap_has_bounded_dispatch_instruction():
     assert 'list_tasks' in prompt
     assert 'within at most six tool calls' in prompt
     assert 'do not restart it' in prompt
+
+
+def test_session_rotation_requires_persisted_integration(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'DECISIONS', tmp_path / 'decisions.jsonl')
+    prior = {'session_start_decision_bytes': 0}
+    assert not cp.integrated_since_session_start(prior)
+    cp.append_jsonl(cp.DECISIONS, {'type': 'worker_result_integration'})
+    assert cp.integrated_since_session_start(prior)
+    prior['session_start_decision_bytes'] = cp.decision_file_size()
+    assert not cp.integrated_since_session_start(prior)
