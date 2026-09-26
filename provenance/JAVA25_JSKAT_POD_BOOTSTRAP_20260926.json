@@ -34,13 +34,22 @@
       "deferred bootstrap exit code 0; RECOVERY_BOOTSTRAP_OK head=50eb4ab",
       "SentinelX core, orchestrator supervisor, and R9 ISS gate remained running"
     ],
+    "handoff": {
+      "durable_marker": "/workspace/sentinelx-host/handoff-authorized.json",
+      "fallback": "missing, malformed or mismatched marker retains the original API-gated handoff",
+      "isolated_test": "marker allowed old-Pod handoff to reach mock SentinelX entrypoint with no RunPod API key; second install unchanged",
+      "old_pod_id": "u72p5u7y65boia",
+      "upgrade_entrypoint_sha256": "a146cc2302ce9953029f1e8e841a81effbbc8c0e69e1e03ea246123c550ed345",
+      "verified_prior_observation": "2026-09-25T07:54:16Z old-pod-absent handoff=authorized",
+      "versioned_installer": "scripts/install_sentinelx_handoff_recovery.sh"
+    },
     "hook_sha256": "6a7de716774257f38fb4ae185bd511501767c15dc4a1011f0ba55c2ec7e74ec0",
     "manual_terminal_call_at_1644_utc": "RECOVERY_FAILED due to Git repository context; prior ready prompt was /start.sh completion, not recovery success",
-    "new_pod_verification": "NOT_PERFORMED; no live pod recreation while R9 ISS gate is running",
+    "new_pod_verification": "NOT_PERFORMED; existing R9 scientific process left running; no Pod reset",
     "persistent_hook": "/workspace/sentinelx-host/runpod-entrypoint.sh",
     "runpod_metadata": "HTTP 403 using pod environment RunPod API key; metadata and template could not be read",
     "versioned_installer": "scripts/install_sentinelx_orchestrator_bootstrap.sh"
   },
   "scientific_workload": "R9 ISS gate remains running; no restart or scientific promotion.",
-  "status": "JAVA_GATE_VERIFIED_SENTINELX_START_HOOK_INSTALLED_NEW_POD_UNVERIFIED"
+  "status": "JAVA_GATE_VERIFIED_SENTINELX_CHAIN_INSTALLED_NEW_POD_UNVERIFIED"
 }
