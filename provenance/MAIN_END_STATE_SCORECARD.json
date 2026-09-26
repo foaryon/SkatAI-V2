@@ -116,10 +116,12 @@
       "id": "AUTOMATIC_RECOVERY",
       "goal_path_id": "G7_FULL_AFK",
       "criterion": "Recovery is automatic and tested.",
-      "status": "IN_PROGRESS",
-      "reason": "Multiple recovery paths exist, but final whole-system acceptance is separate.",
+      "status": "ACCEPTED",
+      "reason": "Bounded MAIN recovery, fail-closed unknown-effect handling, token settlement and hash-bound continuation across pre-authorized gates are verified by the reconciled turn-closure incident and the current-source focused suite (29 passed; controller validator PASS). Sustained multi-day FULL-AFK operation remains unverified.",
       "evidence": [
-        "provenance/MAIN_CURRENT_STATE.json"
+        "provenance/AUTOMATIC_RECOVERY_ACCEPTANCE_20260926.json",
+        "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
+        "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json"
       ]
     },
     {

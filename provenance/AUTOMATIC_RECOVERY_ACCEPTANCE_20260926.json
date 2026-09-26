@@ -2,8 +2,18 @@
   "schema": "skatai.v2.automatic-recovery-acceptance.v1",
   "captured_at": "2026-09-26T02:40:00Z",
   "task_id": "AUTOMATIC_RECOVERY_ACCEPTANCE",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Do the current trusted-controller recovery paths satisfy the scorecard criterion that recovery is automatic and tested?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": "PASS: test_main_turn_closure_recovery returned 0 on the pinned current source; 29 tests passed and controller validation reported PASS for autonomous budget, budget rollover, finite work permit, followup and loop guards, function gateway boundary, gate queue validation, hard total budget, lock validation, progress contract, strict JSON, token reservation and settlement, and trust roots.",
+  "decision": "ACCEPT automatic bounded MAIN recovery: the reconciled turn-closure incident settled three cancelled sessions to 512351 actual tokens and cleared 750000 stale reserved tokens without new inference; controller-level budget enforcement, fail-closed unknown-effect handling, outcome-only closure, recoverable terminal-progress reconstruction, and hash-bound ordered continuation across pre-authorized gates are supported by the controller-bound evidence and focused current-source test. This decision does not accept sustained multi-day FULL-AFK operation, autonomous training/evaluation/promotion, or gameplay strength.",
+  "source_identities": {
+    "controller_sha256": "de14fd6ba154672e484fe57177afb3b96c07b7f1f5835b9894dad7a469344478",
+    "gateway_sha256": "406ff0b83be74a0f8004ee0a43f37619e3b26523a0d106f7918bd83a222fc2ef",
+    "recovery_test_runner_sha256": "f14f1d20a0b0aa79dde5c6ed20bcfa881597c8e956adb5e57de1b605534a47f8"
+  },
+  "evidence": [
+    "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
+    "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+    "authorized_command:test_main_turn_closure_recovery:29_passed:controller_validation_PASS"
+  ]
 }

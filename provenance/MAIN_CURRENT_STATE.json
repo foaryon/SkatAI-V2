@@ -16,7 +16,7 @@
       "retained_game_sequence": 5
     }
   ],
-  "captured_at": "2026-09-26T01:02:50.154727+00:00",
+  "captured_at": "2026-09-26T01:05:07.796966+00:00",
   "completed_independent_gate": {
     "classification": "PASS_FALSE_POSITIVE_RECONCILED",
     "evidence": "provenance/BIDDING_D3_SPLIT_INTEGRITY_CORRECTION_20260925.json",
@@ -28,11 +28,12 @@
     "scope": "Immutable original SkatZero V2-B0 identity, pinned environment, nine pretrained agents, API smoke, cardplay benchmark and determinism recheck reproduced; no relative-strength claim"
   },
   "controller_turn_closure_recovery": {
-    "classification": "DEPLOYED_READINESS_PASS_PENDING_ACTIVATION",
+    "classification": "GATE4_ACCEPTED_RECONCILED_PENDING_GATE5",
     "evidence": "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
     "scope": "Recovery commit 8cd2a9b and queue extension 02e6e29 installed; 29 focused tests and controller validator PASS; trusted runtime readiness PASS. Old remote session verified idle. Operator reconciled committed pickup acceptance; no completed gate replay. Conservative daily accounting retained.",
-    "next_gate_index": 4,
-    "queue_entries": 8
+    "next_gate_index": 5,
+    "queue_entries": 8,
+    "concurrent_activation": "A concurrent controller session completed gate4 before operator redeployment; retained ACCEPT evidence, cancelled superseded session, no replay permitted."
   },
   "data_integrity": {
     "bidding_historical_v1": "D3_SEMANTICALLY_VALID_EXACT_MANIFEST_AUDIT_PASS",
@@ -84,7 +85,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Activate bounded gates 4-5 after final readiness. Do not authorize packaging gates 6-7 until network-volume quota headroom or safe staging is verified. R9 requires authoritative session/terminal reconciliation; no blind restart or B1 promotion.",
+  "next_action": "Resume gate5 STABLE_DEPLOYMENT_INTERFACE_ACCEPTANCE only. Gates6-7 require storage headroom; R9 requires terminal evidence reconciliation.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
