@@ -517,3 +517,21 @@ def test_canonical_scoped_paths_roundtrip_into_worker_read(tmp_path, monkeypatch
         cp.safe_path('repo:../other')
     with pytest.raises(RuntimeError, match='PATH_OUTSIDE_PROJECT'):
         cp.safe_path('runtime:somefile', allow_runtime=False)
+
+
+def test_unchanged_partial_result_closes_fail_closed_without_claiming_acceptance(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'refresh_project_state', lambda: None)
+    task = base_task()
+    task['state'] = 'VERIFYING'
+    cp.atomic_json(cp.TASKS, {'tasks': {task['task_id']: task}})
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 0})
+    cp.atomic_json(cp.result_file(task['task_id']), {
+        'task_id': task['task_id'], 'worker_id': task['assigned_agent'],
+        'status': 'PARTIAL', 'changes': [], 'artifacts': [],
+        'observations': ['One file has a PENDING field'], 'evidence': [],
+        'verification': [], 'unresolved': ['Acceptance unproven']})
+    assert cp.reconcile_negative_results() == [task['task_id']]
+    after = cp.strict_json(cp.TASKS)['tasks'][task['task_id']]
+    assert after['state'] == 'BLOCKED'
+    assert after['integration_decision']['accepted'] is False
+    assert cp.reconcile_negative_results() == []

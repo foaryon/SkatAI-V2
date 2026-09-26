@@ -613,7 +613,7 @@ def accept_worker_result(tid: str, accepted: bool, reason: str) -> dict[str, Any
     if not rp.is_file():
         raise RuntimeError("WORKER_RESULT_MISSING")
     result = strict_json(rp)
-    task["state"] = "COMPLETE" if accepted and result.get("status") == "COMPLETE" else ("BLOCKED" if result.get("status") == "BLOCKED" else "FAILED")
+    task["state"] = "COMPLETE" if accepted and result.get("status") == "COMPLETE" else ("BLOCKED" if result.get("status") in {"BLOCKED", "PARTIAL"} else "FAILED")
     task["updated_at"] = utc_now()
     task["integration_decision"] = {"accepted": bool(accepted), "reason": str(reason), "at": utc_now()}
     reg["tasks"][tid] = task
@@ -1391,7 +1391,7 @@ def poll_workers(state: dict[str, Any]) -> None:
 
 
 def reconcile_negative_results() -> list[str]:
-    """Fail closed on unchanged BLOCKED/FAILED results without a model call.
+    """Fail closed on unchanged BLOCKED/FAILED/PARTIAL results without a model call.
 
     Completed claims and any partial side effects still require SUPERBRAIN review.
     """
@@ -1403,7 +1403,7 @@ def reconcile_negative_results() -> list[str]:
         if not rp.is_file():
             continue
         result = strict_json(rp)
-        if (result.get("status") not in {"BLOCKED", "FAILED"}
+        if (result.get("status") not in {"BLOCKED", "FAILED", "PARTIAL"}
                 or result.get("task_id") != tid
                 or result.get("worker_id") != task.get("assigned_agent")
                 or result.get("changes") != []
