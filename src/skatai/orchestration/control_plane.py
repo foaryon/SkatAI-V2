@@ -1043,6 +1043,12 @@ def resolve_required_actions(session: dict[str, Any], *, kind: str, task: dict[s
             output = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         except Exception as exc:
             success = False
+            log(f"tool_rejected kind={kind} name={name} error={type(exc).__name__}:{str(exc)[:500]}")
+            append_jsonl(STATE_DIR / "tool_failure_registry.jsonl", {
+                "time": utc_now(), "kind": kind, "name": name,
+                "argument_sha256": hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest(),
+                "error_type": type(exc).__name__, "message": str(exc)[:1000],
+            })
             output = json.dumps({"error": type(exc).__name__, "message": str(exc)[:4000]}, sort_keys=True)
         events.append({
             "type": "agent.session.input.tool_result",

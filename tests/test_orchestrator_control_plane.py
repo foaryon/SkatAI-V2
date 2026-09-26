@@ -408,3 +408,17 @@ def test_negative_result_with_side_effects_stays_for_review(tmp_path, monkeypatc
                    'worker_id': task['assigned_agent'], 'status': 'BLOCKED',
                    'changes': ['repo:source.py'], 'artifacts': []})
     assert cp.reconcile_negative_results() == []
+
+
+def test_tool_failure_is_persisted_without_arguments(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'STATE_DIR', tmp_path)
+    monkeypatch.setattr(cp, 'CONTROL', tmp_path)
+    monkeypatch.setattr(cp, 'LOG', tmp_path / 'controller.log')
+    monkeypatch.setattr(cp, 'dispatch_tool', lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError('INVALID_CONTRACT')))
+    monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: {})
+    cp.resolve_required_actions({'id': 'sess_test', 'required_actions': [{
+        'type': 'function_call', 'name': 'create_task', 'arguments': {'contract': {'secret': 'dont-log'}},
+        'turn_id': 'turn', 'call_id': 'call'}]}, kind='orchestrator')
+    line = (tmp_path / 'tool_failure_registry.jsonl').read_text()
+    assert 'INVALID_CONTRACT' in line
+    assert 'dont-log' not in line
