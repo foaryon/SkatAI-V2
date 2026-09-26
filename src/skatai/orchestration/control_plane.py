@@ -1101,7 +1101,7 @@ def validate_runtime_files() -> None:
     cfg = config()
     if cfg["superbrain"]["model"] != "gpt-6-sol" or cfg["superbrain"]["reasoning_effort"] != "medium":
         raise RuntimeError("SUPERBRAIN_MODEL_POLICY_INVALID")
-    if cfg["workers"]["default_model"] != "gpt-4.1-nano":
+    if cfg["workers"]["default_model"] != "gpt-6-luna":
         raise RuntimeError("WORKER_DEFAULT_MODEL_POLICY_INVALID")
     if len(roles()) != 14:
         raise RuntimeError("WORKER_ROLE_COUNT_INVALID")

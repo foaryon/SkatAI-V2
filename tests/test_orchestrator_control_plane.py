@@ -39,8 +39,8 @@ def test_runtime_policy_has_one_expensive_brain_and_cheap_workers():
     cfg = json.loads((cp.REPO / "configs/orchestration/ORCHESTRATOR_RUNTIME_POLICY.json").read_text())
     assert cfg["superbrain"]["model"] == "gpt-6-sol"
     assert cfg["superbrain"]["reasoning_effort"] == "medium"
-    assert cfg["workers"]["default_model"] == "gpt-4.1-nano"
-    assert cfg["workers"]["default_reasoning_effort"] is None
+    assert cfg["workers"]["default_model"] == "gpt-6-luna"
+    assert cfg["workers"]["default_reasoning_effort"] == "low"
     assert cfg["workers"]["may_spawn_subworkers"] is False
     assert cfg["workers"]["may_self_escalate"] is False
 
@@ -79,8 +79,8 @@ def test_mid_cost_worker_requires_explicit_escalation_reason():
 def test_task_model_defaults_to_nano_and_cannot_silently_upgrade():
     task = cp.validate_task_contract(base_task())
     model, reasoning = cp.task_model(task)
-    assert model == "gpt-4.1-nano"
-    assert reasoning is None
+    assert model == "gpt-6-luna"
+    assert reasoning == "low"
 
     escalated = base_task()
     escalated["execution_profile"].update({
@@ -91,8 +91,8 @@ def test_task_model_defaults_to_nano_and_cannot_silently_upgrade():
     })
     escalated = cp.validate_task_contract(escalated)
     model, reasoning = cp.task_model(escalated)
-    assert model == "gpt-5.4-mini"
-    assert reasoning == "low"
+    assert model == "gpt-6-luna"
+    assert reasoning == "medium"
 
 
 def test_worker_authority_matches_only_explicit_scope():
