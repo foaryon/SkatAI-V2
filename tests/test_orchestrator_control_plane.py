@@ -21,7 +21,7 @@ def base_task():
         "authority": {
             "read": ["tests/**", "src/**"],
             "write": ["tests/test_game_rules.py"],
-            "execute": [["python3", "-m", "pytest", "-q", "tests/test_game_rules.py"]],
+            "execute": [["git", "-C", str(cp.REPO), "rev-parse", "HEAD"]],
             "forbidden": ["secrets", "global reprioritization"],
         },
         "evidence_requirements": ["pytest output"],
@@ -273,6 +273,7 @@ def test_worker_command_cannot_run_script_or_tests_with_indirect_effects(monkeyp
     import subprocess
     monkeypatch.setattr(cp.subprocess, 'run', lambda *args, **kwargs: pytest.fail('unsafe subprocess ran'))
     task = base_task()
+    task['authority']['execute'] = [['python3', '-m', 'pytest', '-q', 'tests/test_game_rules.py']]
     with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
         cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
     task['authority']['execute'] = [['bash', 'scripts/audit_data_split_leakage.py']]
@@ -304,15 +305,31 @@ def test_capability_assessment_requires_existing_hashed_evidence(tmp_path, monke
         cp.assess_capability('phase_16', 'VERIFIED', [], 'Controlled promotion evidence was independently verified.')
 
 
-def test_daily_session_cap_uses_persisted_log_even_when_token_usage_missing(tmp_path, monkeypatch):
+def test_rolling_budget_adapts_to_accepted_outcomes_and_requires_usage(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'LOG', tmp_path / 'controller.log')
     monkeypatch.setattr(cp, 'COST', tmp_path / 'usage.jsonl')
-    day = cp.utc_now()[:10]
-    cp.LOG.write_text(''.join(f'{day}T00:00:00Z superbrain_session_created id=s{i} model=gpt-6-sol\n' for i in range(2)))
-    status = cp.superbrain_budget_status()
-    assert status['sessions'] == 2
-    assert status['known_tokens'] == 0
-    assert status['exhausted'] is True
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    cp.atomic_json(cp.TASKS, {'tasks': {str(i): {'state': 'COMPLETE', 'integration_decision': {'accepted': True}}
+                                        for i in range(2)}})
+    now = cp.time.time()
+    stamp = cp.utc_now()
+    cp.LOG.write_text(''.join(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n' for i in range(15)))
+    usage = {'input_tokens': 10000, 'output_tokens': 100, 'total_tokens': 10100}
+    for i in range(15):
+        cp.append_jsonl(cp.COST, {'session_id': f'sess_{i}', 'role': 'orchestrator-superbrain', 'usage': usage})
+    status = cp.superbrain_budget_status(now)
+    assert status['sessions'] == 15
+    assert status['limits']['sessions'] == 18
+    assert status['limits']['tokens'] == 8000000
+    assert not status['exhausted']
+    for i in range(15, 18):
+        with cp.LOG.open('a') as f:
+            f.write(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n')
+        cp.append_jsonl(cp.COST, {'session_id': f'sess_{i}', 'role': 'orchestrator-superbrain', 'usage': usage})
+    assert 'session_allowance' in cp.superbrain_budget_status(now)['reasons']
+    cp.LOG.write_text(''.join(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n' for i in range(15)))
+    cp.COST.write_text('')
+    assert 'missing_usage' in cp.superbrain_budget_status(now)['reasons']
 
 
 def test_budget_prevents_creating_another_superbrain_session(tmp_path, monkeypatch):
@@ -320,7 +337,7 @@ def test_budget_prevents_creating_another_superbrain_session(tmp_path, monkeypat
     monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': True})
     monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('model session created'))
     state = cp.ensure_superbrain_session({'superbrain_agent_id': 'a', 'event_seq': 1})
-    assert state['superbrain_paused_reason'] == 'daily superbrain budget exhausted'
+    assert state['superbrain_paused_reason'] == 'adaptive superbrain budget exhausted'
 
 
 def test_task_listing_is_compact_and_full_contract_requires_single_id(tmp_path, monkeypatch):
@@ -347,3 +364,15 @@ def test_cost_estimate_deduplicates_delayed_usage_and_counts_accepted_outcomes(t
     assert x['sessions_with_usage'] == 1
     assert x['total_tokens'] == 1010000
     assert x['estimated_usd_per_accepted_worker_outcome'] == 0.24
+
+
+def test_unsafe_command_rejected_before_worker_session_creation():
+    task = base_task()
+    task['authority']['execute'] = [['python3', '-m', 'pytest', '-q', 'tests/test_game_rules.py']]
+    with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
+        cp.validate_task_contract(task)
+
+
+def test_exact_target_status_probe_allowed():
+    cp.validate_worker_command(['git', '-C', str(cp.REPO), 'status', '--porcelain=v1', '--',
+                                'src/skatai/evaluation/bidding_gameplay_gate.py'])

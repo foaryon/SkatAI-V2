@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import fnmatch
 import hashlib
 import json
@@ -464,6 +465,8 @@ def validate_task_contract(task: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(authority.get(k, []), list):
             raise RuntimeError(f"AUTHORITY_{k.upper()}_INVALID")
     validate_write_scopes(task)
+    for command in authority.get("execute", []):
+        validate_worker_command(command)
     if any(not isinstance(dep, str) or dep == tid for dep in task.get("dependencies", [])):
         raise RuntimeError("DEPENDENCIES_INVALID")
     profile = task["execution_profile"]
@@ -763,7 +766,14 @@ def validate_worker_command(argv: list[str]) -> None:
     if not isinstance(argv, list) or not argv or any(not isinstance(x, str) for x in argv):
         raise RuntimeError("COMMAND_UNSAFE_SHARED_CHECKOUT")
     if argv[:3] == ["git", "-C", str(REPO)]:
-        if argv[3:] in (["rev-parse", "HEAD"], ["status", "--short"], ["diff", "--stat"]):
+        rest = argv[3:]
+        if rest in (["rev-parse", "HEAD"], ["status", "--short"], ["diff", "--stat"]):
+            return
+        if (len(rest) == 4 and rest[:3] in (["status", "--porcelain=v1", "--"],
+                                             ["status", "--short", "--"],
+                                             ["diff", "--no-ext-diff", "--"])
+                and not rest[3].startswith("-")
+                and safe_path(rest[3], allow_runtime=False)[0].is_file()):
             return
     if argv[0] == "rg" and len(argv) >= 4 and argv[1] == "-n" and not argv[2].startswith("-") and all(
         not arg.startswith("-") and safe_path(arg, allow_runtime=False)[0].is_file()
@@ -1057,26 +1067,57 @@ def superbrain_bootstrap_text() -> str:
     )
 
 
-def superbrain_budget_status() -> dict[str, Any]:
-    """Use persistent server logs and usage; missing usage never bypasses session cap."""
-    today = utc_now()[:10]
-    starts = sum(1 for line in LOG.read_text(encoding="utf-8").splitlines()
-                 if line.startswith(today) and " superbrain_session_created " in line) if LOG.exists() else 0
-    seen = set()
-    tokens = 0
+def superbrain_budget_status(now_epoch: float | None = None) -> dict[str, Any]:
+    """Rolling, evidence-funded budget; a missing usage record cannot hide spend."""
+    now_epoch = time.time() if now_epoch is None else now_epoch
+    cfg = config()["superbrain"]["adaptive_budget"]
+    cutoff = now_epoch - int(cfg["window_hours"]) * 3600
+    starts: dict[str, float] = {}
+    worker_starts: dict[str, float] = {}
+    if LOG.exists():
+        for line in LOG.read_text(encoding="utf-8").splitlines():
+            match = re.match(r"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ) superbrain_session_created id=(sess_[A-Za-z0-9]+)", line)
+            if match:
+                epoch = calendar.timegm(time.strptime(match.group(1), "%Y-%m-%dT%H:%M:%SZ"))
+                if epoch >= cutoff:
+                    starts[match.group(2)] = epoch
+            worker_match = re.match(r"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ) worker_session_started .* session=(sess_[A-Za-z0-9]+)", line)
+            if worker_match:
+                epoch = calendar.timegm(time.strptime(worker_match.group(1), "%Y-%m-%dT%H:%M:%SZ"))
+                if epoch >= cutoff:
+                    worker_starts[worker_match.group(2)] = epoch
+    usage_rows: dict[str, dict[str, Any]] = {}
     if COST.exists():
         for line in COST.read_text(encoding="utf-8").splitlines():
             row = json.loads(line)
-            if row.get("time", "")[:10] != today or row.get("role") != "orchestrator-superbrain":
-                continue
             sid = row.get("session_id")
-            usage = row.get("usage") or {}
-            if sid and sid not in seen and isinstance(usage.get("total_tokens"), int):
-                tokens += usage["total_tokens"]
-                seen.add(sid)
-    cfg = config()["superbrain"]
-    exhausted = starts >= cfg["max_sessions_per_utc_day"] or tokens >= cfg["max_daily_total_tokens"]
-    return {"date": today, "sessions": starts, "known_tokens": tokens, "exhausted": exhausted}
+            if sid in starts or sid in worker_starts:
+                usage = row.get("usage") or {}
+                if isinstance(usage.get("total_tokens"), int):
+                    usage_rows[sid] = usage
+    accepted = sum(1 for task in strict_json(TASKS)["tasks"].values()
+                   if task.get("state") == "COMPLETE" and task.get("integration_decision", {}).get("accepted"))
+    limits = {
+        "sessions": min(cfg["max_sessions"], cfg["base_sessions"] + accepted * cfg["sessions_per_accepted_outcome"]),
+        "tokens": min(cfg["max_total_tokens"], cfg["base_total_tokens"] + accepted * cfg["tokens_per_accepted_outcome"]),
+        "estimated_usd": min(cfg["max_estimated_usd"], cfg["base_estimated_usd"] + accepted * cfg["estimated_usd_per_accepted_outcome"]),
+    }
+    tokens = sum(row["total_tokens"] for row in usage_rows.values())
+    estimated = sum(estimate_usage_usd(row, "gpt-6-sol", "flex") or 0 for sid, row in usage_rows.items() if sid in starts)
+    estimated += sum(estimate_usage_usd(row, "gpt-6-luna", "default") or 0 for sid, row in usage_rows.items() if sid in worker_starts)
+    missing = len(starts.keys() - usage_rows.keys())
+    reasons = []
+    if len(starts) >= limits["sessions"]:
+        reasons.append("session_allowance")
+    if tokens >= limits["tokens"]:
+        reasons.append("token_allowance")
+    if estimated >= limits["estimated_usd"]:
+        reasons.append("estimated_cost_allowance")
+    if missing > cfg["max_sessions_with_missing_usage"]:
+        reasons.append("missing_usage")
+    return {"window_hours": cfg["window_hours"], "sessions": len(starts), "worker_sessions": len(worker_starts), "known_tokens": tokens,
+            "estimated_usd_short_context": round(estimated, 4), "missing_usage_sessions": missing,
+            "accepted_outcomes": accepted, "limits": limits, "reasons": reasons, "exhausted": bool(reasons)}
 
 
 def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
@@ -1089,7 +1130,7 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             state["superbrain_session_id"] = None
     if superbrain_budget_status()["exhausted"]:
-        state["superbrain_paused_reason"] = "daily superbrain budget exhausted"
+        state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
         atomic_json(CONTROLLER_STATE, state)
         return state
     s = create_session(
@@ -1295,8 +1336,8 @@ def poll_workers(state: dict[str, Any]) -> None:
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     sid = state.get("superbrain_session_id")
     if superbrain_budget_status()["exhausted"]:
-        if state.get("superbrain_paused_reason") != "daily superbrain budget exhausted":
-            state["superbrain_paused_reason"] = "daily superbrain budget exhausted"
+        if state.get("superbrain_paused_reason") != "adaptive superbrain budget exhausted":
+            state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
             atomic_json(CONTROLLER_STATE, state)
         return state
     if state.get("superbrain_paused_reason"):

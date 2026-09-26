@@ -9,9 +9,20 @@
     "text_verbosity": "low",
     "service_tier": "flex",
     "persistent_session": true,
-    "max_sessions_per_utc_day": 2,
     "max_tool_calls_per_session": 8,
-    "max_daily_total_tokens": 150000
+    "adaptive_budget": {
+      "window_hours": 24,
+      "base_sessions": 6,
+      "sessions_per_accepted_outcome": 6,
+      "max_sessions": 36,
+      "base_total_tokens": 6000000,
+      "tokens_per_accepted_outcome": 1000000,
+      "max_total_tokens": 24000000,
+      "base_estimated_usd": 2.0,
+      "estimated_usd_per_accepted_outcome": 1.0,
+      "max_estimated_usd": 10.0,
+      "max_sessions_with_missing_usage": 1
+    }
   },
   "workers": {
     "default_model": "gpt-6-luna",
