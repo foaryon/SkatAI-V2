@@ -1385,8 +1385,16 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             state["superbrain_session_id"] = None
     reconcile_delayed_superbrain_usage(state)
-    if superbrain_budget_status()["exhausted"]:
+    budget = superbrain_budget_status()
+    if budget["exhausted"]:
         state["superbrain_paused_reason"] = "adaptive superbrain budget exhausted"
+        atomic_json(CONTROLLER_STATE, state)
+        return state
+    pause_reason = state.get("superbrain_paused_reason")
+    if pause_reason == "adaptive superbrain budget exhausted":
+        state.pop("superbrain_paused_reason", None)
+    elif pause_reason:
+        # Preserve deliberate fail-closed/no-progress holds across restart.
         atomic_json(CONTROLLER_STATE, state)
         return state
     s = create_session(
@@ -1788,7 +1796,11 @@ def run_controller() -> None:
     os.chmod(PID, 0o600)
     state = strict_json(CONTROLLER_STATE)
     state = ensure_agents(state)
-    state = ensure_superbrain_session(state)
+    # Reconcile source/config identity before creating a reasoning session.
+    # Otherwise a restart after deployment can create one session for the old
+    # event sequence and immediately orphan it when the revision event lands.
+    reconcile_repository_revision()
+    state = ensure_superbrain_session(strict_json(CONTROLLER_STATE))
     log("orchestrator_controller_started")
     while True:
         controller_iteration()

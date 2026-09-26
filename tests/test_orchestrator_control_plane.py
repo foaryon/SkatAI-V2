@@ -387,6 +387,40 @@ def test_budget_prevents_creating_another_superbrain_session(tmp_path, monkeypat
     assert state['superbrain_paused_reason'] == 'adaptive superbrain budget exhausted'
 
 
+def test_expired_budget_pause_is_cleared_before_new_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'state.json')
+    monkeypatch.setattr(cp, 'LOG', tmp_path / 'controller.log')
+    monkeypatch.setattr(cp, 'EVIDENCE', tmp_path / 'evidence.jsonl')
+    monkeypatch.setattr(cp, 'reconcile_delayed_superbrain_usage', lambda state: 0)
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(
+        cp,
+        'create_session',
+        lambda *args, **kwargs: {'id': 'sess_new'},
+    )
+    state = cp.ensure_superbrain_session({
+        'superbrain_agent_id': 'a',
+        'event_seq': 2,
+        'superbrain_paused_reason': 'adaptive superbrain budget exhausted',
+    })
+    assert state['superbrain_session_id'] == 'sess_new'
+    assert 'superbrain_paused_reason' not in state
+
+
+def test_nonbudget_pause_survives_restart_without_new_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'state.json')
+    monkeypatch.setattr(cp, 'reconcile_delayed_superbrain_usage', lambda state: 0)
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'create_session', lambda *args, **kwargs: pytest.fail('session created'))
+    state = cp.ensure_superbrain_session({
+        'superbrain_agent_id': 'a',
+        'event_seq': 2,
+        'superbrain_paused_reason': 'repeated rejected action; review tool scope and evidence',
+    })
+    assert state.get('superbrain_session_id') is None
+    assert state['superbrain_paused_reason'].startswith('repeated rejected action')
+
+
 def test_task_listing_is_compact_and_full_contract_requires_single_id(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
     task = base_task()
