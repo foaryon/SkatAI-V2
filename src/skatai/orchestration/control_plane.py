@@ -770,7 +770,7 @@ def orchestration_tools() -> list[dict[str, Any]]:
         {"type": "function", "name": "list_tasks", "description": "Read task registry, optionally filtered by state.", "parameters": {"type": "object", "properties": {"state": {"type": ["string", "null"]}}, "additionalProperties": False}},
         {"type": "function", "name": "get_task", "description": "Read one full task contract by ID only when details are needed.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "create_and_dispatch_readonly_task", "description": "Create and dispatch one read-only Luna worker with controller-generated bounded package. Use for audits; no execute argv is accepted.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "assigned_agent": {"type": "string", "enum": sorted(roles())}, "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]}, "objective": {"type": "string"}, "rationale": {"type": "string"}, "current_gap": {"type": "string"}, "read_paths": {"type": "array", "minItems": 1, "maxItems": 5, "items": {"type": "string"}}, "work_prompt_capability_reference": {"type": "array", "items": {"type": "string"}}, "evidence_requirements": {"type": "array", "items": {"type": "string"}}, "success_criteria": {"type": "array", "items": {"type": "string"}}, "dependencies": {"type": "array", "items": {"type": "string"}}}, "required": ["task_id", "assigned_agent", "priority", "objective", "rationale", "current_gap", "read_paths", "work_prompt_capability_reference", "evidence_requirements", "success_criteria"], "additionalProperties": False}},
-        {"type": "function", "name": "create_task", "description": "Create one bounded worker task contract. Workers never broaden it.", "parameters": {"type": "object", "properties": {"contract": task_contract}, "required": ["contract"], "additionalProperties": False}},
+        {"type": "function", "name": "create_task", "description": "Create one bounded worker task contract; execute accepts only inert exact probes. For evidence audits use create_and_dispatch_readonly_task, not pytest or scripts in the shared checkout.", "parameters": {"type": "object", "properties": {"contract": task_contract}, "required": ["contract"], "additionalProperties": False}},
         {"type": "function", "name": "dispatch_task", "description": "Request deterministic controller dispatch of a READY worker task.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "read_worker_result", "description": "Read a persisted worker result for verification.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "accept_worker_result", "description": "Accept or reject a worker result after evidence review.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "accepted": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["task_id", "accepted", "reason"], "additionalProperties": False}},
@@ -1082,7 +1082,7 @@ def resolve_required_actions(session: dict[str, Any], *, kind: str, task: dict[s
             success = False
             log(f"tool_rejected kind={kind} name={name} error={type(exc).__name__}:{str(exc)[:500]}")
             append_jsonl(STATE_DIR / "tool_failure_registry.jsonl", {
-                "time": utc_now(), "kind": kind, "name": name,
+                "time": utc_now(), "kind": kind, "name": name, "session_id": sid,
                 "argument_sha256": hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest(),
                 "error_type": type(exc).__name__, "message": str(exc)[:1000],
             })
@@ -1104,7 +1104,9 @@ def superbrain_bootstrap_text() -> str:
         "First use get_project_snapshot and compact list_tasks; get_task only for one relevant task. Reuse existing READY tasks if valid; "
         "reject or revise any contract with a broad write scope. The R9 ISS gate worker is running; do not restart it. "
         "The founding specification requires evidence over claims. The Work Prompt seeks the full V2 product. "
-        "Prefer an existing READY task with a valid contract. Never repeat a BLOCKED command set "
+        "Prefer an existing READY task with a valid contract. If none exists, use create_and_dispatch_readonly_task "
+        "for a specific unresolved evidence gap and exact existing input files. Never put pytest, scripts, or broad commands "
+        "in create_task on the shared checkout. Never repeat a BLOCKED command set "
         "without changed input evidence. Dispatch one safe nonconflicting task with minimum context. "
         "Do not browse the entire repository first. On result, verify, integrate, persist, then continue."
     )
@@ -1403,6 +1405,20 @@ def reconcile_negative_results() -> list[str]:
     return closed
 
 
+def repeated_orchestrator_rejection(session_id: str) -> bool:
+    """Stop a session after the same rejected action twice, with no useful progress."""
+    path = STATE_DIR / "tool_failure_registry.jsonl"
+    if not path.exists():
+        return False
+    counts: dict[tuple[str, str], int] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        row = json.loads(line)
+        if row.get("session_id") == session_id and row.get("kind") == "orchestrator":
+            key = (row.get("name", ""), row.get("message", ""))
+            counts[key] = counts.get(key, 0) + 1
+    return any(value >= 2 for value in counts.values())
+
+
 def has_actionable_reasoning_event(state: dict[str, Any]) -> bool:
     event = state.get("last_event") or {}
     return (int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0))
@@ -1457,6 +1473,16 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         resolve_required_actions(s, kind="orchestrator")
         state = strict_json(CONTROLLER_STATE)
         state["superbrain_tool_calls"] = count + len(actions)
+        if (repeated_orchestrator_rejection(sid) and not integrated_since_session_start(state)
+                and not evidence_since_session_start(state)):
+            log(f"superbrain_no_progress_paused session={sid} calls={state['superbrain_tool_calls']}")
+            cancel_session(sid, "repeated_rejected_action")
+            try:
+                persist_usage(api("GET", f"/agents/sessions/{sid}"), "orchestrator-superbrain",
+                              state["superbrain_tool_calls"], "paused_after_repeated_rejection")
+            except Exception as exc:
+                log(f"superbrain_usage_unavailable id={sid} err={exc!r}")
+            state["superbrain_paused_reason"] = "repeated rejected action; review tool scope and evidence"
         atomic_json(CONTROLLER_STATE, state)
     elif status == "failed":
         log(f"superbrain_session_failed id={sid} err={s.get('error')!r}")

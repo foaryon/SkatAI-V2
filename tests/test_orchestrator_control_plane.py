@@ -486,3 +486,13 @@ def test_idle_superbrain_makes_no_api_poll_without_actionable_event(monkeypatch)
     state = {'superbrain_session_id': 's1', 'superbrain_idle': True, 'event_seq': 9,
              'last_superbrain_event_seq': 8, 'last_event': {'kind': 'task_dispatch_requested'}}
     assert cp.poll_superbrain(state) == state
+
+
+def test_repeated_orchestrator_rejection_is_session_scoped(tmp_path):
+    path = cp.STATE_DIR / 'tool_failure_registry.jsonl'
+    for sid in ('other', 'current', 'current'):
+        cp.append_jsonl(path, {'session_id': sid, 'kind': 'orchestrator',
+                               'name': 'create_task', 'message': 'COMMAND_UNSAFE_SHARED_CHECKOUT'})
+    assert cp.repeated_orchestrator_rejection('current')
+    assert not cp.repeated_orchestrator_rejection('other')
+    assert not cp.repeated_orchestrator_rejection('unseen')
