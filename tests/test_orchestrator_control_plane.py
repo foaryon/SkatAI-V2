@@ -510,7 +510,9 @@ def test_canonical_scoped_paths_roundtrip_into_worker_read(tmp_path, monkeypatch
     task = base_task()
     task['authority']['read'] = ['repo:evidence.txt']
     assert cp.safe_path('repo:evidence.txt') == (source, 'repo:evidence.txt')
-    assert 'verified evidence' in cp.read_text_tool({'path': 'repo:evidence.txt'}, task)['text']
+    result = cp.read_text_tool({'path': 'repo:evidence.txt'}, task)
+    assert 'verified evidence' in result['text']
+    assert result['sha256'] == cp.sha256(source)
     with pytest.raises(RuntimeError, match='PATH_OUTSIDE_PROJECT'):
         cp.safe_path('repo:../other')
     with pytest.raises(RuntimeError, match='PATH_OUTSIDE_PROJECT'):

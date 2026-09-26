@@ -337,7 +337,8 @@ def read_text_tool(args: dict[str, Any], task: dict[str, Any] | None = None) -> 
         raise RuntimeError(f"READ_NOT_AUTHORIZED:{key}")
     if not p.is_file():
         raise RuntimeError("NOT_A_FILE")
-    return {"path": key, "text": bounded_text(p, args.get("start_line", 1), args.get("end_line"))}
+    return {"path": key, "sha256": sha256(p), "bytes": p.stat().st_size,
+            "text": bounded_text(p, args.get("start_line", 1), args.get("end_line"))}
 
 
 def list_paths_tool(args: dict[str, Any], task: dict[str, Any] | None = None) -> dict[str, Any]:
