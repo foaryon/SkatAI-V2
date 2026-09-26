@@ -11,8 +11,8 @@ SECRET_PREP="$HERE/prepare_r9_runtime_secrets.py"
 LOG="$RUNTIME/supervisor-boot.log"
 FROZEN_REPO=/workspace/skatai-v2-wt-r9-game-not-started
 LAUNCHER="$RUNTIME/launch-r9-pinned.sh"
-EXPECTED_SOURCE_COMMIT=5c4b6f977ebdf883e836e95eb0530121b99394e7
-EXPECTED_LAUNCHER_SHA256=b76fd0159f72b08af303bf06692d5a73ed1c05baf1d3e35e4141f4c241c87b3d
+EXPECTED_SOURCE_COMMIT=7053b50f7c6622b765fee57e5c3d724e6e81a555
+EXPECTED_LAUNCHER_SHA256=522d7e7ed415794f859bd4c90f5d33d2b8d3fe17ac35a48dc0873b1aa1cf0e0f
 
 mkdir -p "$RUNTIME"
 log() { printf '%s %s
