@@ -6,6 +6,21 @@ import pytest
 from skatai.orchestration import control_plane as cp
 
 
+@pytest.fixture(autouse=True)
+def isolate_orchestrator_state(tmp_path, monkeypatch):
+    """No unit test may write to live network-volume control or project state."""
+    for name in ('CONTROL', 'STATE_DIR'):
+        monkeypatch.setattr(cp, name, tmp_path)
+    for name, filename in (
+        ('CONTROLLER_STATE', 'controller_state.json'), ('PROJECT_STATE', 'project_state.json'),
+        ('TASKS', 'tasks.json'), ('WORKERS', 'workers.json'), ('CAPABILITIES', 'capabilities.json'),
+        ('DECISIONS', 'decisions.jsonl'), ('EVIDENCE', 'evidence.jsonl'),
+        ('EXPERIMENTS', 'experiments.json'), ('RELEASES', 'releases.json'),
+        ('COST', 'cost.jsonl'), ('LOG', 'controller.log'), ('PID', 'controller.pid'),
+    ):
+        monkeypatch.setattr(cp, name, tmp_path / filename)
+
+
 def base_task():
     return {
         "task_id": "t-test-001",
@@ -298,6 +313,7 @@ def test_capability_map_covers_all_work_prompt_phases_and_preserves_assessment(t
 
 def test_capability_assessment_requires_existing_hashed_evidence(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'CAPABILITIES', tmp_path / 'capabilities.json')
+    cp.atomic_json(cp.TASKS, {'tasks': {}})
     cp.reconcile_capability_map()
     with pytest.raises(RuntimeError, match='CAPABILITY_TASK_EVIDENCE_NOT_ACCEPTED'):
         cp.assess_capability('phase_16', 'VERIFIED', ['task:invented'], 'Controlled promotion evidence was independently verified.')
