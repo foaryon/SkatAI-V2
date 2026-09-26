@@ -536,6 +536,40 @@ def create_task(task: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def create_and_dispatch_readonly_task(args: dict[str, Any]) -> dict[str, Any]:
+    """Build a complete bounded worker package from a small orchestrator order."""
+    paths = args["read_paths"]
+    if not isinstance(paths, list) or not 1 <= len(paths) <= 5:
+        raise RuntimeError("READ_ONLY_TASK_NEEDS_ONE_TO_FIVE_FILES")
+    reads = []
+    for raw in paths:
+        p, key = safe_path(raw, allow_runtime=False)
+        if not p.is_file():
+            raise RuntimeError("READ_ONLY_INPUT_MISSING")
+        reads.append(key)
+    contract = {
+        "task_id": args["task_id"], "task_family": "bounded_readonly_audit",
+        "assigned_agent": args["assigned_agent"], "priority": args["priority"],
+        "global_goal_reference": ["SKATAI_V2_FOUNDING_SPECIFICATION.md: evidence and scientific validity"],
+        "work_prompt_capability_reference": args["work_prompt_capability_reference"],
+        "current_gap": args["current_gap"], "objective": args["objective"],
+        "rationale": args["rationale"], "scope": ["Read only: " + ", ".join(reads), args["objective"]],
+        "non_goals": ["No repository/runtime changes, model promotion, release, or R9 intervention."],
+        "dependencies": args.get("dependencies", []), "required_inputs": reads,
+        "authority": {"read": reads, "write": [], "execute": [],
+                      "forbidden": ["No commands, writes, secrets, promotion, or project-wide decisions."]},
+        "evidence_requirements": args["evidence_requirements"],
+        "success_criteria": args["success_criteria"],
+        "execution_profile": {"preferred_execution_mode": "very_low_cost_model",
+                              "max_cost_class": "very_low", "reasoning_effort": "low",
+                              "model_escalation_requires_orchestrator": True},
+    }
+    created = create_task(contract)
+    dispatched = dispatch_task(created["task_id"])
+    return {"task_id": created["task_id"], "state": dispatched["state"],
+            "worker_package": "bounded read-only contract persisted", "read_paths": reads}
+
+
 def dispatch_task(tid: str) -> dict[str, Any]:
     reg = strict_json(TASKS)
     task = reg["tasks"].get(tid)
@@ -735,6 +769,7 @@ def orchestration_tools() -> list[dict[str, Any]]:
         {"type": "function", "name": "list_paths", "description": "List project/runtime paths.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "depth": {"type": "integer"}, "glob": {"type": "string"}}, "required": ["path"], "additionalProperties": False}},
         {"type": "function", "name": "list_tasks", "description": "Read task registry, optionally filtered by state.", "parameters": {"type": "object", "properties": {"state": {"type": ["string", "null"]}}, "additionalProperties": False}},
         {"type": "function", "name": "get_task", "description": "Read one full task contract by ID only when details are needed.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
+        {"type": "function", "name": "create_and_dispatch_readonly_task", "description": "Create and dispatch one read-only Luna worker with controller-generated bounded package. Use for audits; no execute argv is accepted.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "assigned_agent": {"type": "string", "enum": sorted(roles())}, "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]}, "objective": {"type": "string"}, "rationale": {"type": "string"}, "current_gap": {"type": "string"}, "read_paths": {"type": "array", "minItems": 1, "maxItems": 5, "items": {"type": "string"}}, "work_prompt_capability_reference": {"type": "array", "items": {"type": "string"}}, "evidence_requirements": {"type": "array", "items": {"type": "string"}}, "success_criteria": {"type": "array", "items": {"type": "string"}}, "dependencies": {"type": "array", "items": {"type": "string"}}}, "required": ["task_id", "assigned_agent", "priority", "objective", "rationale", "current_gap", "read_paths", "work_prompt_capability_reference", "evidence_requirements", "success_criteria"], "additionalProperties": False}},
         {"type": "function", "name": "create_task", "description": "Create one bounded worker task contract. Workers never broaden it.", "parameters": {"type": "object", "properties": {"contract": task_contract}, "required": ["contract"], "additionalProperties": False}},
         {"type": "function", "name": "dispatch_task", "description": "Request deterministic controller dispatch of a READY worker task.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "read_worker_result", "description": "Read a persisted worker result for verification.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
@@ -893,6 +928,8 @@ def dispatch_tool(name: str, args: dict[str, Any], *, kind: str, task: dict[str,
                               for k, v in reg.items() if not state or v.get("state") == state}}
         if name == "get_task":
             return strict_json(TASKS)["tasks"].get(args["task_id"], {"missing": True})
+        if name == "create_and_dispatch_readonly_task":
+            return create_and_dispatch_readonly_task(args)
         if name == "create_task":
             return create_task(args["contract"])
         if name == "dispatch_task":
@@ -1146,6 +1183,7 @@ def ensure_superbrain_session(state: dict[str, Any]) -> dict[str, Any]:
         idem_seed="superbrain-bootstrap:" + str(state.get("event_seq", 0)),
     )
     state["superbrain_session_id"] = s["id"]
+    state["superbrain_idle"] = False
     state["bootstrap_sent"] = True
     state["superbrain_tool_calls"] = 0
     state["session_start_decision_bytes"] = decision_file_size()
@@ -1368,7 +1406,7 @@ def reconcile_negative_results() -> list[str]:
 def has_actionable_reasoning_event(state: dict[str, Any]) -> bool:
     event = state.get("last_event") or {}
     return (int(state.get("event_seq", 0)) > int(state.get("last_superbrain_event_seq", 0))
-            and event.get("kind") in {"worker_result", "controller_revision"})
+            and event.get("kind") in {"worker_result", "negative_worker_result_integrated", "controller_revision"})
 
 
 def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
@@ -1387,6 +1425,8 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
         return state
     if not sid:
         return ensure_superbrain_session(state)
+    if state.get("superbrain_idle") and not has_actionable_reasoning_event(state):
+        return state
     try:
         s = api("GET", f"/agents/sessions/{sid}")
     except Exception as exc:
@@ -1427,7 +1467,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
     elif status == "idle":
         current = int(state.get("event_seq", 0))
         last = int(state.get("last_superbrain_event_seq", 0))
-        if current > last:
+        if current > last and has_actionable_reasoning_event(state):
             event = state.get("last_event") or {}
             text = (
                 f"Verified orchestration event seq={current}: {json.dumps(event, sort_keys=True)}. "
@@ -1436,6 +1476,10 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
             )
             send_message(sid, text, f"superbrain-event:{current}")
             state["last_superbrain_event_seq"] = current
+            state["superbrain_idle"] = False
+            atomic_json(CONTROLLER_STATE, state)
+        else:
+            state["superbrain_idle"] = True
             atomic_json(CONTROLLER_STATE, state)
     return state
 

@@ -16,7 +16,7 @@ Operating rules:
 - Reconcile current state before major decisions. Reuse verified completed work. Consult the persisted 29-phase Work Prompt capability map at phase transitions; its unassessed rows do not imply no implementation. Record phase assessment only with hashed verified evidence and a specific reason.
 - Create bounded worker task contracts with minimum sufficient context, explicit authority, evidence requirements, success criteria, and exact executable commands where needed.
 - Workers are cheap executors, not planners. Never depend on a worker to infer global priorities or broaden its own scope.
-- Prefer deterministic mechanisms. Use worker LLMs only where interpretation or code generation is actually useful.
+- Prefer deterministic mechanisms. Use worker LLMs only where interpretation or code generation is actually useful. For read-only audits, use create_and_dispatch_readonly_task; it generates a separate exact worker package and avoids executable commands.
 - Default worker model is the configured very-low-cost model. Any higher worker tier requires an explicit task-level escalation reason.
 - Parallelize only dependency-independent work with non-conflicting write sets and preserved scientific independence.
 - Worker output is evidence, not authority. Independently validate promotion, dataset-split, evaluation-methodology, release/deployment, security-sensitive controller, destructive-storage, and major-interface decisions.

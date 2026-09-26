@@ -319,10 +319,10 @@ def test_rolling_budget_adapts_to_accepted_outcomes_and_requires_usage(tmp_path,
         cp.append_jsonl(cp.COST, {'session_id': f'sess_{i}', 'role': 'orchestrator-superbrain', 'usage': usage})
     status = cp.superbrain_budget_status(now)
     assert status['sessions'] == 15
-    assert status['limits']['sessions'] == 18
+    assert status['limits']['sessions'] == 24
     assert status['limits']['tokens'] == 8000000
     assert not status['exhausted']
-    for i in range(15, 18):
+    for i in range(15, 24):
         with cp.LOG.open('a') as f:
             f.write(f'{stamp} superbrain_session_created id=sess_{i} model=gpt-6-sol\n')
         cp.append_jsonl(cp.COST, {'session_id': f'sess_{i}', 'role': 'orchestrator-superbrain', 'usage': usage})
@@ -433,3 +433,40 @@ def test_only_new_external_evidence_or_revision_can_resume_paused_reasoning():
     state['last_superbrain_event_seq'] = 6
     state['last_event']['kind'] = 'task_dispatch_requested'
     assert not cp.has_actionable_reasoning_event(state)
+
+
+def test_readonly_worker_gets_distinct_minimal_contract_and_dispatch(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    monkeypatch.setattr(cp, 'CONTROLLER_STATE', tmp_path / 'controller.json')
+    monkeypatch.setattr(cp, 'REPO', tmp_path)
+    cp.atomic_json(cp.TASKS, {'tasks': {}})
+    cp.atomic_json(cp.CONTROLLER_STATE, {'event_seq': 0})
+    (tmp_path / 'acceptance.json').write_text('{"status":"PENDING"}')
+    result = cp.create_and_dispatch_readonly_task({
+        'task_id': 'audit-acceptance', 'assigned_agent': 'scientific-governance',
+        'priority': 'P1', 'objective': 'Read the bounded acceptance evidence.',
+        'rationale': 'A pending gate needs a precise finding.', 'current_gap': 'Acceptance pending.',
+        'read_paths': ['acceptance.json'], 'work_prompt_capability_reference': ['phase_16'],
+        'evidence_requirements': ['Exact path and status'], 'success_criteria': ['Precise finding']})
+    task = cp.strict_json(cp.TASKS)['tasks']['audit-acceptance']
+    assert result['state'] == 'DISPATCH_REQUESTED'
+    assert task['authority'] == {'read': ['repo:acceptance.json'], 'write': [], 'execute': [],
+                                  'forbidden': ['No commands, writes, secrets, promotion, or project-wide decisions.']}
+    assert task['execution_profile']['max_cost_class'] == 'very_low'
+
+
+def test_idle_dispatch_event_does_not_call_superbrain(monkeypatch):
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: {'status': 'idle'})
+    monkeypatch.setattr(cp, 'send_message', lambda *args, **kwargs: pytest.fail('idle dispatch caused model call'))
+    state = {'superbrain_session_id': 's1', 'event_seq': 2, 'last_superbrain_event_seq': 1,
+             'last_event': {'kind': 'task_dispatch_requested'}}
+    assert cp.poll_superbrain(state) == state
+
+
+def test_idle_superbrain_makes_no_api_poll_without_actionable_event(monkeypatch):
+    monkeypatch.setattr(cp, 'superbrain_budget_status', lambda: {'exhausted': False})
+    monkeypatch.setattr(cp, 'api', lambda *args, **kwargs: pytest.fail('idle session was polled'))
+    state = {'superbrain_session_id': 's1', 'superbrain_idle': True, 'event_seq': 9,
+             'last_superbrain_event_seq': 8, 'last_event': {'kind': 'task_dispatch_requested'}}
+    assert cp.poll_superbrain(state) == state
