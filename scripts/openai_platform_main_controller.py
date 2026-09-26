@@ -799,6 +799,80 @@ def progress_contract_status(state):
         return True, None
     return False, "progress_contract_kind_invalid"
 
+def recover_terminal_outcome_from_progress_contract(state, lock, governor):
+    """Recover a terminal gate decision already persisted by the bounded turn.
+
+    This is only a closure/recovery path. It never invents a scientific or
+    product decision: the authenticated progress-contract JSON must itself
+    have freshly transitioned to a recognized terminal classification.
+    """
+    if not bool(state.get("turn_outcome_only")):
+        return None, "terminal_recovery_not_outcome_only"
+    baseline = state.get("turn_progress_contract")
+    if not isinstance(baseline, dict):
+        return None, "terminal_recovery_baseline_missing"
+    contract = baseline.get("contract")
+    if not isinstance(contract, dict) or contract.get("kind") != "JSON_FIELD_TRANSITION":
+        return None, "terminal_recovery_contract_not_json_transition"
+    if contract != lock["primary"].get("progress_contract"):
+        return None, "terminal_recovery_contract_lock_mismatch"
+    ok, reason = progress_contract_status(state)
+    if not ok:
+        return None, "terminal_recovery_" + str(reason)
+    path = Path(str(baseline.get("path") or ""))
+    if not path.is_file():
+        return None, "terminal_recovery_progress_file_missing"
+    started = float(state.get("turn_started_at") or 0)
+    if started:
+        try:
+            if path.stat().st_mtime < started - 2.0:
+                return None, "terminal_recovery_progress_file_stale"
+        except OSError:
+            return None, "terminal_recovery_progress_file_stat_failed"
+    try:
+        raw = strict_json_load(path)
+        classification = _json_field(raw, contract["field"])
+    except Exception:
+        return None, "terminal_recovery_progress_file_invalid"
+    if classification not in TERMINAL_CLASSIFICATIONS:
+        return None, "terminal_recovery_classification_not_terminal"
+    progress_kind = "GATE_DECISION"
+    if progress_kind not in set(governor["progress"]["allowed_progress_kinds"]):
+        return None, "terminal_recovery_progress_kind_not_allowed"
+    gate_id = str(state.get("turn_primary_gate_id") or "")
+    goal_id = str(state.get("turn_goal_path_id") or "")
+    trigger_type = str(state.get("turn_trigger_type") or "")
+    event_key = str(state.get("turn_event_key") or "")
+    nonce = str(state.get("last_turn_nonce") or "")
+    if gate_id != lock["primary"]["gate_id"] or goal_id != lock["primary"]["goal_path_id"]:
+        return None, "terminal_recovery_turn_lock_identity_mismatch"
+    if not nonce or not trigger_type or len(event_key) < 8:
+        return None, "terminal_recovery_turn_identity_incomplete"
+    try:
+        rel = str(path.resolve().relative_to(REPO_ROOT.resolve()))
+    except ValueError:
+        rel = str(path.resolve())
+    digest = sha256_file(path)
+    outcome = {
+        "schema": TURN_OUTCOME_SCHEMA,
+        "turn_nonce": nonce,
+        "primary_gate_id": gate_id,
+        "goal_path_id": goal_id,
+        "trigger_type": trigger_type,
+        "event_key": event_key,
+        "classification": classification,
+        "material_progress": True,
+        "progress_kind": progress_kind,
+        "evidence": [f"{rel} sha256={digest}"],
+        "request_followup": False,
+        "next_action": (
+            "Controller recovered the already-persisted terminal progress-contract "
+            "decision after an outcome-only boundary violation; continue only via "
+            "the pre-authorized gate queue."
+        ),
+    }
+    return outcome, None
+
 def utc_day_key(now=None):
     return time.strftime("%Y-%m-%d", time.gmtime(time.time() if now is None else now))
 
@@ -1633,6 +1707,40 @@ def send_prepared_input(session_id, state, prepared):
 _SIDE_EFFECT_TOOLS = {"apply_patch", "run_authorized_command", "record_turn_outcome"}
 _RECON_TOOLS = {"get_active_lease", "read_text", "search_text", "list_paths", "git_query"}
 
+
+class RecoverableTurnStop(RuntimeError):
+    """Bounded model/tool loop stop that must not hard-disable the control plane."""
+
+
+def _repo_relative_tool_path(raw):
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    p = Path(raw.strip())
+    if not p.is_absolute():
+        p = REPO_ROOT / p
+    try:
+        resolved = p.resolve(strict=False)
+        return resolved.relative_to(REPO_ROOT.resolve()).as_posix()
+    except (ValueError, OSError):
+        return None
+
+
+def _verification_tool_call_allowed(name, args, lock):
+    """Allow only narrow post-effect verification, never a second recon channel."""
+    writable = set((lock.get("primary") or {}).get("writable_files") or [])
+    if name == "read_text":
+        rel = _repo_relative_tool_path(args.get("path"))
+        return rel in writable
+    if name == "git_query":
+        op = args.get("operation")
+        if op == "status":
+            return True
+        if op == "diff":
+            rel = _repo_relative_tool_path(args.get("path"))
+            return rel in writable
+    return False
+
+
 def _safe_action_id(raw):
     value = str(raw or "")
     if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,200}", value):
@@ -1662,6 +1770,7 @@ def handle_required_actions(session_id, session, state, governor):
     max_rounds = int(tool_budget.get("max_tool_rounds_per_turn") or 12)
     max_recon = int(tool_budget.get("max_recon_tool_calls_per_turn") or 6)
     max_recon_denials = int(tool_budget.get("max_recon_denials_per_turn") or 2)
+    max_verification = int(tool_budget.get("max_verification_tool_calls_per_turn") or 4)
     max_effects = int(tool_budget.get("max_side_effect_calls_per_turn") or 8)
     max_identical = int(tool_budget.get("max_identical_tool_calls_per_turn") or 3)
     call_count = int(state.get("turn_tool_calls") or 0)
@@ -1669,6 +1778,7 @@ def handle_required_actions(session_id, session, state, governor):
     effect_count = int(state.get("turn_side_effect_calls") or 0)
     recon_count = int(state.get("turn_recon_tool_calls") or 0)
     recon_denials = int(state.get("turn_recon_denials") or 0)
+    verification_count = int(state.get("turn_verification_tool_calls") or 0)
     signatures = dict(state.get("turn_tool_signature_counts") or {})
     terminal_outcome_only = all(
         action.get("type") == "function_call"
@@ -1678,7 +1788,7 @@ def handle_required_actions(session_id, session, state, governor):
     outcome_only = bool(state.get("turn_outcome_only"))
     if outcome_only and not terminal_outcome_only:
         if bool(state.get("turn_outcome_only_denial_used")):
-            raise RuntimeError("OUTCOME_ONLY_TOOL_VIOLATION")
+            raise RecoverableTurnStop("OUTCOME_ONLY_TOOL_VIOLATION")
         events = []
         for action in actions:
             if action.get("type") != "function_call":
@@ -1740,6 +1850,7 @@ def handle_required_actions(session_id, session, state, governor):
         state["turn_tool_calls"] = call_count
         state["turn_tool_rounds"] = round_count
         state["turn_recon_tool_calls"] = recon_count
+        state["turn_verification_tool_calls"] = verification_count
         state["turn_recon_denials"] = recon_denials
         state["turn_outcome_only"] = bool(state.get("turn_outcome_only"))
         state["turn_side_effect_calls"] = effect_count
@@ -1751,8 +1862,92 @@ def handle_required_actions(session_id, session, state, governor):
         )
         return state
 
+    budget_lock = load_execution_lock()
+
+    def action_is_verification(action):
+        if effect_count <= 0 or action.get("type") != "function_call":
+            return False
+        name = str(action.get("name") or "")
+        if name not in _RECON_TOOLS:
+            return False
+        args = _parse_tool_arguments(action.get("arguments"))
+        return _verification_tool_call_allowed(name, args, budget_lock)
+
+    verification_only = bool(actions) and all(action_is_verification(action) for action in actions)
+    if verification_only and verification_count >= max_verification:
+        events = []
+        for action in actions:
+            if call_count >= max_calls:
+                raise RecoverableTurnStop("TOOL_CALL_BUDGET_EXCEEDED")
+            turn_id = _safe_action_id(action.get("turn_id"))
+            call_id = _safe_action_id(action.get("call_id"))
+            if state.get("active_turn_id") not in {None, turn_id}:
+                raise RuntimeError("MULTIPLE_ACTIVE_TURN_IDS")
+            state["active_turn_id"] = turn_id
+            args = _parse_tool_arguments(action.get("arguments"))
+            result_path = _tool_result_path(session_id, turn_id, call_id)
+            output = json.dumps(
+                {
+                    "error": "VERIFICATION_BUDGET_REACHED",
+                    "message": (
+                        "Post-effect verification budget is exhausted. "
+                        "The turn is now outcome-only; call record_turn_outcome next. "
+                        "If verification is insufficient, record INCONCLUSIVE."
+                    ),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            atomic_json(result_path, {
+                "session_id": session_id,
+                "turn_id": turn_id,
+                "call_id": call_id,
+                "name": str(action.get("name") or ""),
+                "arguments_sha256": hashlib.sha256(
+                    json.dumps(args, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest(),
+                "success": False,
+                "output": output,
+            })
+            events.append({
+                "type": "agent.session.input.tool_result",
+                "turn_id": turn_id,
+                "call_id": call_id,
+                "success": False,
+                "output": output,
+            })
+            call_count += 1
+        idem = hashlib.sha256(
+            (
+                "verification-budget-denial\n" + session_id + "\n"
+                + "\n".join(str(e["call_id"]) for e in events)
+            ).encode()
+        ).hexdigest()
+        api(
+            "POST",
+            f"/agents/sessions/{session_id}/events",
+            {"events": events},
+            extra_headers={"Idempotency-Key": idem},
+        )
+        state["turn_outcome_only"] = True
+        state["turn_outcome_only_denial_used"] = False
+        state["turn_tool_calls"] = call_count
+        state["turn_tool_rounds"] = round_count
+        state["turn_recon_tool_calls"] = recon_count
+        state["turn_verification_tool_calls"] = verification_count
+        state["turn_recon_denials"] = recon_denials
+        state["turn_side_effect_calls"] = effect_count
+        state["turn_tool_signature_counts"] = signatures
+        atomic_json(STATE, state)
+        log(
+            f"verification_budget_denial session={session_id} rejected={len(events)} "
+            f"turn_calls={call_count} tool_rounds={round_count} verification={verification_count}"
+        )
+        return state
+
     recon_denial_only = (
         recon_count >= max_recon
+        and not verification_only
         and all(
             action.get("type") == "function_call"
             and str(action.get("name") or "") in _RECON_TOOLS
@@ -1844,6 +2039,7 @@ def handle_required_actions(session_id, session, state, governor):
         state["turn_tool_calls"] = call_count
         state["turn_tool_rounds"] = round_count
         state["turn_recon_tool_calls"] = recon_count
+        state["turn_verification_tool_calls"] = verification_count
         state["turn_recon_denials"] = recon_denials
         state["turn_side_effect_calls"] = effect_count
         state["turn_tool_signature_counts"] = signatures
@@ -1856,7 +2052,7 @@ def handle_required_actions(session_id, session, state, governor):
         return state
     if round_count >= max_rounds and not terminal_outcome_only:
         if bool(state.get("turn_terminal_grace_used")):
-            raise RuntimeError("TOOL_ROUND_BUDGET_EXCEEDED")
+            raise RecoverableTurnStop("TOOL_ROUND_BUDGET_EXCEEDED")
         events = []
         for action in actions:
             if action.get("type") != "function_call":
@@ -1905,6 +2101,7 @@ def handle_required_actions(session_id, session, state, governor):
         state["turn_tool_rounds"] = round_count
         state["turn_side_effect_calls"] = effect_count
         state["turn_recon_tool_calls"] = recon_count
+        state["turn_verification_tool_calls"] = verification_count
         state["turn_tool_signature_counts"] = signatures
         atomic_json(STATE, state)
         log(
@@ -1938,6 +2135,11 @@ def handle_required_actions(session_id, session, state, governor):
 
         is_effect = name in _SIDE_EFFECT_TOOLS
         is_recon = name in _RECON_TOOLS
+        is_verification = (
+            is_recon
+            and effect_count > 0
+            and _verification_tool_call_allowed(name, args, budget_lock)
+        )
         if is_effect and effect_count >= max_effects:
             raise RuntimeError("SIDE_EFFECT_TOOL_BUDGET_EXCEEDED")
         result_path = _tool_result_path(session_id, turn_id, call_id)
@@ -1947,7 +2149,22 @@ def handle_required_actions(session_id, session, state, governor):
             output = str(saved["output"])
         else:
             try:
-                if is_recon and recon_count >= max_recon:
+                if is_verification and verification_count >= max_verification:
+                    success = False
+                    output = json.dumps(
+                        {
+                            "error": "VERIFICATION_BUDGET_REACHED",
+                            "message": (
+                                "Post-effect verification budget is exhausted. "
+                                "Record the turn outcome now; if verification is insufficient, record INCONCLUSIVE."
+                            ),
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    state["turn_outcome_only"] = True
+                    state["turn_outcome_only_denial_used"] = False
+                elif is_recon and not is_verification and recon_count >= max_recon:
                     success = False
                     output = json.dumps(
                         {
@@ -1994,7 +2211,10 @@ def handle_required_actions(session_id, session, state, governor):
         if is_effect:
             effect_count += 1
         if is_recon and success:
-            recon_count += 1
+            if is_verification:
+                verification_count += 1
+            else:
+                recon_count += 1
 
     idem = hashlib.sha256(
         (
@@ -2012,11 +2232,13 @@ def handle_required_actions(session_id, session, state, governor):
     state["turn_tool_rounds"] = round_count
     state["turn_side_effect_calls"] = effect_count
     state["turn_recon_tool_calls"] = recon_count
+    state["turn_verification_tool_calls"] = verification_count
     state["turn_tool_signature_counts"] = signatures
     atomic_json(STATE, state)
     log(
         f"function_tools_resolved session={session_id} count={len(events)} "
-        f"turn_calls={call_count} tool_rounds={round_count} recon={recon_count} side_effects={effect_count}"
+        f"turn_calls={call_count} tool_rounds={round_count} recon={recon_count} "
+        f"verification={verification_count} side_effects={effect_count}"
     )
     return state
 
@@ -2074,6 +2296,7 @@ def _begin_turn_state(state, prepared, turn_lock):
     state["turn_tool_rounds"] = 0
     state["turn_terminal_grace_used"] = False
     state["turn_recon_tool_calls"] = 0
+    state["turn_verification_tool_calls"] = 0
     state["turn_recon_denials"] = 0
     state["turn_outcome_only"] = False
     state["turn_outcome_only_denial_used"] = False
@@ -2168,6 +2391,7 @@ def main():
                 state["turn_tool_rounds"] = 0
                 state["turn_terminal_grace_used"] = False
                 state["turn_recon_tool_calls"] = 0
+                state["turn_verification_tool_calls"] = 0
                 state["turn_recon_denials"] = 0
                 state["turn_outcome_only"] = False
                 state["turn_outcome_only_denial_used"] = False
@@ -2220,6 +2444,66 @@ def main():
                     return
                 try:
                     handle_required_actions(state["session_id"], session, state, governor)
+                except RecoverableTurnStop as exc:
+                    boundary_code = str(exc)[:300]
+                    reason = "recoverable_turn_stop:" + boundary_code
+                    cancelled_session = state.get("session_id")
+                    state["autonomy_hold_reason"] = reason
+                    atomic_json(STATE, state)
+                    cancel_turn(cancelled_session, reason)
+                    settle_usage_after_abort(
+                        state, governor, permit, cancelled_session
+                    )
+                    lock = load_execution_lock()
+                    recovered, recovery_reason = recover_terminal_outcome_from_progress_contract(
+                        state, lock, governor
+                    )
+                    rotated = False
+                    rotate_reason = recovery_reason
+                    if recovered is not None:
+                        atomic_json(TURN_OUTCOME, recovered)
+                        terminal_ok, terminal_reason = terminal_outcome_allows_rotation(
+                            recovered, lock, governor, state
+                        )
+                        rotate_reason = terminal_reason
+                        if terminal_ok:
+                            rotated, rotate_reason = rotate_to_next_authorized_gate(
+                                state, permit, recovered
+                            )
+                        state["last_turn_outcome"] = recovered
+                        state["last_progress_fingerprint"] = progress_fingerprint()
+                        state["same_gate_followups"] = 0
+                    else:
+                        log(
+                            "terminal_progress_recovery_rejected "
+                            f"boundary={boundary_code} reason={recovery_reason}"
+                        )
+                    previous = list(state.get("previous_session_ids") or [])
+                    if cancelled_session:
+                        previous.append(cancelled_session)
+                    state["previous_session_ids"] = previous[-20:]
+                    state.pop("session_id", None)
+                    state["awaiting_turn_outcome"] = False
+                    state["turn_started_at"] = None
+                    state["active_turn_id"] = None
+                    state["autonomy_followup_authorized"] = bool(rotated)
+                    if rotated:
+                        state["autonomy_hold_reason"] = None
+                    elif recovered is not None:
+                        state["autonomy_hold_reason"] = rotate_reason
+                    else:
+                        state["autonomy_hold_reason"] = reason + ":" + str(recovery_reason)
+                    atomic_json(STATE, state)
+                    log(
+                        "recoverable_turn_stop "
+                        f"boundary={boundary_code} "
+                        f"recovered={recovered is not None} rotated={rotated} "
+                        f"reason={state.get('autonomy_hold_reason')}"
+                    )
+                    if rotated:
+                        time.sleep(2)
+                        continue
+                    return
                 except Exception as exc:
                     reason = "tool_gateway_boundary:" + type(exc).__name__ + ":" + str(exc)[:300]
                     state["autonomy_hold_reason"] = reason

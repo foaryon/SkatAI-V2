@@ -69,6 +69,7 @@ def main() -> int:
     tool_budget = governor["tool_budget"]
     require(1 <= int(tool_budget["max_recon_tool_calls_per_turn"]) <= 8, "RECON_TOOL_CAP_OUT_OF_RANGE")
     require(1 <= int(tool_budget["max_recon_denials_per_turn"]) <= 2, "RECON_DENIAL_CAP_OUT_OF_RANGE")
+    require(1 <= int(tool_budget["max_verification_tool_calls_per_turn"]) <= 4, "VERIFICATION_TOOL_CAP_OUT_OF_RANGE")
     require(int(tool_budget["max_recon_tool_calls_per_turn"]) < int(tool_budget["max_tool_calls_per_turn"]), "RECON_TOOL_CAP_NOT_STRICTER")
 
     active_lock = CONTROL / "EXECUTION_LOCK.json"

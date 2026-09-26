@@ -56,6 +56,7 @@ def _governor():
             "max_tool_rounds_per_turn": 12,
             "max_recon_tool_calls_per_turn": 6,
             "max_recon_denials_per_turn": 2,
+            "max_verification_tool_calls_per_turn": 4,
             "max_side_effect_calls_per_turn": 8,
             "max_identical_tool_calls_per_turn": 3,
             "max_tool_output_bytes": 60000,
@@ -870,3 +871,261 @@ def test_decorated_evidence_reference_verifies_path_and_hash(tmp_path):
     )
     assert prose is False
     assert prose_verified == []
+
+
+def test_terminal_progress_contract_recovery_uses_fresh_persisted_decision(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    mod.REPO_ROOT = tmp_path
+    mod.EVIDENCE_ROOTS = (tmp_path,)
+
+    progress = tmp_path / "provenance" / "gate.json"
+    progress.parent.mkdir()
+    progress.write_text('{"classification":"OPEN"}\n', encoding="utf-8")
+    baseline_sha = hashlib.sha256(progress.read_bytes()).hexdigest()
+    started = progress.stat().st_mtime
+    progress.write_text('{"classification":"ACCEPT"}\n', encoding="utf-8")
+
+    contract = {
+        "kind": "JSON_FIELD_TRANSITION",
+        "path": "provenance/gate.json",
+        "field": "classification",
+        "before_prefix": "OPEN",
+        "after_forbid_prefix": "OPEN",
+    }
+    lock = {
+        "primary": {
+            "gate_id": "TEST_GATE",
+            "goal_path_id": "G7_FULL_AFK",
+            "progress_contract": contract,
+        }
+    }
+    state = {
+        "turn_outcome_only": True,
+        "turn_progress_contract": {
+            "contract": contract,
+            "path": str(progress),
+            "exists": True,
+            "sha256": baseline_sha,
+            "value": "OPEN",
+        },
+        "turn_started_at": started,
+        "turn_primary_gate_id": "TEST_GATE",
+        "turn_goal_path_id": "G7_FULL_AFK",
+        "turn_trigger_type": "PRIMARY_NEXT_STEP",
+        "turn_event_key": "event-test-0001",
+        "last_turn_nonce": "nonce-test-0001",
+    }
+
+    outcome, reason = mod.recover_terminal_outcome_from_progress_contract(
+        state, lock, gov
+    )
+    assert reason is None
+    assert outcome["classification"] == "ACCEPT"
+    assert outcome["material_progress"] is True
+    assert outcome["progress_kind"] == "GATE_DECISION"
+    assert outcome["primary_gate_id"] == "TEST_GATE"
+    assert outcome["goal_path_id"] == "G7_FULL_AFK"
+    assert outcome["evidence"][0].startswith("provenance/gate.json sha256=")
+
+
+def test_terminal_progress_contract_recovery_rejects_nonterminal_state(tmp_path):
+    mod = _load_controller()
+    gov = _governor()
+    mod.REPO_ROOT = tmp_path
+    mod.EVIDENCE_ROOTS = (tmp_path,)
+
+    progress = tmp_path / "provenance" / "gate.json"
+    progress.parent.mkdir()
+    progress.write_text('{"classification":"OPEN"}\n', encoding="utf-8")
+    baseline_sha = hashlib.sha256(progress.read_bytes()).hexdigest()
+    started = progress.stat().st_mtime
+    progress.write_text('{"classification":"CONTINUE"}\n', encoding="utf-8")
+
+    contract = {
+        "kind": "JSON_FIELD_TRANSITION",
+        "path": "provenance/gate.json",
+        "field": "classification",
+        "before_prefix": "OPEN",
+        "after_forbid_prefix": "OPEN",
+    }
+    lock = {
+        "primary": {
+            "gate_id": "TEST_GATE",
+            "goal_path_id": "G7_FULL_AFK",
+            "progress_contract": contract,
+        }
+    }
+    state = {
+        "turn_outcome_only": True,
+        "turn_progress_contract": {
+            "contract": contract,
+            "path": str(progress),
+            "exists": True,
+            "sha256": baseline_sha,
+            "value": "OPEN",
+        },
+        "turn_started_at": started,
+        "turn_primary_gate_id": "TEST_GATE",
+        "turn_goal_path_id": "G7_FULL_AFK",
+        "turn_trigger_type": "PRIMARY_NEXT_STEP",
+        "turn_event_key": "event-test-0002",
+        "last_turn_nonce": "nonce-test-0002",
+    }
+
+    outcome, reason = mod.recover_terminal_outcome_from_progress_contract(
+        state, lock, gov
+    )
+    assert outcome is None
+    assert reason == "terminal_recovery_classification_not_terminal"
+
+
+def test_post_effect_verification_budget_is_separate_from_recon(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    gov["tool_budget"]["max_recon_tool_calls_per_turn"] = 1
+    gov["tool_budget"]["max_verification_tool_calls_per_turn"] = 2
+    mod.STATE = tmp_path / "state.json"
+    mod.LOG = tmp_path / "controller.log"
+    mod.TOOL_RESULT_DIR = tmp_path / "tool-results"
+    mod.TOOL_RESULT_DIR.mkdir()
+    mod.REPO_ROOT = tmp_path
+    posted = []
+    monkeypatch.setattr(
+        mod,
+        "api",
+        lambda method, path, body=None, extra_headers=None: posted.append(body) or {},
+    )
+    monkeypatch.setattr(
+        mod,
+        "load_execution_lock",
+        lambda: {
+            "primary": {
+                "writable_files": ["result.json"],
+                "gate_id": "TEST_GATE",
+                "goal_path_id": "G7_FULL_AFK",
+            }
+        },
+    )
+
+    class FakeGateway:
+        def __init__(self):
+            self.calls = []
+        def dispatch(self, name, args, state):
+            self.calls.append((name, args))
+            return {"ok": True, "name": name}
+
+    fake = FakeGateway()
+    monkeypatch.setattr(mod, "tool_gateway", lambda: fake)
+    state = {
+        "turn_recon_tool_calls": 1,
+        "turn_verification_tool_calls": 0,
+        "turn_side_effect_calls": 1,
+        "turn_tool_rounds": 4,
+    }
+
+    verify_read = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "read_text",
+            "turn_id": "turn_verify",
+            "call_id": "call_verify_1",
+            "arguments": {"path": "result.json"},
+        }]
+    }
+    mod.handle_required_actions("sess_verify", verify_read, state, gov)
+    assert state["turn_recon_tool_calls"] == 1
+    assert state["turn_verification_tool_calls"] == 1
+    assert state["turn_tool_rounds"] == 5
+    assert fake.calls == [("read_text", {"path": "result.json"})]
+
+    verify_status = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "git_query",
+            "turn_id": "turn_verify",
+            "call_id": "call_verify_2",
+            "arguments": {"operation": "status"},
+        }]
+    }
+    mod.handle_required_actions("sess_verify", verify_status, state, gov)
+    assert state["turn_recon_tool_calls"] == 1
+    assert state["turn_verification_tool_calls"] == 2
+    assert fake.calls[-1] == ("git_query", {"operation": "status"})
+
+    over_budget = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "git_query",
+            "turn_id": "turn_verify",
+            "call_id": "call_verify_3",
+            "arguments": {"operation": "diff", "path": "result.json"},
+        }]
+    }
+    rounds_before = state["turn_tool_rounds"]
+    mod.handle_required_actions("sess_verify", over_budget, state, gov)
+    assert state["turn_verification_tool_calls"] == 2
+    assert state["turn_tool_rounds"] == rounds_before
+    assert state["turn_outcome_only"] is True
+    event = posted[-1]["events"][0]
+    assert event["success"] is False
+    assert "VERIFICATION_BUDGET_REACHED" in event["output"]
+
+
+def test_post_effect_nonwritable_read_does_not_bypass_recon_cap(tmp_path, monkeypatch):
+    mod = _load_controller()
+    gov = _governor()
+    gov["tool_budget"]["max_recon_tool_calls_per_turn"] = 1
+    mod.STATE = tmp_path / "state.json"
+    mod.LOG = tmp_path / "controller.log"
+    mod.TOOL_RESULT_DIR = tmp_path / "tool-results"
+    mod.TOOL_RESULT_DIR.mkdir()
+    mod.REPO_ROOT = tmp_path
+    posted = []
+    monkeypatch.setattr(
+        mod,
+        "api",
+        lambda method, path, body=None, extra_headers=None: posted.append(body) or {},
+    )
+    monkeypatch.setattr(
+        mod,
+        "load_execution_lock",
+        lambda: {
+            "primary": {
+                "writable_files": ["allowed.json"],
+                "gate_id": "TEST_GATE",
+                "goal_path_id": "G7_FULL_AFK",
+                "decisive_facts": [],
+                "evidence_identities": {},
+                "next_action": "finish",
+            }
+        },
+    )
+
+    class FakeGateway:
+        def dispatch(self, name, args, state):
+            raise AssertionError("non-writable read unexpectedly bypassed recon cap")
+
+    monkeypatch.setattr(mod, "tool_gateway", lambda: FakeGateway())
+    state = {
+        "turn_recon_tool_calls": 1,
+        "turn_verification_tool_calls": 0,
+        "turn_side_effect_calls": 1,
+        "turn_tool_rounds": 3,
+        "turn_recon_denials": 0,
+    }
+    action = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "read_text",
+            "turn_id": "turn_nonwritable",
+            "call_id": "call_nonwritable",
+            "arguments": {"path": "not-allowed.json"},
+        }]
+    }
+    mod.handle_required_actions("sess_nonwritable", action, state, gov)
+    assert state["turn_recon_tool_calls"] == 1
+    assert state["turn_verification_tool_calls"] == 0
+    assert state["turn_recon_denials"] == 1
+    assert state["turn_tool_rounds"] == 3
+    assert "RECONNAISSANCE_BUDGET_REACHED" in posted[-1]["events"][0]["output"]

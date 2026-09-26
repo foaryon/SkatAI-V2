@@ -39,6 +39,7 @@
     "max_tool_rounds_per_turn": 12,
     "max_recon_tool_calls_per_turn": 6,
     "max_recon_denials_per_turn": 2,
+    "max_verification_tool_calls_per_turn": 4,
     "max_side_effect_calls_per_turn": 8,
     "max_identical_tool_calls_per_turn": 3,
     "max_tool_output_bytes": 60000
