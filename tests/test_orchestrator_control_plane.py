@@ -237,3 +237,32 @@ def test_command_input_hashes_track_newly_available_tool(tmp_path, monkeypatch):
     present = cp.command_input_hashes(task)
     assert 'tool:rg' not in missing
     assert present['tool:rg'] == cp.sha256(binary)
+
+
+def test_nonconflicting_workers_launch_while_shared_write_waits(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, 'TASKS', tmp_path / 'tasks.json')
+    monkeypatch.setattr(cp, 'WORKERS', tmp_path / 'workers.json')
+    monkeypatch.setattr(cp, 'refresh_project_state', lambda: None)
+    monkeypatch.setattr(cp, 'log', lambda message: None)
+    cfg = json.loads((cp.REPO / 'configs/orchestration/ORCHESTRATOR_RUNTIME_POLICY.json').read_text())
+    monkeypatch.setattr(cp, 'config', lambda: cfg)
+    launched = []
+    def create_session(agent_id, model, tier, prompt, **kwargs):
+        launched.append(agent_id)
+        return {'id': 's' + str(len(launched))}
+    monkeypatch.setattr(cp, 'create_session', create_session)
+    tasks = {}
+    for i, path in enumerate(('provenance/shared.json', 'provenance/shared.json', 'provenance/independent.json')):
+        task = base_task()
+        task['task_id'] = 'bounded-' + str(i)
+        task['authority']['write'] = [path]
+        task = cp.validate_task_contract(task)
+        task['state'] = 'DISPATCH_REQUESTED'
+        task['created_at'] = '2026-09-26T00:00:0' + str(i) + 'Z'
+        tasks[task['task_id']] = task
+    cp.atomic_json(cp.TASKS, {'tasks': tasks})
+    cp.atomic_json(cp.WORKERS, {'workers': {}})
+    cp.launch_ready_workers({'worker_agent_ids': {'qa-validation': 'agent-qa'}})
+    states = {k: v['state'] for k,v in cp.strict_json(cp.TASKS)['tasks'].items()}
+    assert states == {'bounded-0': 'RUNNING', 'bounded-1': 'DISPATCH_REQUESTED', 'bounded-2': 'RUNNING'}
+    assert len(launched) == 2
