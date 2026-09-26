@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,7 @@ CONTROLLER_STATE = CONTROL / "controller_state.json"
 LOG = CONTROL / "controller.log"
 PID = CONTROL / "controller.pid"
 COST = STATE_DIR / "model_usage_registry.jsonl"
+PLATFORM_GC_LOG = STATE_DIR / "platform_resource_gc.jsonl"
 
 TERMINAL_RESULT_STATES = {"COMPLETE", "PARTIAL", "BLOCKED", "FAILED"}
 TASK_STATES = {"READY", "DISPATCH_REQUESTED", "RUNNING", "VERIFYING", "COMPLETE", "FAILED", "BLOCKED", "SUPERSEDED"}
@@ -686,6 +688,64 @@ def accept_worker_result(tid: str, accepted: bool, reason: str) -> dict[str, Any
     return {"task_id": tid, "state": task["state"]}
 
 
+def supersede_task(tid: str, reason: str, evidence: list[str]) -> dict[str, Any]:
+    """Close an obsolete BLOCKED/FAILED task only with hashed replacement evidence."""
+    if len(str(reason).strip()) < 20 or not isinstance(evidence, list) or not evidence:
+        raise RuntimeError("TASK_SUPERSESSION_EVIDENCE_REQUIRED")
+    if len(evidence) > 8:
+        raise RuntimeError("TASK_SUPERSESSION_EVIDENCE_TOO_BROAD")
+    reg = strict_json(TASKS)
+    task = reg["tasks"].get(tid)
+    if not task:
+        raise RuntimeError("TASK_NOT_FOUND")
+    if task.get("state") == "SUPERSEDED":
+        return {"task_id": tid, "state": "SUPERSEDED", "supersession": task.get("supersession")}
+    if task.get("state") not in {"BLOCKED", "FAILED"}:
+        raise RuntimeError("TASK_SUPERSESSION_STATE_INVALID")
+
+    verified: list[dict[str, str]] = []
+    for ref in evidence:
+        if not isinstance(ref, str) or not ref:
+            raise RuntimeError("TASK_SUPERSESSION_EVIDENCE_INVALID")
+        if ref.startswith("task:"):
+            source_tid = ref[5:]
+            source = reg["tasks"].get(source_tid)
+            if not source or source.get("state") != "COMPLETE" or not source.get("integration_decision", {}).get("accepted"):
+                raise RuntimeError("TASK_SUPERSESSION_TASK_EVIDENCE_NOT_ACCEPTED")
+            rp = result_file(source_tid)
+            if not rp.is_file():
+                raise RuntimeError("TASK_SUPERSESSION_RESULT_MISSING")
+            verified.append({"reference": ref, "sha256": sha256(rp)})
+        else:
+            path, key = safe_path(ref[5:] if ref.startswith("repo:") else ref, allow_runtime=False)
+            if not path.is_file():
+                raise RuntimeError("TASK_SUPERSESSION_EVIDENCE_MISSING")
+            verified.append({"reference": key, "sha256": sha256(path)})
+
+    record = {
+        "at": utc_now(),
+        "reason": str(reason),
+        "evidence": verified,
+        "repository_revision": git("rev-parse", "HEAD"),
+        "previous_state": task.get("state"),
+    }
+    task["state"] = "SUPERSEDED"
+    task["updated_at"] = record["at"]
+    task["supersession"] = record
+    reg["tasks"][tid] = task
+    atomic_json(TASKS, reg)
+    append_jsonl(DECISIONS, {
+        "time": record["at"],
+        "type": "task_supersession",
+        "task_id": tid,
+        "reason": record["reason"],
+        "evidence": verified,
+        "repository_revision": record["repository_revision"],
+    })
+    refresh_project_state()
+    return {"task_id": tid, "state": "SUPERSEDED", "supersession": record}
+
+
 def refresh_project_state() -> None:
     ps = strict_json(PROJECT_STATE)
     reg = strict_json(TASKS)["tasks"]
@@ -848,6 +908,7 @@ def orchestration_tools() -> list[dict[str, Any]]:
         {"type": "function", "name": "dispatch_task", "description": "Request deterministic controller dispatch of a READY worker task.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "read_worker_result", "description": "Read a persisted worker result for verification.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}},
         {"type": "function", "name": "accept_worker_result", "description": "Accept or reject a worker result after evidence review.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "accepted": {"type": "boolean"}, "reason": {"type": "string"}}, "required": ["task_id", "accepted", "reason"], "additionalProperties": False}},
+        {"type": "function", "name": "supersede_task", "description": "Close one obsolete BLOCKED/FAILED task only when newer hashed repository or accepted-task evidence resolves or replaces it.", "parameters": {"type": "object", "properties": {"task_id": {"type": "string"}, "reason": {"type": "string"}, "evidence": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "string"}}}, "required": ["task_id", "reason", "evidence"], "additionalProperties": False}},
         {"type": "function", "name": "assess_capability", "description": "Set a Work Prompt phase assessment with hashed accepted task or repository evidence; never infer completion from a worker result alone.", "parameters": {"type": "object", "properties": {"capability_id": {"type": "string"}, "status": {"type": "string", "enum": sorted(CAPABILITY_STATES)}, "evidence": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}}, "required": ["capability_id", "status", "evidence", "reason"], "additionalProperties": False}},
         {"type": "function", "name": "record_decision", "description": "Append a durable orchestrator decision record.", "parameters": {"type": "object", "properties": {"decision_type": {"type": "string"}, "subject": {"type": "string"}, "decision": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "string"}}}, "required": ["decision_type", "subject", "decision", "evidence"], "additionalProperties": False}},
     ]
@@ -1110,6 +1171,8 @@ def dispatch_tool(name: str, args: dict[str, Any], *, kind: str, task: dict[str,
             return strict_json(rp) if rp.exists() else {"missing": True}
         if name == "accept_worker_result":
             return accept_worker_result(args["task_id"], args["accepted"], args["reason"])
+        if name == "supersede_task":
+            return supersede_task(args["task_id"], args["reason"], args["evidence"])
         if name == "assess_capability":
             return assess_capability(args["capability_id"], args["status"], args["evidence"], args["reason"])
         if name == "record_decision":
@@ -1228,6 +1291,157 @@ def delete_session(session_id: str) -> None:
         api("DELETE", f"/agents/sessions/{session_id}")
     except Exception as exc:
         log(f"session_delete_failed id={session_id} err={exc!r}")
+
+
+def api_list_all(path: str, *, limit: int = 100) -> list[dict[str, Any]]:
+    """Read a complete paginated Platform collection without assuming one page."""
+    rows: list[dict[str, Any]] = []
+    after: str | None = None
+    for _ in range(100):
+        query = f"?limit={int(limit)}"
+        if after:
+            query += "&after=" + urllib.parse.quote(after, safe="")
+        payload = api("GET", path + query)
+        data = payload.get("data") or []
+        if not isinstance(data, list):
+            raise RuntimeError("PLATFORM_LIST_DATA_INVALID")
+        rows.extend(data)
+        if not payload.get("has_more"):
+            return rows
+        after = payload.get("last_id")
+        if not isinstance(after, str) or not after:
+            raise RuntimeError("PLATFORM_LIST_LAST_ID_MISSING")
+    raise RuntimeError("PLATFORM_LIST_PAGE_LIMIT_EXCEEDED")
+
+
+def known_usage_session_ids() -> set[str]:
+    known: set[str] = set()
+    if not COST.exists():
+        return known
+    for line in COST.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if isinstance((row.get("usage") or {}).get("total_tokens"), int) and isinstance(row.get("session_id"), str):
+            known.add(row["session_id"])
+    return known
+
+
+def session_role_from_metadata(session: dict[str, Any]) -> str:
+    metadata = session.get("metadata") or {}
+    if metadata.get("role") == "ORCHESTRATOR_SUPERBRAIN":
+        return "orchestrator-superbrain"
+    worker_id = metadata.get("worker_id")
+    if isinstance(worker_id, str) and worker_id:
+        return worker_id
+    role = metadata.get("role")
+    return str(role or "project-session").lower()
+
+
+def reconcile_platform_resources(
+    state: dict[str, Any],
+    *,
+    now_epoch: float | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Garbage-collect stale SkatAI-V2 Platform resources without touching live IDs.
+
+    Usage is durably persisted before deleting an idle project session. A session
+    that is not settled is only cancelled in this pass and retried later.
+    """
+    now_epoch = time.time() if now_epoch is None else now_epoch
+    gc_cfg = config().get("platform_gc") or {}
+    interval = max(60, int(gc_cfg.get("interval_seconds", 300)))
+    last = float(state.get("last_platform_gc_epoch", 0) or 0)
+    if not force and now_epoch - last < interval:
+        return state
+
+    keep_agents = {
+        state.get("superbrain_agent_id"),
+        *state.get("worker_agent_ids", {}).values(),
+    }
+    keep_agents.discard(None)
+
+    workers = strict_json(WORKERS, {"workers": {}}).get("workers", {})
+    keep_sessions = {
+        row.get("session_id")
+        for row in workers.values()
+        if row.get("state") != "FINISHED" and row.get("session_id")
+    }
+    if state.get("superbrain_session_id"):
+        keep_sessions.add(state["superbrain_session_id"])
+
+    summary: dict[str, Any] = {
+        "time": utc_now(),
+        "keep_agent_count": len(keep_agents),
+        "keep_session_count": len(keep_sessions),
+        "deleted_sessions": [],
+        "cancelled_sessions": [],
+        "pending_sessions": [],
+        "deleted_agents": [],
+        "already_gone_agents": [],
+        "errors": [],
+    }
+
+    known_usage = known_usage_session_ids()
+    sessions = api_list_all("/agents/sessions")
+    if gc_cfg.get("delete_idle_project_sessions", True):
+        for session in sessions:
+            sid = session.get("id")
+            metadata = session.get("metadata") or {}
+            if metadata.get("project") != "SkatAI-V2" or sid in keep_sessions or not isinstance(sid, str):
+                continue
+            if session.get("status") != "idle":
+                cancel_session(sid, "platform_gc_settle")
+                summary["cancelled_sessions"].append(sid)
+                continue
+            usage = session.get("usage") or {}
+            if isinstance(usage.get("total_tokens"), int) and sid not in known_usage:
+                persist_usage(session, session_role_from_metadata(session), 0, "platform_gc_before_delete")
+                known_usage.add(sid)
+            try:
+                api("DELETE", f"/agents/sessions/{sid}")
+                summary["deleted_sessions"].append(sid)
+            except Exception as exc:
+                message = str(exc)
+                if "HTTP 404" in message:
+                    summary["deleted_sessions"].append(sid)
+                elif "HTTP 409" in message:
+                    cancel_session(sid, "platform_gc_settle_after_conflict")
+                    summary["pending_sessions"].append(sid)
+                else:
+                    summary["errors"].append({"kind": "session", "id": sid, "error": message[:500]})
+
+    agents = api_list_all("/agents")
+    if gc_cfg.get("delete_stale_project_agents", True):
+        for agent in agents:
+            aid = agent.get("id")
+            metadata = agent.get("metadata") or {}
+            if metadata.get("project") != "SkatAI-V2" or aid in keep_agents or not isinstance(aid, str):
+                continue
+            try:
+                api("DELETE", f"/agents/{aid}")
+                summary["deleted_agents"].append(aid)
+            except Exception as exc:
+                message = str(exc)
+                if "HTTP 404" in message:
+                    summary["already_gone_agents"].append(aid)
+                else:
+                    summary["errors"].append({"kind": "agent", "id": aid, "error": message[:500]})
+
+    state["last_platform_gc_epoch"] = now_epoch
+    atomic_json(CONTROLLER_STATE, state)
+    append_jsonl(PLATFORM_GC_LOG, summary)
+    if summary["errors"]:
+        log(f"platform_gc_partial errors={len(summary['errors'])}")
+    elif summary["deleted_sessions"] or summary["deleted_agents"] or summary["pending_sessions"]:
+        log(
+            "platform_gc "
+            f"deleted_sessions={len(summary['deleted_sessions'])} "
+            f"deleted_agents={len(summary['deleted_agents'])} "
+            f"pending_sessions={len(summary['pending_sessions'])}"
+        )
+    return state
 
 
 def resolve_required_actions(session: dict[str, Any], *, kind: str, task: dict[str, Any] | None = None, worker_id: str | None = None) -> None:
@@ -1733,6 +1947,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
             except Exception as exc:
                 log(f"superbrain_usage_unavailable id={sid} err={exc!r}")
             state["superbrain_paused_reason"] = "session tool budget exhausted; review persisted evidence before continuation"
+            state["superbrain_session_id"] = None
             atomic_json(CONTROLLER_STATE, state)
             return state
         resolve_required_actions(s, kind="orchestrator")
@@ -1747,6 +1962,7 @@ def poll_superbrain(state: dict[str, Any]) -> dict[str, Any]:
             except Exception as exc:
                 log(f"superbrain_usage_unavailable id={sid} err={exc!r}")
             state["superbrain_paused_reason"] = "repeated rejected action; review tool scope and evidence"
+            state["superbrain_session_id"] = None
         atomic_json(CONTROLLER_STATE, state)
     elif status == "failed":
         log(f"superbrain_session_failed id={sid} err={s.get('error')!r}")
@@ -1836,6 +2052,10 @@ def controller_iteration() -> None:
     """Reload durable state after each phase that may emit an orchestration event."""
     reconcile_negative_results()
     reconcile_repository_revision()
+    try:
+        reconcile_platform_resources(strict_json(CONTROLLER_STATE))
+    except Exception as exc:
+        log(f"platform_gc_failed err={type(exc).__name__}:{str(exc)[:500]}")
     state = poll_superbrain(strict_json(CONTROLLER_STATE))
     launch_ready_workers(state)
     poll_workers(strict_json(CONTROLLER_STATE))

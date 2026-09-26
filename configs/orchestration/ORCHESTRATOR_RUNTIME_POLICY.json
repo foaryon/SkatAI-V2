@@ -24,6 +24,11 @@
       "max_sessions_with_missing_usage": 1
     }
   },
+  "platform_gc": {
+    "interval_seconds": 300,
+    "delete_idle_project_sessions": true,
+    "delete_stale_project_agents": true
+  },
   "workers": {
     "default_model": "gpt-6-luna",
     "default_reasoning_effort": "low",

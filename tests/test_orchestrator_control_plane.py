@@ -16,7 +16,8 @@ def isolate_orchestrator_state(tmp_path, monkeypatch):
         ('TASKS', 'tasks.json'), ('WORKERS', 'workers.json'), ('CAPABILITIES', 'capabilities.json'),
         ('DECISIONS', 'decisions.jsonl'), ('EVIDENCE', 'evidence.jsonl'),
         ('EXPERIMENTS', 'experiments.json'), ('RELEASES', 'releases.json'),
-        ('COST', 'cost.jsonl'), ('LOG', 'controller.log'), ('PID', 'controller.pid'),
+        ('COST', 'cost.jsonl'), ('PLATFORM_GC_LOG', 'platform_gc.jsonl'),
+        ('LOG', 'controller.log'), ('PID', 'controller.pid'),
     ):
         monkeypatch.setattr(cp, name, tmp_path / filename)
 
@@ -333,6 +334,55 @@ def test_capability_map_reconciles_explicit_acceptance_records(tmp_path, monkeyp
     assert data['capabilities']['release_packaging'] == 'VERIFIED'
 
 
+def test_supersede_task_requires_terminal_blocked_or_failed_and_hashes_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "REPO", tmp_path)
+    monkeypatch.setattr(cp, "git", lambda *args, **kwargs: "deadbeef")
+    monkeypatch.setattr(cp, "refresh_project_state", lambda: None)
+    evidence = tmp_path / "resolved.json"
+    evidence.write_text('{"classification":"ACCEPT"}')
+    cp.atomic_json(cp.TASKS, {
+        "tasks": {
+            "old": {
+                "task_id": "old",
+                "state": "BLOCKED",
+                "updated_at": "before",
+            }
+        }
+    })
+    result = cp.supersede_task(
+        "old",
+        "Newer acceptance evidence resolves the historical blocked task.",
+        ["repo:resolved.json"],
+    )
+    assert result["state"] == "SUPERSEDED"
+    task = cp.strict_json(cp.TASKS)["tasks"]["old"]
+    assert task["state"] == "SUPERSEDED"
+    assert task["supersession"]["previous_state"] == "BLOCKED"
+    assert task["supersession"]["evidence"][0]["sha256"] == cp.sha256(evidence)
+    decision = json.loads(cp.DECISIONS.read_text().splitlines()[-1])
+    assert decision["type"] == "task_supersession"
+
+
+def test_supersede_task_rejects_live_or_successful_task(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "REPO", tmp_path)
+    evidence = tmp_path / "resolved.json"
+    evidence.write_text("{}")
+    cp.atomic_json(cp.TASKS, {
+        "tasks": {
+            "ready": {
+                "task_id": "ready",
+                "state": "READY",
+            }
+        }
+    })
+    with pytest.raises(RuntimeError, match="TASK_SUPERSESSION_STATE_INVALID"):
+        cp.supersede_task(
+            "ready",
+            "This task is still actionable and cannot be superseded.",
+            ["repo:resolved.json"],
+        )
+
+
 def test_capability_assessment_requires_existing_hashed_evidence(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, 'CAPABILITIES', tmp_path / 'capabilities.json')
     cp.atomic_json(cp.TASKS, {'tasks': {}})
@@ -419,6 +469,168 @@ def test_nonbudget_pause_survives_restart_without_new_session(tmp_path, monkeypa
     })
     assert state.get('superbrain_session_id') is None
     assert state['superbrain_paused_reason'].startswith('repeated rejected action')
+
+
+def test_api_list_all_paginates(monkeypatch):
+    seen = []
+
+    def fake_api(method, path, body=None, idem=None):
+        seen.append((method, path))
+        if "after=" not in path:
+            return {"data": [{"id": "a"}], "has_more": True, "last_id": "a"}
+        return {"data": [{"id": "b"}], "has_more": False, "last_id": "b"}
+
+    monkeypatch.setattr(cp, "api", fake_api)
+    assert [row["id"] for row in cp.api_list_all("/agents")] == ["a", "b"]
+    assert seen == [
+        ("GET", "/agents?limit=100"),
+        ("GET", "/agents?limit=100&after=a"),
+    ]
+
+
+def test_platform_gc_preserves_live_ids_persists_usage_and_deletes_stale(monkeypatch):
+    cp.atomic_json(cp.WORKERS, {
+        "workers": {
+            "running": {
+                "state": "RUNNING",
+                "session_id": "sess_worker_live",
+            }
+        }
+    })
+    cp.atomic_json(cp.CONTROLLER_STATE, {})
+    monkeypatch.setattr(
+        cp,
+        "config",
+        lambda: {
+            "platform_gc": {
+                "interval_seconds": 300,
+                "delete_idle_project_sessions": True,
+                "delete_stale_project_agents": True,
+            }
+        },
+    )
+    deleted = []
+    persisted = []
+
+    def fake_api(method, path, body=None, idem=None):
+        if method == "GET" and path.startswith("/agents/sessions?"):
+            return {
+                "data": [
+                    {
+                        "id": "sess_super_live",
+                        "status": "requires_action",
+                        "metadata": {"project": "SkatAI-V2", "role": "ORCHESTRATOR_SUPERBRAIN"},
+                    },
+                    {
+                        "id": "sess_worker_live",
+                        "status": "requires_action",
+                        "metadata": {"project": "SkatAI-V2", "role": "QA_VALIDATION_AGENT"},
+                    },
+                    {
+                        "id": "sess_stale",
+                        "status": "idle",
+                        "metadata": {
+                            "project": "SkatAI-V2",
+                            "role": "QA_VALIDATION_AGENT",
+                            "worker_id": "qa-validation",
+                        },
+                        "usage": {
+                            "input_tokens": 10,
+                            "output_tokens": 2,
+                            "total_tokens": 12,
+                        },
+                    },
+                ],
+                "has_more": False,
+            }
+        if method == "GET" and path.startswith("/agents?"):
+            return {
+                "data": [
+                    {"id": "agent_super", "metadata": {"project": "SkatAI-V2"}},
+                    {"id": "agent_worker", "metadata": {"project": "SkatAI-V2"}},
+                    {"id": "agent_stale", "metadata": {"project": "SkatAI-V2"}},
+                ],
+                "has_more": False,
+            }
+        if method == "DELETE":
+            deleted.append(path)
+            return {}
+        raise AssertionError((method, path))
+
+    monkeypatch.setattr(cp, "api", fake_api)
+    monkeypatch.setattr(
+        cp,
+        "persist_usage",
+        lambda session, role, tool_calls, outcome: persisted.append(
+            (session["id"], role, tool_calls, outcome)
+        ),
+    )
+    state = {
+        "superbrain_agent_id": "agent_super",
+        "worker_agent_ids": {"qa-validation": "agent_worker"},
+        "superbrain_session_id": "sess_super_live",
+    }
+    result = cp.reconcile_platform_resources(state, now_epoch=1000, force=True)
+    assert "/agents/sessions/sess_stale" in deleted
+    assert "/agents/agent_stale" in deleted
+    assert "/agents/sessions/sess_super_live" not in deleted
+    assert "/agents/sessions/sess_worker_live" not in deleted
+    assert persisted == [
+        ("sess_stale", "qa-validation", 0, "platform_gc_before_delete")
+    ]
+    assert result["last_platform_gc_epoch"] == 1000
+    summary = json.loads(cp.PLATFORM_GC_LOG.read_text().splitlines()[-1])
+    assert summary["deleted_sessions"] == ["sess_stale"]
+    assert summary["deleted_agents"] == ["agent_stale"]
+
+
+def test_platform_gc_cancels_nonidle_stale_session_without_deleting(monkeypatch):
+    cp.atomic_json(cp.WORKERS, {"workers": {}})
+    cp.atomic_json(cp.CONTROLLER_STATE, {})
+    monkeypatch.setattr(
+        cp,
+        "config",
+        lambda: {
+            "platform_gc": {
+                "interval_seconds": 300,
+                "delete_idle_project_sessions": True,
+                "delete_stale_project_agents": False,
+            }
+        },
+    )
+    cancelled = []
+    deleted = []
+
+    def fake_api(method, path, body=None, idem=None):
+        if method == "GET" and path.startswith("/agents/sessions?"):
+            return {
+                "data": [{
+                    "id": "sess_stale",
+                    "status": "requires_action",
+                    "metadata": {"project": "SkatAI-V2"},
+                }],
+                "has_more": False,
+            }
+        if method == "GET" and path.startswith("/agents?"):
+            return {"data": [], "has_more": False}
+        if method == "DELETE":
+            deleted.append(path)
+            return {}
+        raise AssertionError((method, path))
+
+    monkeypatch.setattr(cp, "api", fake_api)
+    monkeypatch.setattr(cp, "cancel_session", lambda sid, reason: cancelled.append((sid, reason)))
+    cp.reconcile_platform_resources(
+        {
+            "superbrain_agent_id": "agent_super",
+            "worker_agent_ids": {},
+            "superbrain_session_id": None,
+        },
+        now_epoch=1000,
+        force=True,
+    )
+    assert cancelled == [("sess_stale", "platform_gc_settle")]
+    assert deleted == []
 
 
 def test_task_listing_is_compact_and_full_contract_requires_single_id(tmp_path, monkeypatch):
