@@ -68,6 +68,7 @@ extract configs/control/MAIN_GATE_QUEUE.json config/MAIN_GATE_QUEUE.json 644
 extract configs/control/main_gates/00-main_state_reconciliation.json config/gates/00-main_state_reconciliation.json 644
 extract configs/control/main_gates/01-budgets_enforced_acceptance.json config/gates/01-budgets_enforced_acceptance.json 644
 extract configs/control/main_gates/02-anti_pseudo_v2_acceptance.json config/gates/02-anti_pseudo_v2_acceptance.json 644
+extract configs/control/main_gates/03-jskat_pickup_source_bound_release.json config/gates/03-jskat_pickup_source_bound_release.json 644
 extract provenance/MAIN_EXECUTION_LOCK.json config/INITIAL_EXECUTION_LOCK.json 644
 
 extract SKATAI_V2_FOUNDING_SPECIFICATION.md authority/SKATAI_V2_FOUNDING_SPECIFICATION.md 644

@@ -1660,19 +1660,200 @@ def handle_required_actions(session_id, session, state, governor):
     tool_budget = governor.get("tool_budget") or {}
     max_calls = int(tool_budget.get("max_tool_calls_per_turn") or 40)
     max_rounds = int(tool_budget.get("max_tool_rounds_per_turn") or 12)
-    max_recon = int(tool_budget.get("max_recon_tool_calls_per_turn") or 8)
+    max_recon = int(tool_budget.get("max_recon_tool_calls_per_turn") or 6)
+    max_recon_denials = int(tool_budget.get("max_recon_denials_per_turn") or 2)
     max_effects = int(tool_budget.get("max_side_effect_calls_per_turn") or 8)
     max_identical = int(tool_budget.get("max_identical_tool_calls_per_turn") or 3)
     call_count = int(state.get("turn_tool_calls") or 0)
     round_count = int(state.get("turn_tool_rounds") or 0)
     effect_count = int(state.get("turn_side_effect_calls") or 0)
     recon_count = int(state.get("turn_recon_tool_calls") or 0)
+    recon_denials = int(state.get("turn_recon_denials") or 0)
     signatures = dict(state.get("turn_tool_signature_counts") or {})
     terminal_outcome_only = all(
         action.get("type") == "function_call"
         and str(action.get("name") or "") == "record_turn_outcome"
         for action in actions
     )
+    outcome_only = bool(state.get("turn_outcome_only"))
+    if outcome_only and not terminal_outcome_only:
+        if bool(state.get("turn_outcome_only_denial_used")):
+            raise RuntimeError("OUTCOME_ONLY_TOOL_VIOLATION")
+        events = []
+        for action in actions:
+            if action.get("type") != "function_call":
+                raise RuntimeError("UNEXPECTED_REQUIRED_ACTION_TYPE:" + str(action.get("type")))
+            if call_count >= max_calls:
+                raise RuntimeError("TOOL_CALL_BUDGET_EXCEEDED")
+            turn_id = _safe_action_id(action.get("turn_id"))
+            call_id = _safe_action_id(action.get("call_id"))
+            if state.get("active_turn_id") not in {None, turn_id}:
+                raise RuntimeError("MULTIPLE_ACTIVE_TURN_IDS")
+            state["active_turn_id"] = turn_id
+            args = _parse_tool_arguments(action.get("arguments"))
+            result_path = _tool_result_path(session_id, turn_id, call_id)
+            output = json.dumps(
+                {
+                    "error": "OUTCOME_ONLY_REQUIRED",
+                    "message": (
+                        "Reconnaissance authority is exhausted after repeated denials. "
+                        "The sole permitted next tool is record_turn_outcome. "
+                        "Use ACCEPT/REJECT/INCONCLUSIVE/CONCLUDED truthfully from evidence already gathered; "
+                        "if evidence is insufficient, record INCONCLUSIVE rather than requesting more tools."
+                    ),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            atomic_json(result_path, {
+                "session_id": session_id,
+                "turn_id": turn_id,
+                "call_id": call_id,
+                "name": str(action.get("name") or ""),
+                "arguments_sha256": hashlib.sha256(
+                    json.dumps(args, sort_keys=True, separators=(",", ":")).encode()
+                ).hexdigest(),
+                "success": False,
+                "output": output,
+            })
+            events.append({
+                "type": "agent.session.input.tool_result",
+                "turn_id": turn_id,
+                "call_id": call_id,
+                "success": False,
+                "output": output,
+            })
+            call_count += 1
+        idem = hashlib.sha256(
+            (
+                "outcome-only-denial\n" + session_id + "\n"
+                + "\n".join(str(e["call_id"]) for e in events)
+            ).encode()
+        ).hexdigest()
+        api(
+            "POST",
+            f"/agents/sessions/{session_id}/events",
+            {"events": events},
+            extra_headers={"Idempotency-Key": idem},
+        )
+        state["turn_outcome_only_denial_used"] = True
+        state["turn_tool_calls"] = call_count
+        state["turn_tool_rounds"] = round_count
+        state["turn_recon_tool_calls"] = recon_count
+        state["turn_recon_denials"] = recon_denials
+        state["turn_outcome_only"] = bool(state.get("turn_outcome_only"))
+        state["turn_side_effect_calls"] = effect_count
+        state["turn_tool_signature_counts"] = signatures
+        atomic_json(STATE, state)
+        log(
+            f"outcome_only_denial session={session_id} rejected={len(events)} "
+            f"turn_calls={call_count} tool_rounds={round_count}"
+        )
+        return state
+
+    recon_denial_only = (
+        recon_count >= max_recon
+        and all(
+            action.get("type") == "function_call"
+            and str(action.get("name") or "") in _RECON_TOOLS
+            for action in actions
+        )
+    )
+    if recon_denial_only:
+        lock = load_execution_lock()
+        primary = lock["primary"]
+        context = {
+            "gate_id": primary.get("gate_id"),
+            "goal_path_id": primary.get("goal_path_id"),
+            "decisive_facts": primary.get("decisive_facts") or [],
+            "evidence_identities": primary.get("evidence_identities") or {},
+            "writable_files": primary.get("writable_files") or [],
+            "next_action": primary.get("next_action"),
+        }
+        events = []
+        for action in actions:
+            if call_count >= max_calls:
+                raise RuntimeError("TOOL_CALL_BUDGET_EXCEEDED")
+            turn_id = _safe_action_id(action.get("turn_id"))
+            call_id = _safe_action_id(action.get("call_id"))
+            if state.get("active_turn_id") not in {None, turn_id}:
+                raise RuntimeError("MULTIPLE_ACTIVE_TURN_IDS")
+            state["active_turn_id"] = turn_id
+            args = _parse_tool_arguments(action.get("arguments"))
+            result_path = _tool_result_path(session_id, turn_id, call_id)
+            if result_path.is_file():
+                saved = strict_json_load(result_path)
+                success = bool(saved["success"])
+                output = str(saved["output"])
+            else:
+                success = False
+                output = json.dumps(
+                    {
+                        "error": "RECONNAISSANCE_BUDGET_REACHED",
+                        "message": (
+                            "No further reconnaissance tools are authorized in this turn. "
+                            + (
+                                "This is the final reconnaissance denial: the turn is now outcome-only. "
+                                "Call record_turn_outcome next; if evidence is insufficient, record INCONCLUSIVE."
+                                if recon_denials + 1 >= max_recon_denials
+                                else
+                                "Use the authenticated controller-bound facts below and proceed to an authorized effect, "
+                                "verification, or record_turn_outcome. One more reconnaissance request will make the turn outcome-only."
+                            )
+                        ),
+                        "lease_context": context,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                atomic_json(result_path, {
+                    "session_id": session_id,
+                    "turn_id": turn_id,
+                    "call_id": call_id,
+                    "name": str(action.get("name") or ""),
+                    "arguments_sha256": hashlib.sha256(
+                        json.dumps(args, sort_keys=True, separators=(",", ":")).encode()
+                    ).hexdigest(),
+                    "success": success,
+                    "output": output,
+                })
+            events.append({
+                "type": "agent.session.input.tool_result",
+                "turn_id": turn_id,
+                "call_id": call_id,
+                "success": success,
+                "output": output,
+            })
+            call_count += 1
+            recon_denials = min(max_recon_denials, recon_denials + 1)
+        if recon_denials >= max_recon_denials:
+            state["turn_outcome_only"] = True
+            state["turn_outcome_only_denial_used"] = False
+        idem = hashlib.sha256(
+            (
+                "recon-budget-denial\n" + session_id + "\n"
+                + "\n".join(str(e["call_id"]) for e in events)
+            ).encode()
+        ).hexdigest()
+        api(
+            "POST",
+            f"/agents/sessions/{session_id}/events",
+            {"events": events},
+            extra_headers={"Idempotency-Key": idem},
+        )
+        state["turn_tool_calls"] = call_count
+        state["turn_tool_rounds"] = round_count
+        state["turn_recon_tool_calls"] = recon_count
+        state["turn_recon_denials"] = recon_denials
+        state["turn_side_effect_calls"] = effect_count
+        state["turn_tool_signature_counts"] = signatures
+        atomic_json(STATE, state)
+        log(
+            f"recon_budget_denial session={session_id} rejected={len(events)} "
+            f"turn_calls={call_count} tool_rounds={round_count} recon={recon_count} "
+            f"denials={recon_denials}"
+        )
+        return state
     if round_count >= max_rounds and not terminal_outcome_only:
         if bool(state.get("turn_terminal_grace_used")):
             raise RuntimeError("TOOL_ROUND_BUDGET_EXCEEDED")
@@ -1893,6 +2074,9 @@ def _begin_turn_state(state, prepared, turn_lock):
     state["turn_tool_rounds"] = 0
     state["turn_terminal_grace_used"] = False
     state["turn_recon_tool_calls"] = 0
+    state["turn_recon_denials"] = 0
+    state["turn_outcome_only"] = False
+    state["turn_outcome_only_denial_used"] = False
     state["turn_side_effect_calls"] = 0
     state["turn_tool_signature_counts"] = {}
     state["active_turn_id"] = None
@@ -1984,6 +2168,9 @@ def main():
                 state["turn_tool_rounds"] = 0
                 state["turn_terminal_grace_used"] = False
                 state["turn_recon_tool_calls"] = 0
+                state["turn_recon_denials"] = 0
+                state["turn_outcome_only"] = False
+                state["turn_outcome_only_denial_used"] = False
                 state["turn_side_effect_calls"] = 0
                 state["turn_tool_signature_counts"] = {}
                 state["active_turn_id"] = None

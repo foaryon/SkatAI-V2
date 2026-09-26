@@ -55,6 +55,7 @@ def _governor():
             "max_tool_calls_per_turn": 40,
             "max_tool_rounds_per_turn": 12,
             "max_recon_tool_calls_per_turn": 6,
+            "max_recon_denials_per_turn": 2,
             "max_side_effect_calls_per_turn": 8,
             "max_identical_tool_calls_per_turn": 3,
             "max_tool_output_bytes": 60000,
@@ -678,26 +679,21 @@ def test_hash_bound_gate_queue_rotates_only_preauthorized_entries(tmp_path, monk
     permit = {"authorized_gates": authorized}
     state = {"gate_queue_index": 0, "gate_rotations_used": 0}
 
-    outcome0 = {"primary_gate_id": queue["entries"][0]["gate_id"]}
-    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome0)
-    assert ok and reason is None
-    assert mod.sha256_file(active) == queue["entries"][1]["lock_sha256"]
-    assert state["gate_queue_index"] == 1
-    assert state["gate_rotations_used"] == 1
-    assert state["autonomy_followup_authorized"] is True
-    assert state["initial_sent"] is False
+    for index in range(len(queue["entries"]) - 1):
+        outcome = {"primary_gate_id": queue["entries"][index]["gate_id"]}
+        ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome)
+        assert ok and reason is None
+        assert mod.sha256_file(active) == queue["entries"][index + 1]["lock_sha256"]
+        assert state["gate_queue_index"] == index + 1
+        assert state["gate_rotations_used"] == index + 1
+        assert state["autonomy_followup_authorized"] is True
+        assert state["initial_sent"] is False
 
-    outcome1 = {"primary_gate_id": queue["entries"][1]["gate_id"]}
-    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome1)
-    assert ok and reason is None
-    assert mod.sha256_file(active) == queue["entries"][2]["lock_sha256"]
-    assert state["gate_queue_index"] == 2
-    assert state["gate_rotations_used"] == 2
-
-    outcome2 = {"primary_gate_id": queue["entries"][2]["gate_id"]}
-    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome2)
+    final = queue["entries"][-1]
+    outcome = {"primary_gate_id": final["gate_id"]}
+    ok, reason = mod.rotate_to_next_authorized_gate(state, permit, outcome)
     assert not ok and reason == "gate_queue_exhausted"
-    assert mod.sha256_file(active) == queue["entries"][2]["lock_sha256"]
+    assert mod.sha256_file(active) == final["lock_sha256"]
 
 
 def test_work_permit_rejects_lock_outside_authorized_gate_queue(tmp_path, monkeypatch):
@@ -785,13 +781,64 @@ def test_reconnaissance_budget_soft_denies_extra_reads(tmp_path, monkeypatch):
     }
     mod.handle_required_actions("sess_recon", first, state, gov)
     assert state["turn_recon_tool_calls"] == 1
+    assert state["turn_tool_rounds"] == 1
     assert fake.calls == 1
+
     mod.handle_required_actions("sess_recon", second, state, gov)
     assert state["turn_recon_tool_calls"] == 1
+    assert state["turn_recon_denials"] == 1
+    assert state["turn_tool_rounds"] == 1
     assert fake.calls == 1
     event = posted[-1]["events"][0]
     assert event["success"] is False
     assert "RECONNAISSANCE_BUDGET_REACHED" in event["output"]
+    assert "lease_context" in event["output"]
+
+    third = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "list_paths",
+            "turn_id": "turn_recon",
+            "call_id": "call_3",
+            "arguments": {"path": "."},
+        }]
+    }
+    mod.handle_required_actions("sess_recon", third, state, gov)
+    assert state["turn_recon_denials"] == 2
+    assert state["turn_tool_rounds"] == 1
+
+    assert state["turn_outcome_only"] is True
+    fourth = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "git_query",
+            "turn_id": "turn_recon",
+            "call_id": "call_4",
+            "arguments": {"operation": "status"},
+        }]
+    }
+    mod.handle_required_actions("sess_recon", fourth, state, gov)
+    assert state["turn_tool_rounds"] == 1
+    assert state["turn_outcome_only_denial_used"] is True
+    event = posted[-1]["events"][0]
+    assert event["success"] is False
+    assert "OUTCOME_ONLY_REQUIRED" in event["output"]
+
+    fifth = {
+        "required_actions": [{
+            "type": "function_call",
+            "name": "read_text",
+            "turn_id": "turn_recon",
+            "call_id": "call_5",
+            "arguments": {"path": "README.md"},
+        }]
+    }
+    try:
+        mod.handle_required_actions("sess_recon", fifth, state, gov)
+    except RuntimeError as exc:
+        assert "OUTCOME_ONLY_TOOL_VIOLATION" in str(exc)
+    else:
+        raise AssertionError("repeated outcome-only violation was not bounded")
 
 
 def test_decorated_evidence_reference_verifies_path_and_hash(tmp_path):

@@ -8,14 +8,16 @@ from pathlib import Path
 import subprocess
 
 
+def pytest_argv(*tests: str) -> list[str]:
+    return [
+        "/usr/bin/uv", "run", "--offline", "--isolated", "--no-project",
+        "--python", "/usr/bin/python3.11", "--with", "pytest==8.4.2",
+        "python", "-m", "pytest", "-q", *tests,
+    ]
+
+
 def main() -> int:
     repo = Path("/workspace/skatai-v2")
-    py = Path(
-        "/workspace/skatai/ops/skatai-autonomy-platform-v1/"
-        "engineering/master-order-continuous-improvement-v1/test-venv/bin/python"
-    )
-    if not py.is_file():
-        raise SystemExit("MAIN_RECOVERY_TEST_RUNTIME_UNAVAILABLE")
     env = {
         "PATH": "/usr/bin:/bin",
         "PYTHONPATH": str(repo / "src"),
@@ -23,9 +25,11 @@ def main() -> int:
         "HOME": "/tmp",
         "LC_ALL": "C.UTF-8",
         "TZ": "UTC",
+        "UV_CACHE_DIR": "/workspace/.cache/uv",
+        "UV_NO_PROGRESS": "1",
     }
     commands = [
-        [str(py), "-m", "pytest", "-q", "tests/test_openai_platform_main_controller.py"],
+        pytest_argv("tests/test_openai_platform_main_controller.py"),
         ["/usr/bin/python3", "scripts/validate_main_controller_logic.py"],
     ]
     for argv in commands:

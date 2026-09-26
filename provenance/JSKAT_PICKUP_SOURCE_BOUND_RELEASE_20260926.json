@@ -1,0 +1,9 @@
+{
+  "schema": "skatai.v2.jskat-pickup-source-bound-release.v1",
+  "captured_at": "2026-09-26T02:10:00Z",
+  "task_id": "JSKAT_PICKUP_SOURCE_BOUND_RELEASE",
+  "classification": "OPEN",
+  "question": "Can the current source-bound v4 B0 package identity containing the pickup-plan host contract be accepted by the release loader without weakening v1-v3 identity checks?",
+  "verification": "PENDING",
+  "decision": "PENDING"
+}

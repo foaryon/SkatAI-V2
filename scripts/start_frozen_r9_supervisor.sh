@@ -6,7 +6,7 @@ ROOT=/workspace/skatai-v2
 RUNTIME=/workspace/skatai-v2-runtime/iss/external-gate-r9
 ENV_FILE=/workspace/skatai-v2-runtime/iss/iss-runtime.env
 SUPERVISOR="$ROOT/scripts/supervise_frozen_r9.py"
-PREP=/workspace/openai-agent/prepare-runtime-secrets.py
+PREP="$ROOT/scripts/prepare_r9_runtime_secrets.py"
 LOG="$RUNTIME/supervisor-boot.log"
 
 mkdir -p "$RUNTIME"
@@ -30,7 +30,7 @@ fi
 if [ "$(id -u)" -eq 0 ]; then
   python3 - "$ENV_FILE" <<'PY'
 from pathlib import Path
-import os, shlex, sys
+import os, pwd, shlex, sys
 out=Path(sys.argv[1])
 env={}
 for item in Path("/proc/1/environ").read_bytes().split(b"\0"):
@@ -53,7 +53,8 @@ text += "export ISS_PASSWORD_FILE=/run/skatai-v2-secrets/iss_password\n"
 out.parent.mkdir(parents=True,exist_ok=True)
 tmp=out.with_suffix(".env.tmp")
 tmp.write_text(text,encoding="utf-8")
-os.chown(tmp,999,996)
+account=pwd.getpwnam("sentinelx")
+os.chown(tmp,account.pw_uid,account.pw_gid)
 os.chmod(tmp,0o640)
 os.replace(tmp,out)
 PY

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded deterministic tests for frozen-R9 supervisor observability."""
+"""Focused V2-owned tests for the JSkat pickup-plan source-bound release gate."""
 
 from __future__ import annotations
 
@@ -23,9 +23,12 @@ def main() -> int:
     argv = [
         "/usr/bin/uv", "run", "--offline", "--isolated", "--no-project",
         "--python", "/usr/bin/python3.11", "--with", "pytest==8.4.2",
-        "python", "-m", "pytest", "-q", "tests/test_supervise_frozen_r9.py",
+        "python", "-m", "pytest", "-q",
+        "tests/test_release_package.py",
+        "tests/test_release_loader.py",
+        "tests/test_host_service.py",
     ]
-    cp = subprocess.run(argv, cwd=repo, env=env, timeout=120)
+    cp = subprocess.run(argv, cwd=repo, env=env, timeout=180)
     return int(cp.returncode)
 
 

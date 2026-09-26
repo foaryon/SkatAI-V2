@@ -211,8 +211,10 @@ def test_supervisor_does_not_launch_while_reconciliation_blocked(tmp_path, monke
     monkeypatch.setattr(mod, "_pending_effects", lambda *args: 0)
     monkeypatch.setattr(mod, "_processes_containing", lambda *args: [])
     monkeypatch.setattr(mod.subprocess, "Popen", lambda *args, **kwargs: pytest.fail("unexpected launch"))
-    monkeypatch.setattr(mod.time, "sleep", lambda *args: (_ for _ in ()).throw(StopIteration("blocked")))
-    with pytest.raises(StopIteration, match="blocked"):
+    def stop_blocked(*_args):
+        raise RuntimeError("blocked-test-stop")
+    monkeypatch.setattr(mod.time, "sleep", stop_blocked)
+    with pytest.raises(RuntimeError, match="blocked-test-stop"):
         mod.supervise(runtime=runtime, frozen_repo=tmp_path, launcher=tmp_path / "launcher", env_file=tmp_path / "env")
     assert json.loads((runtime / "supervisor-status.json").read_text())["state"] == "BLOCKED_RECONCILIATION"
 

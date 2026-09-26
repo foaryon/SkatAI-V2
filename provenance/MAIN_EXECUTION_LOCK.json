@@ -3,27 +3,29 @@
   "captured_at": "2026-09-26T00:00:00Z",
   "reason": "Pre-authorized deterministic MAIN gate queue entry.",
   "primary": {
-    "gate_id": "BUDGETS_ENFORCED_ACCEPTANCE",
+    "gate_id": "ANTI_PSEUDO_V2_ACCEPTANCE",
     "status": "EXECUTABLE",
     "goal_path_id": "G7_FULL_AFK",
-    "objective": "Decide whether current bounded controller/governor/token-accounting evidence satisfies the end-state BUDGETS_ENFORCED criterion.",
-    "end_state_contribution": "Closes or precisely narrows the cost-governance prerequisite for sustained FULL-AFK operation.",
-    "selection_basis": "The original cost incident is preserved, but recovery provenance now records verified turn closure, actual-usage settlement and conservative fallback behavior plus a successful post-fix turn.",
+    "objective": "Evaluate current V2 against the founding anti-Pseudo-V2 acceptance rule using current source/runtime authority boundaries.",
+    "end_state_contribution": "Verifies that clean V2 remains independently operable and does not silently rely on V1 runtime/state/authority.",
+    "selection_basis": "The founding specification requires an explicit anti-Pseudo-V2 acceptance gate; current scorecard still marks it NOT_YET_VERIFIED.",
     "selection_evidence": [
-      "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
-      "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
-      "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
-      "configs/control/MAIN_EXECUTION_GOVERNOR.json",
+      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "provenance/ANTI_PSEUDO_V2_DEPENDENCY_AUDIT_20260926.json",
+      "SKATAI_V2_FOUNDING_SPECIFICATION.md",
+      "SKATAI_V2_WORK_PROMPT.md",
+      "provenance/MAIN_END_STATE_SCORECARD.json",
       "scripts/openai_platform_main_controller.py",
-      "provenance/MAIN_END_STATE_SCORECARD.json"
+      "scripts/main_tool_gateway.py"
     ],
     "evidence": [
-      "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
-      "provenance/MAIN_AGENT_COST_INCIDENT_20260925.json",
-      "provenance/MAIN_TURN_CLOSURE_RECOVERY_20260925.json",
-      "configs/control/MAIN_EXECUTION_GOVERNOR.json",
+      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
+      "provenance/ANTI_PSEUDO_V2_DEPENDENCY_AUDIT_20260926.json",
+      "SKATAI_V2_FOUNDING_SPECIFICATION.md",
+      "SKATAI_V2_WORK_PROMPT.md",
+      "provenance/MAIN_END_STATE_SCORECARD.json",
       "scripts/openai_platform_main_controller.py",
-      "provenance/MAIN_END_STATE_SCORECARD.json"
+      "scripts/main_tool_gateway.py"
     ],
     "model_tier": "VERIFIED_CURRENT",
     "model_reason": "Use the verified saved Agent with medium reasoning, low verbosity and Flex; this is a bounded evidence/control task.",
@@ -34,34 +36,41 @@
     "executor_capabilities": [],
     "progress_contract": {
       "kind": "JSON_FIELD_TRANSITION",
-      "path": "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+      "path": "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
       "field": "classification",
       "before_prefix": "OPEN",
       "after_forbid_prefix": "OPEN"
     },
     "authorized_commands": [],
     "writable_files": [
-      "provenance/MAIN_BUDGETS_ENFORCED_ACCEPTANCE_20260926.json",
+      "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json",
       "provenance/MAIN_END_STATE_SCORECARD.json"
     ],
     "completion": [
-      "Decision distinguishes bounded-controller enforcement from any separate OpenAI-account billing ceiling.",
-      "Evidence includes actual-usage settlement and fail-closed reservation fallback.",
-      "Scorecard is updated only if the evidence supports the stated acceptance level.",
-      "No budget or permit limits are increased."
+      "Decision explicitly checks active V2 runtime/source/authority independence from V1, not filenames or historical labels.",
+      "Any remaining active V1 dependency is named precisely.",
+      "Scorecard is updated only to the supported status.",
+      "No V1 artifact is promoted merely because it exists."
     ],
-    "next_action": "Call get_active_lease first. Use decisive_facts/evidence_identities as controller-bound and avoid rereading incident/recovery/governor files unless contradictory evidence appears. Read only the OPEN budget provenance and current scorecard needed for exact edits. Decide ACCEPT/REJECT/INCONCLUSIVE for controller-level BUDGETS_ENFORCED, explicitly distinguishing it from any unverified provider billing ceiling; update provenance/scorecard, record_turn_outcome, yield.",
+    "next_action": "Call get_active_lease first. Treat decisive_facts/evidence_identities as controller-bound. Do not run another repository search unless a concrete contradiction appears. Read only the OPEN anti-Pseudo-V2 provenance and current scorecard needed for exact edits. Decide ACCEPT/REJECT/INCONCLUSIVE, explicitly distinguish migration/defense-in-depth references and individually qualified legacy assets from active runtime/state/authority dependencies, update provenance/scorecard, record_turn_outcome, and yield.",
     "evidence_identities": {
-      "cost_incident_sha256": "11e58bcb8496e8d1b6f63bac9008b52a0ee23286c7fa1721c2ced1620af09058",
-      "turn_closure_recovery_sha256": "9e3efa8aebf281c450f90d54e45e922dc9eea90ebfcdfaf0b573d50cd4183516",
-      "governor_sha256": "bd163308f1adff3715a14cbde8c3d77d80c466b141c3276030a81e71a24802c2"
+      "founding_spec_sha256": "d4a4315325f7b16f528c1475c5490c4e6bef31cebcce2dd744d300bd07ebfdee",
+      "work_prompt_sha256": "a440b349adbcf9cef547cc19cd1bdea6531686d6a8361b117c7da2b1e25f99ea",
+      "dependency_audit_sha256": "b465369c86f278d7b40341c3f07c5894192cfc6846a30f66d7cd747ca35b9f10",
+      "controller_sha256": "db3cd37ab3a27805367256ef215e99850220f402841d7a883aa48e85a2bd9add",
+      "gateway_sha256": "406ff0b83be74a0f8004ee0a43f37619e3b26523a0d106f7918bd83a222fc2ef",
+      "main_test_runner_sha256": "f14f1d20a0b0aa79dde5c6ed20bcfa881597c8e956adb5e57de1b605534a47f8",
+      "r9_test_runner_sha256": "f44c5616d00437430734b51004a2ba0c9297368658013bb03a12845c7ae69312",
+      "r9_secret_prep_sha256": "0c6980454db4377806a4344d521d89cdc8892a92a47ac867461694dc55d713f2",
+      "main_secret_prep_sha256": "00ba813871ffbb3d4c3e42967f931a52afd98dbb151b12d70687f7ff9dd47790"
     },
     "decisive_facts": [
-      "The 2026-09-25 incident recorded 2999 model requests, 335157288 input tokens, 1045759 output tokens and $42.23721065 cost; root cause included idle-driven resubmission plus commit-sensitive progress.",
-      "Current governor forbids idle-triggered submits; hard caps are 10 submits/day, 2500000 tokens/day, 250000-token reservation/turn and $7 incident-cost proxy/day; autonomous caps are 8 submits/day and $5 proxy/day. Explicit user input cannot bypass hard totals.",
-      "MAIN turn-closure recovery is ACCEPT and verifies terminal-outcome grace, actual-usage settlement, conservative reservation fallback, no-idle-submit behavior and bounded controller enforcement.",
-      "The recovery reconciled 512351 actual tokens from three cancelled sessions and cleared 750000 stale reserved tokens without inference.",
-      "A separate OpenAI account/project billing hard ceiling has not been independently verified; do not claim one. Decide only whether the SkatAI controller/governor criterion is enforced and state this limitation explicitly."
+      "The founding anti-Pseudo-V2 acceptance rule requires V2 to remain independently operable without depending on V1 runtime, V1 state, or V1 authority merely because legacy material exists.",
+      "Deterministic dependency audit classification is PASS_NO_ACTIVE_V1_RUNTIME_STATE_AUTHORITY_DEPENDENCY across active scripts, src, .github and configs after excluding only migration/defense-in-depth references.",
+      "The two V2 test runners no longer use the old /workspace/skatai/... V1 test environment; both use V2-owned offline uv with pinned pytest==8.4.2 and pass their focused suites.",
+      "R9 startup now uses V2 scripts/prepare_r9_runtime_secrets.py; RunPod hunter uses V2 scripts/prepare_runtime_secrets.py. MAIN still does not own or materialize the ISS password.",
+      "Remaining legacy-controller filesystem references are limited to migration/archive/defense-in-depth checks, not active V2 execution authority. Qualified legacy-v1-canonical-corpus references remain individually provenance-bound assets, not authority.",
+      "No V1 model/checkpoint/dataset may be treated as accepted V2 merely from presence or naming."
     ]
   },
   "secondary": null,
