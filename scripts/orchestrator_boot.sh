@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TRUST=/opt/skatai-orchestrator/current
-CONTROL=/var/lib/skatai-orchestrator
+CONTROL=/workspace/skatai-v2-runtime/orchestrator/control
 mkdir -p "$CONTROL"
 chmod 700 "$CONTROL"
 [ -d "$TRUST" ] || exit 0

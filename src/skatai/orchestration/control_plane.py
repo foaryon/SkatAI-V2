@@ -16,7 +16,7 @@ from typing import Any
 
 REPO = Path(os.environ.get("SKATAI_V2_REPO", "/workspace/skatai-v2")).resolve()
 RUNTIME = Path(os.environ.get("SKATAI_V2_RUNTIME", "/workspace/skatai-v2-runtime")).resolve()
-CONTROL = Path(os.environ.get("SKATAI_ORCHESTRATOR_CONTROL", "/var/lib/skatai-orchestrator")).resolve()
+CONTROL = Path(os.environ.get("SKATAI_ORCHESTRATOR_CONTROL", "/workspace/skatai-v2-runtime/orchestrator/control")).resolve()
 TRUSTED = Path(os.environ.get("SKATAI_ORCHESTRATOR_TRUSTED_ROOT", str(REPO))).resolve()
 STATE_DIR = Path(os.environ.get("SKATAI_ORCHESTRATOR_STATE", "/workspace/skatai-v2-runtime/orchestrator/state")).resolve()
 CONFIG = TRUSTED / "config/ORCHESTRATOR_RUNTIME_POLICY.json" if TRUSTED != REPO else REPO / "configs/orchestration/ORCHESTRATOR_RUNTIME_POLICY.json"

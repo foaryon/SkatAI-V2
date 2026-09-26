@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 TRUST=/opt/skatai-orchestrator/current
-CONTROL=/var/lib/skatai-orchestrator
+CONTROL=/workspace/skatai-v2-runtime/orchestrator/control
 LOCK=/run/lock/skatai-v2-orchestrator-supervisor.lock
 mkdir -p "$CONTROL" /run/lock
 exec 9>"$LOCK" || exit 1

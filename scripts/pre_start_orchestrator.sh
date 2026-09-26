@@ -7,6 +7,8 @@ if [ -x "$legacy/r9_trusted_boot.sh" ]; then
 fi
 orchestrator=/opt/skatai-orchestrator/current
 if [ -x "$orchestrator/orchestrator_boot.sh" ]; then
-  (cd "$orchestrator" && sha256sum -c MANIFEST.sha256 >/var/lib/skatai-orchestrator/trusted-manifest-check.log 2>&1) && "$orchestrator/orchestrator_boot.sh"
+  mkdir -p /workspace/skatai-v2-runtime/orchestrator/control
+  chmod 700 /workspace/skatai-v2-runtime/orchestrator/control
+  (cd "$orchestrator" && sha256sum -c MANIFEST.sha256 >/workspace/skatai-v2-runtime/orchestrator/control/trusted-manifest-check.log 2>&1) && "$orchestrator/orchestrator_boot.sh"
 fi
 exit 0

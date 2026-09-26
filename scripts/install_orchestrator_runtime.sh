@@ -3,7 +3,7 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo 'ROOT_REQUIRED' >&2; exit 1; }
 repo=/workspace/skatai-v2
 base=/opt/skatai-orchestrator
-control=/var/lib/skatai-orchestrator
+control=/workspace/skatai-v2-runtime/orchestrator/control
 cd "$repo"
 python3 -m py_compile src/skatai/orchestration/control_plane.py scripts/orchestrator_superbrain_controller.py scripts/prepare_shared_runtime_secrets.py
 install -d -m 700 "$base/releases" "$control"
