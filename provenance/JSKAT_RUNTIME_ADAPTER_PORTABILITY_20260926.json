@@ -2,8 +2,54 @@
   "schema": "skatai.v2.jskat-runtime-adapter-portability.v1",
   "captured_at": "2026-09-26T09:00:00Z",
   "task_id": "JSKAT_RUNTIME_ADAPTER_PORTABILITY",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Does the verified JSkat adapter branch remain cleanly portable onto current main, and what exact runtime prerequisite remains before current-main Java/JSkat acceptance?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": {
+    "status": "PASS_CLEAN_MERGE_TREE",
+    "command_id": "audit_jskat_adapter_portability",
+    "runner_sha256": "d7aeb0997e1e75fecb3b5798500c5d8e187e5dfe7655012a4a58c726bf753c17",
+    "main_head": "c256ac9980d4952476d23e096582f4f6c0f1f154",
+    "adapter_branch": "feat/jskat-runtime-adapter-v1",
+    "branch_head": "575858100ffbfc2fc24cb0d5713038eb930adc9a",
+    "merge_base": "f011b55a98d4d3255f7c320a1ec07b0a49d893a9",
+    "merged_tree": "8bf34521b7f7fc8590d8d1118f1106436f77fc40",
+    "changed_path_count": 19,
+    "changed_paths": [
+      "integrations/jskat-adapter/.gitignore",
+      "integrations/jskat-adapter/README.md",
+      "integrations/jskat-adapter/build.gradle.kts",
+      "integrations/jskat-adapter/patches/.gitattributes",
+      "integrations/jskat-adapter/patches/jskat-skatai-player.patch",
+      "integrations/jskat-adapter/settings.gradle.kts",
+      "integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/ContractMapper.java",
+      "integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/HostClient.java",
+      "integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/JsonLineHostClient.java",
+      "integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/ProtocolIdentity.java",
+      "integrations/jskat-adapter/src/main/java/org/skatai/v2/jskat/SkatAIJSkatPlayer.java",
+      "integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/ContractMapperTest.java",
+      "integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/JsonLineHostClientIntegrationTest.java",
+      "integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/ProtocolIdentityTest.java",
+      "integrations/jskat-adapter/src/test/java/org/skatai/v2/jskat/SkatAIJSkatPlayerTest.java",
+      "provenance/JSKAT_INSTALLED_RUNTIME_WHEEL_GATE_20260925.json",
+      "provenance/JSKAT_RUNTIME_INTEGRATION_V1_20260925.json",
+      "src/skatai/runtime/host_service.py",
+      "tests/test_host_service.py"
+    ],
+    "runtime_java_available": false,
+    "prior_staged_evidence": {
+      "classification": "CONCLUDE_STAGED_PRODUCT_GATE",
+      "adapter_implementation_commit": "edff3d92b66ceabd9c96133a8b7d0cb668f7f688",
+      "adapter_evidence_commit": "dd4dad654f5ad70c2210727db06c8bdd19c2db9e",
+      "reported_v2_python_tests": 603,
+      "reported_java_adapter_tests": 13,
+      "reported_checks": [
+        "real Java-Python release roundtrip",
+        "JSkat runtime parity",
+        "patch build",
+        "installed-distribution class discovery",
+        "zero post-close host/worker orphans"
+      ]
+    }
+  },
+  "decision": "ACCEPT portability only: the exact staged branch has a clean merge tree onto the audited current main with the reported 19-path change set. No source was ported or merged. Before adoption, port the branch onto current main and revalidate with a deployment-matched JDK/JSkat build, Java adapter tests, release roundtrip, callback/rules parity and runtime behavior. This pod has no java/javac; current-main Java/JSkat acceptance, Windows packaging and user-host integration remain unverified."
 }

@@ -87,7 +87,7 @@
       "gate": "Windows 11 open-source Skat product host"
     }
   ],
-  "next_action": "Resume MAIN at REPRODUCIBLE_RELEASE_ACCEPTANCE. R9 remains independently supervised; then verify JSkat adapter current-main portability. Deployment-matched JDK/JSkat runtime validation remains required before adapter port/adoption.",
+  "next_action": "JSkat adapter portability ACCEPT for branch 575858100ffbfc2fc24cb0d5713038eb930adc9a onto main c256ac9980d4952476d23e096582f4f6c0f1f154; next product step is an authorized port onto current main, then deployment-matched JDK/JSkat build and Java/Python runtime revalidation before adoption. R9 remains independently supervised.",
   "open_blockers": [
     {
       "blocker_id": "ACTUAL_USER_HOST_SOURCE_ABSENT",
@@ -164,6 +164,16 @@
     "evidence": "provenance/ANTI_PSEUDO_V2_ACCEPTANCE_20260926.json"
   },
   "operational_recovery_evidence": "provenance/OPERATIONAL_RECOVERY_ROLLOUT_20260926.json",
+  "jskat_adapter_portability": {
+    "classification": "ACCEPT_PORTABILITY_ONLY",
+    "evidence": "provenance/JSKAT_RUNTIME_ADAPTER_PORTABILITY_20260926.json",
+    "main_head": "c256ac9980d4952476d23e096582f4f6c0f1f154",
+    "branch_head": "575858100ffbfc2fc24cb0d5713038eb930adc9a",
+    "merged_tree": "8bf34521b7f7fc8590d8d1118f1106436f77fc40",
+    "changed_path_count": 19,
+    "source_ported": false,
+    "current_main_java_acceptance": "PENDING_DEPLOYMENT_MATCHED_JDK_JSKAT_REVALIDATION"
+  },
   "product_artifacts": {
     "source_commit": "7c97b35aedd9b509aa0fe43d5251354e77641629",
     "package_gate": "ACCEPT",

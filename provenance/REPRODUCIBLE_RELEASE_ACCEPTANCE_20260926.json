@@ -2,8 +2,24 @@
   "schema": "skatai.v2.reproducible-release-acceptance.v1",
   "captured_at": "2026-09-26T09:00:00Z",
   "task_id": "REPRODUCIBLE_RELEASE_ACCEPTANCE",
-  "classification": "OPEN",
+  "classification": "ACCEPT",
   "question": "Do the exact-source v4 package and current-source wheel establish the end-state reproducible/versioned release-artifact criterion without implying model promotion or user-host deployment?",
-  "verification": "PENDING",
-  "decision": "PENDING"
+  "verification": {
+    "status": "PASS",
+    "command_id": "test_reproducible_release_acceptance",
+    "runner_sha256": "de7c3e06412c4b6cf69cce1c4c83e5944a9c0c402d88dec1acb0f72d78867fd4",
+    "source_commit": "7c97b35aedd9b509aa0fe43d5251354e77641629",
+    "package_gate_sha256": "fed389259ce9d0129cdce2ee6e1cd856b28c803698192272a0d2f0210f69d1c4",
+    "wheel_gate_sha256": "e102fc002acbc4d2d6bc97e4ee5913ff70728e1d8f536a03ef8ed14d9b72ba50",
+    "release_id": "V2-B0-package-v4-7c97b35aedd9b509aa0fe43d5251354e77641629",
+    "package_sha256": "a4d770b1370027d15fe3c3e290167ce9bbdb8f3b2f164628c04279cbee0c6b19",
+    "wheel_sha256": "31275cc48ed51284ce306fc075e8f63ba36cefb4cb83a4a6ea43c91caa26bf14",
+    "wheel_byte_reproducible": true,
+    "installed_wheel_import_without_pythonpath": true,
+    "package_host_response_count": 5,
+    "host_smoke_phases": ["BID", "DECLARATION", "DISCARD", "PLAY_CARD", "PICKUP_PLAN"],
+    "durable_package_remote": "s3://skatai-v2/releases/source-bound/7c97b35aedd9b509aa0fe43d5251354e77641629/V2-B0-package-v4-7c97b35aedd9b509aa0fe43d5251354e77641629.skatmodel",
+    "evidence": ["provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json", "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json"]
+  },
+  "decision": "ACCEPT: Exact-source v4 package and byte-reproducible current-source wheel satisfy the reproducible/versioned release-artifact criterion. This does not claim model/challenger promotion, Windows deployment or actual user-host integration."
 }

@@ -162,10 +162,12 @@
       "id": "REPRODUCIBLE_RELEASE",
       "goal_path_id": "G6_RELEASE_INTEGRATION",
       "criterion": "Release artifacts are reproducible and versioned.",
-      "status": "IN_PROGRESS",
-      "reason": "Release evidence exists, but end-state release acceptance is not assumed.",
+      "status": "ACCEPTED",
+      "reason": "Exact source 7c97b35aedd9b509aa0fe43d5251354e77641629 binds the v4 package and wheel; bounded release precheck PASS verifies package hash, wheel hash, byte-identical independent wheel builds, installed import without PYTHONPATH, five-operation host smoke, source-bound release ID and recorded durable package upload. This does not establish model/challenger promotion, Windows deployment or actual user-host integration.",
       "evidence": [
-        "provenance/MAIN_CURRENT_STATE.json"
+        "provenance/REPRODUCIBLE_RELEASE_ACCEPTANCE_20260926.json",
+        "provenance/CURRENT_SOURCE_PACKAGE_HOST_SMOKE_20260926.json",
+        "provenance/CURRENT_SOURCE_RUNTIME_WHEEL_20260926.json"
       ]
     },
     {
