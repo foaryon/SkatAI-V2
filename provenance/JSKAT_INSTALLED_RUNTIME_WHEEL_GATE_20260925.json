@@ -1,0 +1,66 @@
+{
+  "schema": "skatai.v2.jskat-installed-runtime-wheel-gate.v1",
+  "captured_at": "2026-09-25T19:09:40Z",
+  "classification": "CONCLUDE_STAGED_PRODUCT_RUNTIME_GATE",
+  "runtime_source": {
+    "repository": "foaryon/SkatAI-V2",
+    "branch": "feat/jskat-runtime-adapter-v1",
+    "commit": "dd4dad654f5ad70c2210727db06c8bdd19c2db9e",
+    "wheel_version": "0.0.1",
+    "wheel_name": "skatai_v2-0.0.1-py3-none-any.whl",
+    "wheel_sha256": "18672614ec4d05795d6a718cb709fea153f796c7d83c56a3ae2df25b64419fe8",
+    "wheel_bytes": 176619,
+    "wheel_entry_count": 76,
+    "wheel_content_hygiene": "PASS",
+    "source_date_epoch": 1790361122,
+    "independent_builds": 2,
+    "byte_reproducible": true
+  },
+  "installed_runtime": {
+    "path_classification": "LOCAL_RECONSTRUCTABLE_SCRATCH",
+    "python": "3.11.13",
+    "torch": "2.1.2+cpu",
+    "numpy": "1.26.4",
+    "skatai_import_location": "/tmp/skatai-v2-product-runtime-dd4dad6/lib/python3.11/site-packages/skatai/__init__.py",
+    "skatai_loaded_from_site_packages": true,
+    "pythonpath_removed": true,
+    "skatai_v2_pythonpath_removed": true,
+    "host_service_module_import": "PASS",
+    "runtime_disk_footprint_observed": "803M"
+  },
+  "release_under_test": {
+    "release_id": "V2-B0-package-v3",
+    "source_commit": "5029c5c5ff15966606465d2f8b82a7e83901e981",
+    "package_sha256": "290f6bb06a648eb8d7aa9213145144314132960d2d5188efb76582e069397352",
+    "runtime_version_declared": {
+      "python": "3.11.13",
+      "torch": "2.1.2+cpu",
+      "numpy": "1.26.4",
+      "cuda_available": false
+    },
+    "promotion_status": "STAGED_BASELINE_NOT_PROMOTED_BY_THIS_GATE"
+  },
+  "verification": {
+    "wheel_build_reproducibility": "PASS",
+    "wheel_hygiene": "PASS",
+    "installed_runtime_import_without_source_checkout": "PASS",
+    "real_java_python_release_integration": {
+      "status": "PASS",
+      "test": "org.skatai.v2.jskat.JsonLineHostClientIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 9.833,
+      "phases": ["BID", "DECLARATION_PICKUP", "DISCARD", "PLAY_CARD"],
+      "environment_removed": ["PYTHONPATH", "SKATAI_V2_PYTHONPATH"]
+    }
+  },
+  "identity_rule": "The Python runtime wheel and .skatmodel are separate versioned artifacts. Product bundles must bind both source commits and content hashes; wheel version 0.0.1 alone is not sufficient identity.",
+  "limits": [
+    "This gate does not promote B0 or any challenger.",
+    "The installed runtime is Linux staging evidence, not Windows 11 deployment validation.",
+    "The final end-user package must bundle or install the target-platform Python runtime automatically; users must not be required to install uv or assemble dependencies manually.",
+    "Final accepted release identity, JSkat/Java runtime packaging, Windows legality/crash/replacement checks, p50/p95/p99 latency, and memory acceptance remain pending."
+  ],
+  "next_gate": "When an accepted deployment-valid release is available, construct one source-bound product bundle containing the accepted .skatmodel, matching SkatAI runtime wheel, adapter JAR, patched JSkat distribution and target-platform runtimes; then validate on Windows 11."
+}

@@ -1,0 +1,127 @@
+{
+  "schema": "skatai.v2.jskat-runtime-integration-evidence.v1",
+  "captured_at": "2026-09-25T18:31:19Z",
+  "task_id": "JSKAT_RUNTIME_ADAPTER_V1",
+  "classification": "CONCLUDE_STAGED_PRODUCT_GATE",
+  "implementation": {
+    "repository": "foaryon/SkatAI-V2",
+    "branch": "feat/jskat-runtime-adapter-v1",
+    "base_commit": "f011b55a98d4d3255f7c320a1ec07b0a49d893a9",
+    "implementation_commit": "edff3d92b66ceabd9c96133a8b7d0cb668f7f688",
+    "module": "integrations/jskat-adapter",
+    "host_service": "src/skatai/runtime/host_service.py"
+  },
+  "jskat": {
+    "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+    "license": "Apache-2.0",
+    "patch_path": "integrations/jskat-adapter/patches/jskat-skatai-player.patch",
+    "patch_sha256": "805031765843b621c98d9a0ddda25a052f09d7a2f6f4e4fdaad34dff9f30f894",
+    "patch_bytes": 5969,
+    "patch_apply_check": "PASS",
+    "patch_scope": [
+      "optional SkatAI resolver discovery",
+      "SkatAI series-start display label",
+      "optional app runtimeOnly adapter-JAR packaging",
+      "AutoCloseable player shutdown on table player replacement",
+      "resolver and lifecycle regression tests"
+    ]
+  },
+  "java_runtime": {
+    "distribution": "Eclipse Temurin",
+    "version": "25.0.4.1+1",
+    "archive_sha256": "dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e"
+  },
+  "adapter_artifact": {
+    "name": "skatai-jskat-adapter.jar",
+    "sha256": "67c9ba5e7c0339adb75988aa4827dc167c6200908e1c305f3130d48d99d93862",
+    "bytes": 2386159,
+    "reproducible_second_build": true,
+    "contains_jskat_classes": false,
+    "bundles_jackson_runtime": true
+  },
+  "release_under_test": {
+    "release_id": "V2-B0-package-v3",
+    "path_classification": "LOCAL_RECONSTRUCTABLE_SCRATCH",
+    "package_sha256": "290f6bb06a648eb8d7aa9213145144314132960d2d5188efb76582e069397352",
+    "package_bytes": 111534080,
+    "promotion_status": "STAGED_BASELINE_NOT_PROMOTED_BY_THIS_GATE"
+  },
+  "verification": {
+    "v2_python_full_suite": {
+      "status": "PASS",
+      "tests": 603,
+      "seconds": 11.08
+    },
+    "adapter_java_suite": {
+      "status": "PASS",
+      "tests": 13,
+      "contract_mapper_tests": 2,
+      "protocol_identity_tests": 3,
+      "player_lifecycle_tests": 7,
+      "real_release_integration_tests": 1
+    },
+    "real_release_all_phase_smoke": {
+      "status": "PASS",
+      "test": "JsonLineHostClientIntegrationTest",
+      "phases": [
+        "BID",
+        "DECLARATION_PICKUP",
+        "DISCARD",
+        "PLAY_CARD"
+      ],
+      "java_python_jsonl_roundtrip": true,
+      "request_id_verified": true,
+      "position_hash_verified": true,
+      "release_id_verified": true,
+      "legal_action_verified": true,
+      "test_seconds": 9.751
+    },
+    "jskat_runtime_parity": {
+      "status": "PASS",
+      "repeated_264_callback_reproduced": true,
+      "pickup_10_to_12_to_10_lifecycle_reproduced": true
+    },
+    "jskat_patch_build": {
+      "status": "PASS",
+      "resolver_regression": "PASS",
+      "autocloseable_lifecycle_regression": "PASS",
+      "gui_compile_kotlin": "PASS",
+      "app_install_dist": "PASS"
+    },
+    "installed_distribution_probe": {
+      "status": "PASS",
+      "resolver_ai_count": 5,
+      "skatai_class": "org.skatai.v2.jskat.SkatAIJSkatPlayer",
+      "class_for_name": "PASS",
+      "jskat_master_reflective_instantiation": "PASS",
+      "post_close_host_or_worker_orphans": 0,
+      "installed_adapter_hash_matches_source": true
+    },
+    "host_integrity": {
+      "forehand_self_offer_18_only": "PASS",
+      "rearhand_first_duel_reconstruction": "PASS",
+      "264_duplicate_effect_guard": "PASS",
+      "atomic_pickup_plan": "PASS",
+      "completed_trick_point_attribution": "PASS",
+      "buried_card_visibility": "PASS",
+      "ouvert_remaining_public_hand_reconstruction": "PASS"
+    }
+  },
+  "latency_evidence": {
+    "context": "B0 release on current main pod while R9 remained active; diagnostic only, not final acceptance",
+    "cold_process_first_bid_latency_ms": 99379.137898,
+    "cold_process_cached_bid_latency_ms": 0.007581,
+    "persistent_worker_first_bid_latency_ms": 5311.821506,
+    "persistent_worker_cached_bid_latency_ms": 0.006771,
+    "conclusion": "Persistent worker removes repeated process/model startup cost and materially improves first-call latency, but B0 first-call latency remains a product acceptance item."
+  },
+  "scientific_and_product_limits": [
+    "This gate does not promote B0 or any challenger.",
+    "The accepted future champion is not yet packaged through this JSkat path.",
+    "The current source-worktree smoke uses SKATAI_V2_PYTHONPATH; a final distribution must package or install the matching Python runtime.",
+    "Windows 11 distribution/runtime validation remains pending.",
+    "Final p50/p95/p99 product latency and memory acceptance remain pending.",
+    "R9 ISS evaluation remains an independent active scientific campaign and was not modified by this integration."
+  ],
+  "next_gate": "Bind the eventual accepted deployment-valid release to a packaged Python/runtime environment, build the patched JSkat distribution reproducibly, and run deployment-matched Windows/JSkat legality, replacement, crash, memory and latency acceptance without changing the stable adapter contract."
+}

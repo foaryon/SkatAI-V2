@@ -32,6 +32,8 @@ from skatai.runtime.interface import (
     SkatAIInterfaceError,
 )
 from skatai.runtime.release_loader import load_model
+from skatai.runtime.skatzero_backend import build_b0_skat_ai
+from skatai.runtime.skatzero_pool import PersistentSkatZeroPool
 
 REQUEST_SCHEMA = "skatai.v2.host-request.v1"
 RESPONSE_SCHEMA = "skatai.v2.host-response.v1"
@@ -75,7 +77,14 @@ def handle_request(ai: SkatAI, release_id: str, payload: Mapping[str, Any]) -> d
     cards = fields.pop(cards_key)
     observation = cls.create(cards, **fields)
     if dtype is DecisionType.BID:
-        if (observation.bidder == observation.answerer
+        forehand_self_offer = (
+            observation.actor == 0
+            and observation.bidder == 0
+            and observation.answerer == 0
+            and observation.bid_index == 0
+            and observation.decision_role == "BIDDER"
+        )
+        if ((observation.bidder == observation.answerer and not forehand_self_offer)
                 or observation.actor != (
                     observation.bidder if observation.decision_role == "BIDDER"
                     else observation.answerer
@@ -221,7 +230,11 @@ def main() -> int:
     parser.add_argument("--package", type=Path, required=True)
     parser.add_argument("--materialize-to", type=Path, required=True)
     parser.add_argument("--python", type=Path, required=True)
+    parser.add_argument("--skatzero-workers", type=int, default=1)
     args = parser.parse_args()
+    if args.skatzero_workers < 1:
+        parser.error("--skatzero-workers must be >= 1")
+
     manifest = validate_release_package(args.package)["manifest"]
     ai = load_model(
         args.package,
@@ -230,32 +243,50 @@ def main() -> int:
     )
     release_id = str(manifest["release_id"])
 
-    while raw := sys.stdin.buffer.readline(MAX_REQUEST_BYTES + 1):
-        if len(raw) > MAX_REQUEST_BYTES:
-            while raw and not raw.endswith(b"\n"):
-                raw = sys.stdin.buffer.readline(MAX_REQUEST_BYTES + 1)
-            response = {"schema": RESPONSE_SCHEMA, "ok": False, "error_code": "REQUEST_TOO_LARGE"}
-        else:
-            payload = None
-            try:
-                payload = json.loads(raw.decode("utf-8"))
-                if not isinstance(payload, dict):
-                    raise SkatAIInterfaceError("HOST_REQUEST_NOT_OBJECT")
-                response = (
-                    handle_pickup_plan(ai, release_id, payload)
-                    if payload.get("schema") == PICKUP_PLAN_REQUEST_SCHEMA
-                    else handle_request(ai, release_id, payload)
-                )
-            except (KeyError, TypeError, ValueError, UnicodeDecodeError) as exc:
-                response = {
-                    "schema": (PICKUP_PLAN_RESPONSE_SCHEMA
-                               if isinstance(payload, dict) and payload.get("schema") == PICKUP_PLAN_REQUEST_SCHEMA
-                               else RESPONSE_SCHEMA),
-                    "ok": False,
-                    "error_code": type(exc).__name__,
-                }
-        sys.stdout.write(canonical_json(response) + "\n")
-        sys.stdout.flush()
+    pool = None
+    if release_id.startswith("V2-B0-package-"):
+        skatzero_root = args.materialize_to / "skatzero"
+        pool = PersistentSkatZeroPool(
+            skatzero_root,
+            args.python,
+            workers=args.skatzero_workers,
+        )
+        ai = build_b0_skat_ai(
+            skatzero_root,
+            args.python,
+            runner=pool,
+        )
+
+    try:
+        while raw := sys.stdin.buffer.readline(MAX_REQUEST_BYTES + 1):
+            if len(raw) > MAX_REQUEST_BYTES:
+                while raw and not raw.endswith(b"\n"):
+                    raw = sys.stdin.buffer.readline(MAX_REQUEST_BYTES + 1)
+                response = {"schema": RESPONSE_SCHEMA, "ok": False, "error_code": "REQUEST_TOO_LARGE"}
+            else:
+                payload = None
+                try:
+                    payload = json.loads(raw.decode("utf-8"))
+                    if not isinstance(payload, dict):
+                        raise SkatAIInterfaceError("HOST_REQUEST_NOT_OBJECT")
+                    response = (
+                        handle_pickup_plan(ai, release_id, payload)
+                        if payload.get("schema") == PICKUP_PLAN_REQUEST_SCHEMA
+                        else handle_request(ai, release_id, payload)
+                    )
+                except (KeyError, TypeError, ValueError, UnicodeDecodeError) as exc:
+                    response = {
+                        "schema": (PICKUP_PLAN_RESPONSE_SCHEMA
+                                   if isinstance(payload, dict) and payload.get("schema") == PICKUP_PLAN_REQUEST_SCHEMA
+                                   else RESPONSE_SCHEMA),
+                        "ok": False,
+                        "error_code": type(exc).__name__,
+                    }
+            sys.stdout.write(canonical_json(response) + "\n")
+            sys.stdout.flush()
+    finally:
+        if pool is not None:
+            pool.close()
     return 0
 
 
