@@ -643,12 +643,37 @@ def worker_tools() -> list[dict[str, Any]]:
     ]
 
 
+def validate_worker_command(argv: list[str]) -> None:
+    """Only inert, narrowly parsed probes may run in the shared live checkout.
+
+    Executing a Python or shell script can write beyond the declared task scope,
+    including indirectly from a test. Such work needs an isolated executor.
+    """
+    if not isinstance(argv, list) or not argv or any(not isinstance(x, str) for x in argv):
+        raise RuntimeError("COMMAND_UNSAFE_SHARED_CHECKOUT")
+    if argv[:3] == ["git", "-C", str(REPO)]:
+        if argv[3:] in (["rev-parse", "HEAD"], ["status", "--short"], ["diff", "--stat"]):
+            return
+    if argv[0] == "rg" and len(argv) >= 4 and argv[1] == "-n" and not argv[2].startswith("-") and all(
+        not arg.startswith("-") and safe_path(arg, allow_runtime=False)[0].is_file()
+        for arg in argv[3:]
+    ):
+        return
+    if argv[0] == "sha256sum" and len(argv) >= 2 and all(
+        not arg.startswith("-") and safe_path(arg, allow_runtime=False)[0].is_file()
+        for arg in argv[1:]
+    ):
+        return
+    if argv in (["java", "-version"], ["javac", "-version"]):
+        return
+    raise RuntimeError("COMMAND_UNSAFE_SHARED_CHECKOUT")
+
+
 def run_exact_worker_command(task: dict[str, Any], argv: list[str], timeout: int) -> dict[str, Any]:
     allowed = task.get("authority", {}).get("execute", [])
     if argv not in allowed:
         raise RuntimeError("COMMAND_NOT_AUTHORIZED")
-    if not argv or argv[0] in {"sudo", "su", "ssh", "scp", "curl", "wget", "rm"}:
-        raise RuntimeError("COMMAND_FORBIDDEN")
+    validate_worker_command(argv)
     timeout = min(int(timeout or 300), 900)
     worker_env = {
         "PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "LC_ALL": "C.UTF-8",

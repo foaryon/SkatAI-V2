@@ -168,6 +168,7 @@ def test_exact_worker_command_runs_without_root_credentials(monkeypatch):
         return subprocess.CompletedProcess(args, 0, 'ok', '')
     monkeypatch.setattr(cp.subprocess, 'run', fake_run)
     task = base_task()
+    task['authority']['execute'] = [['git', '-C', str(cp.REPO), 'rev-parse', 'HEAD']]
     cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
     assert seen['user'] == 'sentinelx'
     assert 'OPENAI_API_KEY' not in seen['env']
@@ -266,3 +267,17 @@ def test_nonconflicting_workers_launch_while_shared_write_waits(tmp_path, monkey
     states = {k: v['state'] for k,v in cp.strict_json(cp.TASKS)['tasks'].items()}
     assert states == {'bounded-0': 'RUNNING', 'bounded-1': 'DISPATCH_REQUESTED', 'bounded-2': 'RUNNING'}
     assert len(launched) == 2
+
+
+def test_worker_command_cannot_run_script_or_tests_with_indirect_effects(monkeypatch):
+    import subprocess
+    monkeypatch.setattr(cp.subprocess, 'run', lambda *args, **kwargs: pytest.fail('unsafe subprocess ran'))
+    task = base_task()
+    with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
+        cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
+    task['authority']['execute'] = [['bash', 'scripts/audit_data_split_leakage.py']]
+    with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
+        cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
+    task['authority']['execute'] = [['rg', '-n', 'needle', '--pre', 'evil', 'src/skatai']]
+    with pytest.raises(RuntimeError, match='COMMAND_UNSAFE_SHARED_CHECKOUT'):
+        cp.run_exact_worker_command(task, task['authority']['execute'][0], 10)
