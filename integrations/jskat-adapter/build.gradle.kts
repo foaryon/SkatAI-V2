@@ -14,6 +14,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.2")
 
     testImplementation(files(jskatBaseJar))
+    // Pinned JSkat CardList initializes SLF4J during adapter tests.
+    testRuntimeOnly("org.slf4j:slf4j-api:2.0.18")
     testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.4")
 

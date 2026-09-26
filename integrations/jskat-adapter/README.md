@@ -22,7 +22,7 @@ Pinned JSkat source used for this integration gate:
 JDK 25 is the deployment-matched JSkat CI runtime used for this gate.
 
 ```bash
-./gradlew -p integrations/jskat-adapter \
+/path/to/JSkat/gradlew -p integrations/jskat-adapter \
   -PjskatBaseJar=/path/to/jskat-base.jar \
   test jar
 ```

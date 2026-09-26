@@ -1,0 +1,34 @@
+{
+  "status": "JAVA_GATE_VERIFIED_BOOTSTRAP_TEMPLATE_PENDING",
+  "date_utc": "2026-09-26",
+  "jdk": {
+    "distribution": "Ubuntu 24.04 noble-updates openjdk-25-jdk-headless",
+    "package_version": "25.0.4.1+1-1~24.04.4",
+    "runtime_version": "25.0.4.1",
+    "persistent_path": "/workspace/skatai-v2-runtime/toolchains/jdk-25",
+    "java_binary_sha256": "e7a72a95ee0b931a5350a2a25d40dc3ff387f344df27188e7ca9263995efbb32",
+    "verified": [
+      "java -version",
+      "javac -version",
+      "persisted binary matches apt-installed binary"
+    ]
+  },
+  "jskat": {
+    "upstream_commit": "9ef3cd6a081c54cc84ed61378ed3879992246ae7",
+    "base_jar_path": "/workspace/skatai-v2-runtime/toolchains/jskat-pinned/jskat-base/build/libs/jskat-base.jar",
+    "base_jar_sha256": "2eee6955795d5fba9a47fd597647a691580bc228d2320c4479b703359045a213",
+    "adapter_tests": {
+      "executed": 12,
+      "passed": 12,
+      "failed": 0,
+      "integration_skipped": 1
+    },
+    "note": "SLF4J API 2.0.18 is required at test runtime by the pinned JSkat base."
+  },
+  "pod_recreation": {
+    "template_container_start_command": "/bin/bash /workspace/skatai-v2/scripts/volume_bootstrap.sh",
+    "bootstrap": "installs trusted controller from clean tracked source, installs /pre_start.sh, then execs image /start.sh; persisted JDK symlinks restored",
+    "verification": "existing-pod recovery and syntax validated; new-pod/template hook not yet verified due unavailable RunPod control API (HTTP 403)"
+  },
+  "scientific_workload": "R9 ISS gate remains running; no restart or scientific promotion."
+}
